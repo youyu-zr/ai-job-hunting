@@ -27,7 +27,7 @@
 !function(t){function e(t){t.registerRegistry=Object.create(null),t.namedRegisterAliases=Object.create(null)}var r=t.System;e(r);var i,s,n=r.constructor.prototype,l=r.constructor,a=function(){l.call(this),e(this)};a.prototype=n,r.constructor=a;var o=n.register;n.register=function(t,e,r,n){if("string"!=typeof t)return o.apply(this,arguments);var l=[e,r,n];return this.registerRegistry[t]=l,i||(i=l,s=t),Promise.resolve().then((function(){i=null,s=null})),o.apply(this,[e,r,n])};var u=n.resolve;n.resolve=function(t,e){try{return u.call(this,t,e)}catch(r){if(t in this.registerRegistry)return this.namedRegisterAliases[t]||t;throw r}};var c=n.instantiate;n.instantiate=function(t,e,r){var i=this.registerRegistry[t];return i?(this.registerRegistry[t]=null,i):c.call(this,t,e,r)};var g=n.getRegister;n.getRegister=function(t){var e=g.call(this,t);s&&t&&(this.namedRegisterAliases[s]=t);var r=i||e;return i=null,s=null,r}}("undefined"!=typeof self?self:global);
 ;(typeof System!='undefined')&&(System=new System.constructor());
 
-System.register("./__entry.js", ['./__monkey.entry-CT5iUMli.js'], (function (exports, module) {
+System.register("./__entry.js", ['./__monkey.entry-OAqsMpY6.js'], (function (exports, module) {
 	'use strict';
 	return {
 		setters: [null],
@@ -39,7 +39,7 @@ System.register("./__entry.js", ['./__monkey.entry-CT5iUMli.js'], (function (exp
 	};
 }));
 
-System.register("./__monkey.entry-CT5iUMli.js", [], (function (exports, module) {
+System.register("./__monkey.entry-OAqsMpY6.js", [], (function (exports, module) {
   'use strict';
   return {
     execute: (function () {
@@ -77246,11 +77246,11 @@ System.register("./__monkey.entry-CT5iUMli.js", [], (function (exports, module) 
         }
         async getRenderComponent() {
           if (this.curUrl.includes("www.zhipin.com/web/geek/chat")) {
-            let promise = __vitePreload(() => module.import('./BossMessage-DoICUqhD-CRoRRJHq.js'), void 0 );
+            let promise = __vitePreload(() => module.import('./BossMessage-CYLb3_2n-DH0mVPCS.js'), void 0 );
             return promise.then((item) => item.default);
           }
           if (this.curUrl.includes("www.zhipin.com/web/geek/job") || this.curUrl.includes("overseas")) {
-            let promise = __vitePreload(() => module.import('./BossJobList-jcM0XKEY-ZagYMa8_.js'), void 0 );
+            let promise = __vitePreload(() => module.import('./BossJobList-D36-Fpvo-DCizUVpu.js'), void 0 );
             return promise.then((item) => item.default);
           }
         }
@@ -77479,8 +77479,9 @@ System.register("./__monkey.entry-CT5iUMli.js", [], (function (exports, module) 
           };
         }
         buildSemanticScreeningPrompt() {
-          var _a2, _b;
-          const preferred = Array.isArray((_b = (_a2 = userStore$2 == null ? void 0 : userStore$2.user) == null ? void 0 : _a2.preference) == null ? void 0 : _b.jni) ? userStore$2.user.preference.jni.filter(Boolean).slice(0, 24).join("、") : "";
+          var _a2;
+          const preference = (_a2 = userStore$2 == null ? void 0 : userStore$2.user) == null ? void 0 : _a2.preference;
+          const preferred = (preference == null ? void 0 : preference.jniE) && Array.isArray(preference.jni) ? preference.jni.filter(Boolean).slice(0, 24).join("、") : "";
           const preferenceHint = preferred ? `候选人优先方向包括：${preferred}。` : "";
           return `${AiPower.SEMANTIC_SCREENING_PROMPT}${preferenceHint}不要把本字段直接带入HR回复。`;
         }
@@ -80949,7 +80950,7 @@ System.register("./__monkey.entry-CT5iUMli.js", [], (function (exports, module) 
   };
 }));
 
-System.register("./BossMessage-DoICUqhD-CRoRRJHq.js", ['./__monkey.entry-CT5iUMli.js'], (function (exports, module) {
+System.register("./BossMessage-CYLb3_2n-DH0mVPCS.js", ['./__monkey.entry-OAqsMpY6.js'], (function (exports, module) {
   'use strict';
   var _export_sfc, defineComponent, ref, openBlock, createElementBlock, createVNode, withCtx, createTextVNode, createBaseVNode, createCommentVNode, Fragment, ElMessage, BossOption, Message, Tools, AiPower, ElButton, ElInput, pushScopeId, popScopeId;
   return {
@@ -81182,7 +81183,7 @@ System.register("./BossMessage-DoICUqhD-CRoRRJHq.js", ['./__monkey.entry-CT5iUMl
   };
 }));
 
-System.register("./BossJobList-jcM0XKEY-ZagYMa8_.js", ['./__monkey.entry-CT5iUMli.js'], (function (exports, module) {
+System.register("./BossJobList-D36-Fpvo-DCizUVpu.js", ['./__monkey.entry-OAqsMpY6.js'], (function (exports, module) {
   'use strict';
   var defineComponent, openBlock, createBlock, _export_sfc, shallowRef, createElementBlock, createVNode, withCtx, Fragment, renderList, unref, createTextVNode, toDisplayString, createBaseVNode, resolveDynamicComponent, ElMenuItem, ElMenu, inject, ServerStore, ref, PushStatus, LogRecorder, LoginStore, pushResultCount, UserStore, logger$1, silentlyLogin, onUnmounted, isProdEnv, createCommentVNode, withModifiers, withDirectives, vShow, normalizeClass, CircleCloseFilled, normalizeStyle, Shop, Wallet, reactive, Tools, watch, onMounted, isRef, ElNotification, ElMessage, loginInterceptor, axios, fetchWithGM_request, ProductStore, SSEClient, serializeAiSeatStatus, rememberAiSeatStatus, shouldApplyAiSeatRollback, ElText, ElBadge, ElTag, ElButton, ElIcon, ElTooltip, ElButtonGroup$1, ElInput, ElCard, ElInputNumber, ElSwitch, ElTableColumn, ElTable, ElEmpty, ElImage, ElDialog, vLoading, normalizeAiSeatStatus, TampermonkeyApi, ElFormItem, ElCheckbox, ElOption, ElSelect, ElUpload, ElForm, ElCol, ElTimePicker, ElRow, ElPagination, ElPopconfirm, request, ElCollapseItem, ElCollapse, pushScopeId, popScopeId, createStaticVNode;
   return {
