@@ -19,7 +19,7 @@ AI 工作猎手运行在 BOSS 直聘网页中，可辅助阅读职位信息、�
 
 ## 三、安装 AI 工作猎手
 
-打开[脚本安装链接](https://aijob.zxpnb.top/ai-job-hunting.user.js)，在脚本管理器的确认页面点击“安装”。当前正式脚本版本为 `0.0.87-prompt-boundary`。
+打开[脚本安装链接](https://aijob.zxpnb.top/ai-job-hunting.user.js)，在脚本管理器的确认页面点击“安装”。当前正式脚本版本为 `0.0.88-prompt-sanitize`。
 
 安装完成后：
 
@@ -167,7 +167,7 @@ AI 坐席依赖当前打开的 BOSS 页面、浏览器脚本和消息连接。�
 
 ### 面板没有显示
 
-确认脚本管理器已启用，关闭旧版和重复脚本，打开 BOSS 职位或消息页面并刷新。当前脚本版本应为 `0.0.87-prompt-boundary`。
+确认脚本管理器已启用，关闭旧版和重复脚本，打开 BOSS 职位或消息页面并刷新。当前脚本版本应为 `0.0.88-prompt-sanitize`。
 
 ### 内测激活提示
 
