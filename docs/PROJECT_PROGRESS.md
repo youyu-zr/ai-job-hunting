@@ -2,8 +2,8 @@
 
 ## Current Release
 
-- Version: `0.0.95-greeting-log-fix`
-- Status: deployed and pending one-job manual acceptance on BOSS
+- Version: `0.0.99-delivery-send-log-sync`
+- Status: built and ready for production deployment; pending one-job manual acceptance on BOSS
 - Public install: https://aijob.zxpnb.top/ai-job-hunting.user.js
 
 ## Changes
@@ -13,6 +13,9 @@
 - Successful delivery logs include company, job, salary, location, and the complete screening explanation when available.
 - The bottom-right delivery panel and the full run log read from the same session records and preserve message order.
 - Internal send-state markers are translated into concise Chinese user-facing records.
+- Text greetings wait for a usable BOSS message channel and can use the injected image websocket as a text fallback.
+- Internal greeting queue states are retained for diagnostics but hidden from user-facing logs.
+- The floating delivery panel and full run log refresh from the same visible record source until final websocket confirmation settles.
 
 ## Verification
 
