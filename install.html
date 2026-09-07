@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI 工作猎手 · 安装使用</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172033;
+      --muted: #657089;
+      --line: #dfe5ef;
+      --panel: #ffffff;
+      --soft: #f5f7fb;
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --ok: #087f5b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--soft);
+      font: 16px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+    }
+    a { color: var(--primary); }
+    .wrap { width: min(960px, calc(100% - 32px)); margin: 0 auto; }
+    header { padding: 52px 0 28px; }
+    .eyebrow { color: var(--primary); font-size: 13px; font-weight: 700; letter-spacing: .08em; }
+    h1 { margin: 8px 0 12px; font-size: clamp(30px, 6vw, 48px); line-height: 1.15; }
+    h2 { margin: 0 0 16px; font-size: 24px; }
+    h3 { margin: 0 0 6px; font-size: 18px; }
+    .lead { max-width: 700px; margin: 0; color: var(--muted); font-size: 18px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+    .button {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-height: 44px; padding: 8px 18px; border: 1px solid var(--primary);
+      border-radius: 6px; text-decoration: none; font-weight: 700;
+    }
+    .button.primary { color: #fff; background: var(--primary); }
+    .button.primary:hover { background: var(--primary-dark); }
+    .button.secondary { color: var(--primary); background: #fff; }
+    .section { padding: 24px 0; }
+    .panel { padding: 24px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .step { min-height: 150px; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+    .num { display: inline-grid; place-items: center; width: 28px; height: 28px; margin-bottom: 10px; border-radius: 50%; color: #fff; background: var(--primary); font-weight: 700; }
+    .step p, .panel p { margin: 0; color: var(--muted); }
+    .check { color: var(--ok); font-weight: 700; }
+    ul, ol { margin: 8px 0 0; padding-left: 24px; }
+    li + li { margin-top: 6px; }
+    .version { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+    .version div { padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--soft); }
+    code { padding: 2px 5px; border-radius: 4px; background: #eef2f7; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+    footer { padding: 28px 0 48px; color: var(--muted); font-size: 14px; }
+    @media (max-width: 700px) {
+      .wrap { width: min(100% - 24px, 600px); }
+      header { padding-top: 32px; }
+      .grid, .version { grid-template-columns: 1fr; }
+      .panel { padding: 18px; }
+      .button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <div class="eyebrow">BOSS 求职端 · 用户入口</div>
+      <h1>AI 工作猎手</h1>
+      <p class="lead">在 BOSS 直聘网页中读取职位和 HR 消息，辅助完成岗位判断、岗位化沟通、简历发送和高意向提醒。</p>
+      <div class="actions">
+        <a class="button primary" href="/ai-job-hunting.user.js">安装 / 更新脚本</a>
+        <a class="button secondary" href="https://scriptcat.org/" target="_blank" rel="noreferrer">安装 ScriptCat</a>
+        <a class="button secondary" href="https://www.zhipin.com/" target="_blank" rel="noreferrer">打开 BOSS 直聘</a>
+      </div>
+      <div class="version">
+        <div><strong>当前脚本版本</strong><br><code>0.0.102-official-greeting-send</code></div>
+      </div>
+    </header>
+
+    <section class="section">
+      <div class="panel">
+        <h2>安装顺序</h2>
+        <div class="grid">
+          <article class="step"><span class="num">1</span><h3>安装脚本管理器</h3><p>新用户安装 ScriptCat；已经使用 Tampermonkey 的用户继续使用现有管理器即可，两者选择一个。</p></article>
+          <article class="step"><span class="num">2</span><h3>安装 AI 工作猎手</h3><p>点击本页的“安装 / 更新脚本”，在脚本管理器的确认页点击安装。</p></article>
+          <article class="step"><span class="num">3</span><h3>打开 BOSS 页面</h3><p>登录 BOSS 直聘，进入职位或消息页面并刷新，等待右侧出现 AI 工作猎手面板。</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="panel">
+        <h2>免费内测</h2>
+        <ol>
+          <li>首次登录后，点击面板中的“产品列表”。</li>
+          <li>输入从发布说明或管理员处获得的内测激活码。</li>
+          <li>激活成功后，该 BOSS 账号获得全功能 7 天体验。</li>
+        </ol>
+        <p>同一个 BOSS 账号只能激活一次；内测激活码不会写入脚本或公开仓库。</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="panel">
+        <h2>首次使用</h2>
+        <ol>
+          <li>在 BOSS 上传 PDF 或 DOCX 附件简历。</li>
+          <li>打开 AI 工作猎手面板，点击“连接测试”，确认服务器在线。</li>
+          <li>点击“导入简历”，等待导入成功。</li>
+          <li>在“偏好设置”填写真实现居城市、目标城市、岗位方向和薪资范围。</li>
+          <li>打开“AI 过滤（语义匹配）”，让 AI 结合职位详情和公司信息进行判断。</li>
+          <li>投递会自动生成岗位化招呼语，并关闭 BOSS 自带固定招呼语；生成或设置检查失败时不会投递。</li>
+          <li>第一次把单次投递数量设为 1，先验证一个职位。</li>
+          <li>确认投递记录和消息回复正常后，再打开 AI 坐席。</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="panel">
+        <h2>偏好设置填写示例</h2>
+        <p>使用白话填写即可，不需要编写代码或复杂规则：</p>
+        <p style="margin-top:12px;padding:14px;border:1px solid var(--line);border-radius:6px;background:var(--soft)">我想找上海及周边的工作，优先浦东、康桥、周浦、御桥、张江、临港，通勤距离要合理。我愿意尝试 AI 应用辅助、智能工具运营、AIGC 内容、资料整理、数据处理、内容质检、基础测试、运营助理、项目助理、行政文员、客服支持等工作。经验要求可以放宽到应届生、在校生、无需经验或有人带教的岗位。期望薪资 5K-10K，也可以根据岗位实际情况沟通。请结合完整职位描述、公司信息、HR 信息和聊天内容判断岗位质量，不要只根据单个关键词决定。</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="panel">
+        <h2>更新与常见问题</h2>
+        <ul>
+          <li><span class="check">版本检查：</span>正式版本应显示 <code>0.0.102-official-greeting-send</code>。</li>
+          <li><span class="check">更新方式：</span>始终打开本页的“安装 / 更新脚本”，选择更新当前脚本，不要新建第二份。</li>
+          <li><span class="check">面板不显示：</span>确认脚本管理器已启用，关闭旧版和重复脚本，进入 BOSS 职位或消息页面后刷新。</li>
+          <li><span class="check">连接异常：</span>点击“连接测试”；曾手动修改地址时，使用面板中的重置按钮恢复默认设置。</li>
+          <li><span class="check">脚本下载：</span>始终使用本页的安装链接，不要从搜索结果下载其他版本。</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="panel">
+        <h2>下载说明</h2>
+        <p>普通用户只需要使用本页的<a href="/ai-job-hunting.user.js">安装 / 更新脚本</a>链接。</p>
+        <p style="margin-top:8px">ScriptCat 或 Tampermonkey 负责安装和运行脚本，用户无需自行配置 AI 服务。</p>
+      </div>
+    </section>
+  </main>
+  <footer class="wrap">使用中请以 BOSS 页面实际发送记录为准。请妥善保管个人简历、邮箱和账号信息。</footer>
+</body>
+</html>

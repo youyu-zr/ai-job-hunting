@@ -2,8 +2,8 @@
 
 ## Current Release
 
-- Version: `0.0.99-delivery-send-log-sync`
-- Status: deployed and pending one-job manual acceptance on BOSS
+- Version: `0.0.102-official-greeting-send`
+- Status: prepared for deployment and pending one-job production acceptance on BOSS
 - Public install: https://aijob.zxpnb.top/ai-job-hunting.user.js
 
 ## Changes
@@ -13,13 +13,16 @@
 - Successful delivery logs include company, job, salary, location, and the complete screening explanation when available.
 - The bottom-right delivery panel and the full run log read from the same session records and preserve message order.
 - Internal send-state markers are translated into concise Chinese user-facing records.
-- Text greetings wait for a usable BOSS message channel and can use the injected image websocket as a text fallback.
+- Text greetings wait until the official BOSS ChatWebsocket reports a connected client.
+- Automatic delivery uses the official `ChatWebsocket.sendText()` path and waits for its acknowledgement.
+- Failed automatic sends do not fall back to compatibility channels, preventing duplicate or competing messages.
+- The original BOSS `ChatWebsocket.init()` call is preserved so the page owns connection initialization.
 - Internal greeting queue states are retained for diagnostics but hidden from user-facing logs.
 - The floating delivery panel and full run log refresh from the same visible record source until final websocket confirmation settles.
 
 ## Deployment
 
-- Public userscript and install page serve `0.0.99-delivery-send-log-sync`.
+- Public userscript and install page are being updated to `0.0.102-official-greeting-send`.
 - Backend was not changed or restarted.
 - Production health: `ai-job.service` active, ports `9100` and `6768` listening, and Nginx configuration valid.
 - Real BOSS acceptance still requires one controlled single-job delivery in an authenticated browser session.

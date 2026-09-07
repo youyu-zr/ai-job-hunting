@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AI工作猎手-让ai帮您找工作！
 // @namespace    https://github.com/yangfeng20
-// @version      0.0.99-delivery-send-log-sync
+// @version      0.0.102-official-greeting-send
 // @author       maple.
 // @description  AI工作猎手：辅助岗位筛选、职位沟通与求职流程管理。
 // @license      Apache License 2.0
@@ -27,7 +27,7 @@
 !function(t){function e(t){t.registerRegistry=Object.create(null),t.namedRegisterAliases=Object.create(null)}var r=t.System;e(r);var i,s,n=r.constructor.prototype,l=r.constructor,a=function(){l.call(this),e(this)};a.prototype=n,r.constructor=a;var o=n.register;n.register=function(t,e,r,n){if("string"!=typeof t)return o.apply(this,arguments);var l=[e,r,n];return this.registerRegistry[t]=l,i||(i=l,s=t),Promise.resolve().then((function(){i=null,s=null})),o.apply(this,[e,r,n])};var u=n.resolve;n.resolve=function(t,e){try{return u.call(this,t,e)}catch(r){if(t in this.registerRegistry)return this.namedRegisterAliases[t]||t;throw r}};var c=n.instantiate;n.instantiate=function(t,e,r){var i=this.registerRegistry[t];return i?(this.registerRegistry[t]=null,i):c.call(this,t,e,r)};var g=n.getRegister;n.getRegister=function(t){var e=g.call(this,t);s&&t&&(this.namedRegisterAliases[s]=t);var r=i||e;return i=null,s=null,r}}("undefined"!=typeof self?self:global);
 ;(typeof System!='undefined')&&(System=new System.constructor());
 
-System.register("./__entry.js", ['./__monkey.entry-B6XNIQs6.js'], (function (exports, module) {
+System.register("./__entry.js", ['./__monkey.entry-C0xpbL2F.js'], (function (exports, module) {
 	'use strict';
 	return {
 		setters: [null],
@@ -39,7 +39,7 @@ System.register("./__entry.js", ['./__monkey.entry-B6XNIQs6.js'], (function (exp
 	};
 }));
 
-System.register("./__monkey.entry-B6XNIQs6.js", [], (function (exports, module) {
+System.register("./__monkey.entry-C0xpbL2F.js", [], (function (exports, module) {
   'use strict';
   return {
     execute: (function () {
@@ -15528,7 +15528,7 @@ System.register("./__monkey.entry-B6XNIQs6.js", [], (function (exports, module) 
         return visit(obj, 0);
       };
       const isAsyncFn = kindOfTest("AsyncFunction");
-      const isThenable = (thing) => thing && (isObject$1(thing) || isFunction$2(thing)) && isFunction$2(thing.then) && isFunction$2(thing.catch);
+      const isThenable$1 = (thing) => thing && (isObject$1(thing) || isFunction$2(thing)) && isFunction$2(thing.then) && isFunction$2(thing.catch);
       const utils$1 = {
         isArray: isArray$1,
         isArrayBuffer,
@@ -15581,7 +15581,7 @@ System.register("./__monkey.entry-B6XNIQs6.js", [], (function (exports, module) 
         isSpecCompliantForm,
         toJSONObject,
         isAsyncFn,
-        isThenable
+        isThenable: isThenable$1
       };
       function AxiosError(message2, code, config, request2, response) {
         Error.call(this);
@@ -22210,6 +22210,7 @@ System.register("./__monkey.entry-B6XNIQs6.js", [], (function (exports, module) 
         ["message prepared", "已准备发送"],
         ["confirmed by own websocket echo cmid", "平台已确认发送"],
         ["confirmed by own websocket echo text", "平台已确认发送"],
+        ["acknowledged by platform", "平台已确认发送"],
         ["WS Hook Start", "消息通道初始化"],
         ["WS Hook success", "消息通道连接成功"],
         ["WS Send Hook Start", "发送通道初始化"],
@@ -22496,6 +22497,24 @@ System.register("./__monkey.entry-B6XNIQs6.js", [], (function (exports, module) 
             this.record(matched, "SEND_CONFIRMED", echoCmid ? "confirmed by own websocket echo cmid" : "confirmed by own websocket echo text");
           }
         }
+        static async waitForConfirmation(trace, timeoutMs = 8e3, intervalMs = 200) {
+          if (!(trace == null ? void 0 : trace.traceId)) {
+            return false;
+          }
+          const deadline = Date.now() + timeoutMs;
+          do {
+            const matched = this.loadRecords().some(
+              (item) => item.traceId === trace.traceId && item.status === "SEND_CONFIRMED"
+            );
+            if (matched) {
+              return true;
+            }
+            await Tools.sleep(intervalMs);
+          } while (Date.now() < deadline);
+          return this.loadRecords().some(
+            (item) => item.traceId === trace.traceId && item.status === "SEND_CONFIRMED"
+          );
+        }
         /**
          * The delivery greeting is sent through the same websocket as a manual
          * message. Match its short-lived trace here so the manual-intervention
@@ -22536,6 +22555,130 @@ System.register("./__monkey.entry-B6XNIQs6.js", [], (function (exports, module) 
       __publicField(SendStateTracker, "MAX_RECORDS", 120);
       __publicField(SendStateTracker, "PENDING_EXPIRE_MS", 3 * 60 * 1e3);
       __publicField(SendStateTracker, "logRecorder", new LogRecorder("send-state"));
+      function normalizeUser(userLike) {
+        const uid2 = Number(userLike.uid);
+        const encryptUid = String(userLike.encryptUid || userLike.encryptBossId || "");
+        if (!Number.isFinite(uid2) || uid2 <= 0 || !encryptUid) {
+          throw new Error("BOSS 联系人数据不完整");
+        }
+        const friendSource = Number(userLike.friendSource ?? userLike.source ?? 0);
+        return {
+          uid: uid2,
+          friendSource,
+          source: friendSource,
+          encryptUid,
+          securityId: userLike.securityId,
+          encryptJobId: userLike.encryptJobId === void 0 ? void 0 : String(userLike.encryptJobId),
+          jobTitle: userLike.jobTitle
+        };
+      }
+      function getSocketConnect(win) {
+        var _a2, _b, _c;
+        try {
+          return (_c = (_b = (_a2 = win.GeekChatCore) == null ? void 0 : _a2.getInstance) == null ? void 0 : _b.call(_a2)) == null ? void 0 : _c.socketConnect;
+        } catch {
+          return void 0;
+        }
+      }
+      function getOfficialChatWebsocket(win) {
+        const candidates = [win.ChatWebsocket, win.ChatWebsocketImage];
+        return candidates.find((candidate) => {
+          var _a2;
+          if (typeof (candidate == null ? void 0 : candidate.sendText) !== "function" || typeof ((_a2 = candidate.client) == null ? void 0 : _a2.isConnected) !== "function") {
+            return false;
+          }
+          try {
+            return candidate.client.isConnected();
+          } catch {
+            return false;
+          }
+        });
+      }
+      function isBossMessageSenderReady(sender) {
+        var _a2;
+        const candidate = sender;
+        if (!candidate || typeof candidate.sendText !== "function" || typeof ((_a2 = candidate.client) == null ? void 0 : _a2.isConnected) !== "function") {
+          return false;
+        }
+        try {
+          return candidate.client.isConnected() === true;
+        } catch {
+          return false;
+        }
+      }
+      function isThenable(value) {
+        return Boolean(value) && typeof value.then === "function";
+      }
+      function hasReadyBossChatChannel(win) {
+        return Boolean(getOfficialChatWebsocket(win));
+      }
+      async function sendBossChatMessageAsync(win, userLike, payload, type4, legacySender, options = {}) {
+        const user = normalizeUser(userLike);
+        if (type4 === "text") {
+          const officialChatWebsocket = getOfficialChatWebsocket(win);
+          if (officialChatWebsocket == null ? void 0 : officialChatWebsocket.sendText) {
+            try {
+              const acknowledgement = officialChatWebsocket.sendText({
+                uid: Number(user.uid),
+                source: Number(user.source || 0),
+                encryptUid: String(user.encryptUid),
+                message: String(payload)
+              });
+              if (isThenable(acknowledgement)) {
+                await acknowledgement;
+                return { sent: true, confirmed: true, channel: "official-chatwebsocket" };
+              }
+              return { sent: true, confirmed: false, channel: "official-chatwebsocket" };
+            } catch (error) {
+              return { sent: false, confirmed: false, channel: "official-chatwebsocket", error };
+            }
+          }
+        }
+        if (options.officialOnly) {
+          return { sent: false, confirmed: false, channel: "none" };
+        }
+        const socketConnect = getSocketConnect(win);
+        try {
+          if (typeof (socketConnect == null ? void 0 : socketConnect.sendMessage) === "function") {
+            const acknowledgement = socketConnect.sendMessage(user, payload, type4);
+            if (isThenable(acknowledgement)) {
+              await acknowledgement;
+              return { sent: true, confirmed: true, channel: "geek-chat-core" };
+            }
+            return { sent: true, confirmed: false, channel: "geek-chat-core" };
+          }
+          if (type4 === "text" && typeof (socketConnect == null ? void 0 : socketConnect.sendTextMessage) === "function") {
+            const acknowledgement = socketConnect.sendTextMessage(user, String(payload));
+            if (isThenable(acknowledgement)) {
+              await acknowledgement;
+              return { sent: true, confirmed: true, channel: "geek-chat-core" };
+            }
+            return { sent: true, confirmed: false, channel: "geek-chat-core" };
+          }
+          if (legacySender()) {
+            return { sent: true, confirmed: false, channel: "legacy" };
+          }
+        } catch (error) {
+          return { sent: false, confirmed: false, channel: "none", error };
+        }
+        return { sent: false, confirmed: false, channel: "none" };
+      }
+      function sendBossChatMessage(win, userLike, payload, type4, legacySender) {
+        const user = normalizeUser(userLike);
+        const socketConnect = getSocketConnect(win);
+        if (typeof (socketConnect == null ? void 0 : socketConnect.sendMessage) === "function") {
+          socketConnect.sendMessage(user, payload, type4);
+          return { sent: true, channel: "geek-chat-core" };
+        }
+        if (type4 === "text" && typeof (socketConnect == null ? void 0 : socketConnect.sendTextMessage) === "function") {
+          socketConnect.sendTextMessage(user, String(payload));
+          return { sent: true, channel: "geek-chat-core" };
+        }
+        if (legacySender()) {
+          return { sent: true, channel: "legacy" };
+        }
+        return { sent: false, channel: "none" };
+      }
       const logRecorder$3 = new LogRecorder("call");
       const protoDefinition = 'option java_package = "cn.techwolf.boss.chat";option java_outer_classname = "ChatProtocol";message TechwolfUser {required int64 uid = 1;optional string name = 2;optional string avatar = 3;optional string company = 4;optional int32 headImg = 5;optional int32 certification = 6;optional int32 source = 7;}message TechwolfSound {optional int64 sid = 1;optional string url = 2;optional int32 duration = 3;optional int32 templateId = 4;}message TechwolfVideo {required int32 type = 1;required int32 status = 2;optional int32 duration = 3;optional string text = 4;}message TechwolfInterview {required int32 condition = 1;required string text = 2;optional string url = 3;optional string extend = 4;}message TechwolfImageInfo {required string url = 1;required int32 width = 2;required int32 height = 3;}message TechwolfImage {optional int64 iid = 1;optional TechwolfImageInfo tinyImage = 2;optional TechwolfImageInfo originImage = 3;}message TechwolfAction {required int32 aid = 1;optional string extend = 2;}message TechwolfArticle {required string title = 1;required string description = 2;required string picUrl = 3;required string url = 4;optional int32 templateId = 5;optional string bottomText = 6;optional int64 timeout = 7;optional string statisticParameters = 8;repeated TechwolfSlice highlightParts = 9;repeated TechwolfSlice dimParts = 10;optional string subTitle = 11;optional string extend = 12;}message TechwolfNotify {required string text = 1;optional string url = 2;optional string title = 3;}message TechwolfButton {required string text = 1;optional string url = 2;optional int32 templateId = 3;}message TechwolfDialog {required string text = 1;repeated TechwolfButton buttons = 2;required bool operated = 3;optional bool clickMore = 4;optional int32 type = 5;optional string backgroundUrl = 6;optional int64 timeout = 7;optional string statisticParameters = 8;optional string title = 9;optional string url = 10;optional int32 selectedIndex = 11;optional string extend = 12;optional string content = 13;}message TechwolfJobDesc {required string title = 1;required string company = 2;required string salary = 3;required string url = 4;required int64 jobId = 5;optional string positionCategory = 6;optional string experience = 7;optional string education = 8;optional string city = 9;optional string bossTitle = 10;optional TechwolfUser boss = 11;optional string lid = 12;optional string stage = 13;optional string bottomText = 14;optional string jobLabel = 15;optional int32 iconFlag = 16;optional string content = 17;repeated string labels = 18;optional int64 expectId = 19;optional string expectPosition = 20;optional string expectSalary = 21;optional string partTimeDesc = 22;optional TechwolfUser geek = 23;optional string latlon = 24;optional string distance = 25;}message TechwolfResume {required TechwolfUser user = 1;optional string description = 2;optional string city = 3;optional string position = 4;repeated string keywords = 5;optional int64 expectId = 6;optional string lid = 7;optional int32 gender = 8;optional string salary = 9;optional string workYear = 10;optional string content1 = 11;optional string content2 = 12;optional string education = 13;optional string age = 14;repeated string labels = 15;repeated UserExperience experiences = 16;optional string positionCategory = 17;optional string jobSalary = 18;optional string bottomText = 19;optional string applyStatus = 20;optional int64 jobId = 21;optional string content3 = 22;optional string securityId = 23;optional TechwolfUser boss = 24;optional string brandName = 25;}message TechwolfHyperLink {required string text = 1;required string url = 2;required int32 hyperLinkType = 3;optional string extraJson=4;}message TechwolfMessageBody {required int32 type = 1;required int32 templateId = 2;optional string headTitle = 11;optional string text = 3;optional TechwolfSound sound = 4;optional TechwolfImage image = 5;optional TechwolfAction action = 6;repeated TechwolfArticle articles = 7;optional TechwolfNotify notify = 8;optional TechwolfDialog dialog = 9;optional TechwolfJobDesc jobDesc = 10;optional TechwolfResume resume = 12;optional TechwolfRedEnvelope redEnvelope = 13;optional TechwolfOrderDetail orderDetail = 14;optional TechwolfHyperLink hyperLink = 15;optional TechwolfVideo video = 16;optional TechwolfInterview interview = 17;optional TechwolfJobShare jobShare = 18;optional TechwolfResumeShare resumeShare = 19;optional AtInfo atInfo = 20;optional TechwolfSticker sticker = 21;optional TechwolfChatShare chatShare = 22;optional TechwolfInterviewShare interviewShare = 23;optional TechwolfListCard listCard = 24;optional TechwolfStarRate starRate = 25;optional TechwolfFrame frame = 26;optional TechwolfMultiImage multiImage = 27;optional string extend = 28;}message TechwolfMessage {required TechwolfUser from = 1;required TechwolfUser to = 2;required int32 type = 3;optional int64 mid = 4;optional int64 time = 5;required TechwolfMessageBody body = 6;optional bool offline = 7;optional bool received = 8;optional string pushText = 9;optional int64 taskId = 10;optional int64 cmid = 11;optional int32 status = 12;optional int32 uncount = 13;optional int32 pushSound = 14;optional int32 flag = 15;optional bytes encryptedBody = 16;optional string bizId = 17;optional int32 bizType = 18;optional string securityId = 19;}message TechwolfClientInfo {optional string version = 1;optional string system = 2;optional string systemVersion = 3;optional string model = 4;optional string uniqid = 5;optional string network = 6;optional int32 appid = 7;optional string platform = 8;optional string channel = 9;optional string ssid = 10;optional string bssid = 11;optional double longitude = 12;optional double latitude = 13;}message TechwolfClientTime {optional int64 startTime = 1;optional int64 resumeTime = 2;}message TechwolfPresence {required int32 type = 1;required int32 uid = 2;optional TechwolfClientInfo clientInfo = 3;optional TechwolfClientTime clientTime = 4;optional int64 lastMessageId = 5;optional int64 lastGroupMessageId = 6;optional int64 userId = 7;}message TechwolfKVEntry {required string key = 1;required string value = 2;}message TechwolfIq {required int64 qid = 1;required string query = 2;repeated TechwolfKVEntry params = 3;}message TechwolfIqResponse {required int64 qid = 1;required string query = 2;repeated TechwolfKVEntry results = 3;}message TechwolfMessageSync {required int64 clientMid = 1;required int64 serverMid = 2;}message TechwolfMessageRead {required int64 userId = 1;required int64 messageId = 2;required int64 readTime = 3;optional bool sync = 4 [default = false];optional int32 userSource = 5;}message TechwolfChatProtocol {required int32 type = 1;optional string version = 2;repeated TechwolfMessage messages = 3;optional TechwolfPresence presence = 4;optional TechwolfIq iq = 5;optional TechwolfIqResponse iqResponse = 6;repeated TechwolfMessageSync messageSync = 7;repeated TechwolfMessageRead messageRead = 8;optional TechwolfDataSync dataSync = 9;optional int32 domain = 10;}message TechwolfRedEnvelope {required int64 redId = 1;required string redText = 2;required string redTitle = 3;required string clickUrl = 4;}message TechwolfOrderDetail {required string title = 1;required string subTitle = 2;optional string url = 3;repeated TechwolfOrderDetailEntry orderDetailEntryList =  4;}message TechwolfOrderDetailItem {required string name = 1;required int32 templateId = 2;}message TechwolfOrderDetailEntry {required TechwolfOrderDetailItem key = 1;required TechwolfOrderDetailItem value = 2;}message TechwolfUserSync {required int64 uid = 1;required int32 identity = 2;optional string extraJson = 3;optional int32 userSource = 4;}message TechwolfDataSync {required int32 type = 1;optional TechwolfUserSync userSync = 2;optional TechwolfGroupSync groupSync = 3;}message TechwolfSlice {required int32 startIndex = 1;required int32 endIndex = 2;}message UserExperience {required string organization = 1;required string occupation = 2;optional string startDate = 3;optional string endDate = 4;required int32 type = 5;}message TechwolfJobShare {required TechwolfUser user = 1;required int64 jobId = 2;required string position = 3;required string salary = 4;optional string location = 5;required string company = 6;optional string stage = 7;optional string experience = 8;optional string education = 9;optional string url = 10;optional string lid = 11;optional string price = 12;optional string description = 13;}message TechwolfResumeShare {required TechwolfUser user = 1;required int64 expectId = 2;required string position = 3;required string salary = 4;optional string location = 5;optional string applyStatus = 6;optional string age = 7;optional string experience = 8;optional string education = 9;optional string url = 10;optional string lid = 11;optional int32 gender = 12;optional bool blurred = 13;optional int32 source = 14;}message AtInfo {required int32 flag = 1;repeated int64 uids = 2;}message TechwolfGroupSync {required int64 gid = 1;optional int32 version = 2;optional string encGid = 3;}message TechwolfSticker {required int64 sid = 1;optional int64 packId = 2;optional TechwolfImage image = 3;optional string format = 4;optional string name = 5;}message TechwolfChatShare {required int64 shareId = 1;required string title = 2;repeated string records = 3;optional string bottomText = 4;optional string url = 5;required TechwolfUser from = 6;required TechwolfUser to = 7;required TechwolfUser user = 8;}message TechwolfInterviewShare {required int64 interviewId = 1;required TechwolfUser user = 2;required string title = 3;required string bottomText = 4;optional string url = 5;optional string interviewTime = 6;optional string interviewAddress = 7;optional string jobName = 8;}message TechwolfListItem {optional string title = 1;optional int32 icon = 2;}message TechwolfListCard {optional string title = 1;repeated TechwolfListItem items = 2;optional int32 pageSize = 3;}message TechwolfStar {required int64 starId = 1;optional string starDesc = 2;repeated TechwolfListItem options = 3;}message TechwolfStarRate {optional string title = 1;repeated TechwolfStar stars = 2;required int32 rateStatus = 3;optional TechwolfStar rateStar = 4;optional TechwolfButton submitButton = 5;}message TechwolfFrame {required string href = 1;}message TechwolfMultiImage {repeated TechwolfImageInfo images = 1;}';
       const root$1 = protobuf.parse(protoDefinition).root;
@@ -22544,17 +22687,16 @@ System.register("./__monkey.entry-B6XNIQs6.js", [], (function (exports, module) 
         const senders = [];
         const textSender = Tools.window.ChatWebsocket;
         const imageSender = Tools.window.ChatWebsocketImage;
-        if (textSender && typeof textSender.send === "function") {
+        if (textSender && typeof textSender.send === "function" && isBossMessageSenderReady(textSender)) {
           senders.push(["ChatWebsocket", textSender]);
         }
-        if (imageSender && typeof imageSender.send === "function" && imageSender !== textSender) {
+        if (imageSender && typeof imageSender.send === "function" && imageSender !== textSender && isBossMessageSenderReady(imageSender)) {
           senders.push(["ChatWebsocketImage", imageSender]);
         }
         return senders;
       }
       function hasMessageSender() {
-        var _a2, _b, _c, _d, _e, _f;
-        return getMessageSenders().length > 0 || Boolean((_f = (_e = (_d = (_c = (_b = (_a2 = Tools.window.GeekChatCore) == null ? void 0 : _a2.getInstance) == null ? void 0 : _b.call(_a2)) == null ? void 0 : _c.getClient) == null ? void 0 : _d.call(_c)) == null ? void 0 : _e.client) == null ? void 0 : _f.send);
+        return hasReadyBossChatChannel(Tools.window);
       }
       async function waitForMessageSender(timeoutMs = 8e3, intervalMs = 250) {
         const deadline = Date.now() + timeoutMs;
@@ -22573,12 +22715,14 @@ System.register("./__monkey.entry-B6XNIQs6.js", [], (function (exports, module) 
           to_name,
           content,
           image,
-          trace
+          trace,
+          recipient
         }) {
           __publicField(this, "msg");
           __publicField(this, "msgObj");
           __publicField(this, "hex");
           __publicField(this, "trace");
+          __publicField(this, "recipient");
           const r = (/* @__PURE__ */ new Date()).getTime();
           const d2 = r + 68256432452609;
           const data = {
@@ -22615,6 +22759,11 @@ System.register("./__monkey.entry-B6XNIQs6.js", [], (function (exports, module) 
             type: 1
           };
           this.msgObj = data.messages[0];
+          this.recipient = recipient || {
+            uid: to_uid,
+            encryptUid: to_name,
+            friendSource: 0
+          };
           this.trace = SendStateTracker.prepare(trace, this.msgObj.cmid, content);
           this.msg = protobufType.encode(data).finish().slice();
           this.hex = [...this.msg].map((b2) => b2.toString(16).padStart(2, "0")).join("");
@@ -22623,37 +22772,108 @@ System.register("./__monkey.entry-B6XNIQs6.js", [], (function (exports, module) 
           return this.msg.buffer.slice(0, this.msg.byteLength);
         }
         send() {
-          var _a2, _b, _c, _d, _e, _f;
           if (this.trace) {
             SendStateTracker.record(this.trace, "INPUT_FILLED", "message payload prepared");
           }
-          for (const [name, sender] of getMessageSenders()) {
-            try {
-              if (this.trace) {
-                SendStateTracker.record(this.trace, "SEND_CLICKED", `${name}.send invoked`);
+          const isImage = this.msgObj.body.type === 3;
+          const payload = isImage ? this.msgObj.body.image : String(this.msgObj.body.text || "");
+          const type4 = isImage ? "image" : "text";
+          try {
+            const result = sendBossChatMessage(
+              Tools.window,
+              this.recipient,
+              payload,
+              type4,
+              () => {
+                var _a2, _b, _c, _d, _e, _f;
+                for (const [name, sender] of getMessageSenders()) {
+                  try {
+                    sender.send(this);
+                    return true;
+                  } catch (e) {
+                    logRecorder$3.debug(`${name}.send failed`, e);
+                  }
+                }
+                if ((_f = (_e = (_d = (_c = (_b = (_a2 = Tools.window.GeekChatCore) == null ? void 0 : _a2.getInstance) == null ? void 0 : _b.call(_a2)) == null ? void 0 : _c.getClient) == null ? void 0 : _d.call(_c)) == null ? void 0 : _e.client) == null ? void 0 : _f.send) {
+                  Tools.window.GeekChatCore.getInstance().getClient().client.send(this);
+                  return true;
+                }
+                return false;
               }
-              sender.send(this);
-              return true;
-            } catch (e) {
-              logRecorder$3.debug(`${name}.send failed`, e);
-            }
-          }
-          if ((_f = (_e = (_d = (_c = (_b = (_a2 = Tools.window.GeekChatCore) == null ? void 0 : _a2.getInstance) == null ? void 0 : _b.call(_a2)) == null ? void 0 : _c.getClient) == null ? void 0 : _d.call(_c)) == null ? void 0 : _e.client) == null ? void 0 : _f.send) {
-            try {
+            );
+            if (result.sent) {
               if (this.trace) {
-                SendStateTracker.record(this.trace, "SEND_CLICKED", "GeekChatCore client.send invoked");
+                SendStateTracker.record(this.trace, "SEND_CLICKED", `${result.channel} send invoked`);
               }
-              Tools.window.GeekChatCore.getInstance().getClient().client.send(this);
               return true;
-            } catch (e) {
-              logRecorder$3.debug("GeekChatCore client.send failed", e);
             }
+          } catch (e) {
+            logRecorder$3.debug("BOSS 当前消息通道调用失败", e);
           }
           if (this.trace) {
             SendStateTracker.record(this.trace, "FAILED", "no available message sender");
           }
-          logRecorder$3.warn("发送自定义消息失败; boss可能更新了，请反馈");
+          logRecorder$3.warn("发送自定义消息失败; BOSS 消息通道不可用");
           return false;
+        }
+        async sendAndConfirm(timeoutMs = 8e3) {
+          if (this.trace) {
+            SendStateTracker.record(this.trace, "INPUT_FILLED", "message payload prepared");
+          }
+          const isImage = this.msgObj.body.type === 3;
+          const payload = isImage ? this.msgObj.body.image : String(this.msgObj.body.text || "");
+          const type4 = isImage ? "image" : "text";
+          try {
+            const result = await sendBossChatMessageAsync(
+              Tools.window,
+              this.recipient,
+              payload,
+              type4,
+              () => {
+                var _a2, _b, _c, _d, _e, _f;
+                for (const [name, sender] of getMessageSenders()) {
+                  try {
+                    sender.send(this);
+                    return true;
+                  } catch (e) {
+                    logRecorder$3.debug(`${name}.send failed`, e);
+                  }
+                }
+                if ((_f = (_e = (_d = (_c = (_b = (_a2 = Tools.window.GeekChatCore) == null ? void 0 : _a2.getInstance) == null ? void 0 : _b.call(_a2)) == null ? void 0 : _c.getClient) == null ? void 0 : _d.call(_c)) == null ? void 0 : _e.client) == null ? void 0 : _f.send) {
+                  Tools.window.GeekChatCore.getInstance().getClient().client.send(this);
+                  return true;
+                }
+                return false;
+              },
+              { officialOnly: true }
+            );
+            if (!result.sent) {
+              if (this.trace) {
+                SendStateTracker.record(this.trace, "FAILED", "message channel rejected the send");
+              }
+              return false;
+            }
+            if (this.trace) {
+              SendStateTracker.record(this.trace, "SEND_CLICKED", `${result.channel} send invoked`);
+            }
+            if (result.confirmed) {
+              if (this.trace) {
+                SendStateTracker.record(this.trace, "SEND_CONFIRMED", `${result.channel} acknowledged by platform`);
+              }
+              return true;
+            }
+            const confirmed = await SendStateTracker.waitForConfirmation(this.trace, timeoutMs);
+            if (!confirmed && this.trace) {
+              SendStateTracker.record(this.trace, "FAILED", result.confirmed ? "platform acknowledged send but own message echo was not observed" : "message send was submitted but own message echo was not observed");
+            }
+            return confirmed;
+          } catch (e) {
+            logRecorder$3.debug("BOSS 异步消息通道调用失败", e);
+            if (this.trace) {
+              SendStateTracker.record(this.trace, "FAILED", "message channel send failed");
+            }
+            return false;
+          }
         }
       } exports("M", Message);
       class MessageRead {
@@ -77611,11 +77831,11 @@ System.register("./__monkey.entry-B6XNIQs6.js", [], (function (exports, module) 
         }
         async getRenderComponent() {
           if (this.curUrl.includes("www.zhipin.com/web/geek/chat")) {
-            let promise = __vitePreload(() => module.import('./BossMessage-CtyJobZW-3X5wxn3G.js'), void 0 );
+            let promise = __vitePreload(() => module.import('./BossMessage-BbE_IIrZ-CsKtvoEo.js'), void 0 );
             return promise.then((item) => item.default);
           }
           if (this.curUrl.includes("www.zhipin.com/web/geek/job") || this.curUrl.includes("overseas")) {
-            let promise = __vitePreload(() => module.import('./BossJobList-JoGNbAXn-CK2n9ex-.js'), void 0 );
+            let promise = __vitePreload(() => module.import('./BossJobList-B73JLCGl-DSwp8fZA.js'), void 0 );
             return promise.then((item) => item.default);
           }
         }
@@ -78050,19 +78270,19 @@ System.register("./__monkey.entry-B6XNIQs6.js", [], (function (exports, module) 
             to_name: jobDetail.encryptBossId,
             content: customGreeting,
             image: void 0,
-            trace
-          });
-          let sent = false;
-          const deadline = Date.now() + 8e3;
-          do {
-            sent = message2.send();
-            if (!sent) {
-              await Tools.sleep(250);
+            trace,
+            recipient: {
+              uid: bossData.data.bossId,
+              encryptUid: bossData.data.encryptBossId || jobDetail.encryptBossId,
+              friendSource: bossData.data.friendSource || 0,
+              securityId: jobDetail.securityId,
+              encryptJobId: jobDetail.encryptJobId,
+              jobTitle: this.getJobKey(jobDetail)
             }
-          } while (!sent && Date.now() < deadline);
+          });
+          const sent = await message2.sendAndConfirm();
           if (!sent) {
-            SendStateTracker.record(trace, "FAILED", "post-delivery greeting sender unavailable after retrying");
-            throw new Error("岗位化招呼语发送失败");
+            throw new Error("岗位化招呼语发送失败：平台未确认消息已发出");
           }
         }
         /** Generate the message before BOSS creates the conversation. */
@@ -78193,7 +78413,15 @@ System.register("./__monkey.entry-B6XNIQs6.js", [], (function (exports, module) 
               originImage: imageParts[0],
               tinyImage: imageParts[1]
             },
-            trace
+            trace,
+            recipient: {
+              uid: bossData.data.bossId,
+              encryptUid: bossData.data.encryptBossId || jobDetail.encryptBossId,
+              friendSource: bossData.data.friendSource || 0,
+              securityId: jobDetail.securityId,
+              encryptJobId: jobDetail.encryptJobId,
+              jobTitle: this.getJobKey(jobDetail)
+            }
           });
           const sent = message2.send();
           if (!sent) {
@@ -79295,7 +79523,15 @@ System.register("./__monkey.entry-B6XNIQs6.js", [], (function (exports, module) 
               to_name: bossUserInfo.encryptBossId,
               content: msg,
               image: void 0,
-              trace
+              trace,
+              recipient: {
+                uid: bossUserInfo.bossId,
+                encryptUid: bossUserInfo.encryptBossId,
+                friendSource: bossUserInfo.friendSource || 0,
+                securityId: bossUserInfo.securityId,
+                encryptJobId: bossUserInfo.encryptJobId,
+                jobTitle: bossUserInfo.jobTitle
+              }
             });
             const sent = message2.send();
             if (sent && html) {
@@ -79739,25 +79975,7 @@ System.register("./__monkey.entry-B6XNIQs6.js", [], (function (exports, module) 
       }
       if (ownsWebSocketHook && !Tools.window.ChatWebsocket) {
         setChatWebsocket().then(() => {
-          setTimeout(() => {
-            try {
-              if (Tools.window.ChatWebsocketImage && typeof Tools.window.ChatWebsocketImage.init === "function") {
-                Tools.window.ChatWebsocketImage.init();
-                logger$1.info("ChatWebsocketImage 初始化成功");
-              } else {
-                logger$1.warn("ChatWebsocketImage 尚未准备好，将在 3 秒后重试...");
-                setTimeout(() => {
-                  var _a2;
-                  if ((_a2 = Tools.window.ChatWebsocketImage) == null ? void 0 : _a2.init) {
-                    Tools.window.ChatWebsocketImage.init();
-                    logger$1.info("ChatWebsocketImage 重试初始化成功");
-                  }
-                }, 3e3);
-              }
-            } catch (e) {
-              logger$1.error("ChatWebsocketImage init 报错:", e);
-            }
-          }, 2e3);
+          logger$1.info("ChatWebsocket 已暴露，连接初始化交由 BOSS 原始脚本执行");
         }).catch((err) => {
           logger$1.error("setChatWebsocket 执行失败:", err);
         });
@@ -79891,8 +80109,8 @@ System.register("./__monkey.entry-B6XNIQs6.js", [], (function (exports, module) 
         return fetch("https://static.zhipin.com/assets/zhipin/geek/socket.js?v=20250313").then((res) => res.text()).then((code) => {
           let injectedVars = `const __PROTO_FILE_VAR__ = '${protoDefinition}';
 `;
-          let str = '\nTools.window.ChatWebsocketImage = ChatWebsocket;\nconsole.log("set ChatWebsocket 成功", ChatWebsocket)\n';
-          let modifiedCode = injectedVars + code.replaceAll(/if \(\"EventBus\" in window\) \{\s+EventBus.subscribe\("CHAT_SEND_TEXT".*fail\);\s+}\);\s+}/gs, str).replace("ChatWebsocket.init()", "");
+          let str = '\nTools.window.ChatWebsocket = ChatWebsocket;\nTools.window.ChatWebsocketImage = ChatWebsocket;\nconsole.log("set ChatWebsocket 成功", ChatWebsocket)\n';
+          let modifiedCode = injectedVars + code.replaceAll(/if \(\"EventBus\" in window\) \{\s+EventBus.subscribe\("CHAT_SEND_TEXT".*fail\);\s+}\);\s+}/gs, str);
           try {
             new Function("Tools", modifiedCode)(Tools);
             logger$1.info("window 挂载 ChatWebsocket 成功", Tools.window.ChatWebsocketImage);
@@ -80122,7 +80340,7 @@ System.register("./__monkey.entry-B6XNIQs6.js", [], (function (exports, module) 
   };
 }));
 
-System.register("./BossMessage-CtyJobZW-3X5wxn3G.js", ['./__monkey.entry-B6XNIQs6.js'], (function (exports, module) {
+System.register("./BossMessage-BbE_IIrZ-CsKtvoEo.js", ['./__monkey.entry-C0xpbL2F.js'], (function (exports, module) {
   'use strict';
   var _export_sfc, defineComponent, ref, openBlock, createElementBlock, createVNode, withCtx, createTextVNode, createBaseVNode, createCommentVNode, Fragment, ElMessage, BossOption, Message, Tools, AiPower, ElButton, ElInput, pushScopeId, popScopeId;
   return {
@@ -80355,7 +80573,7 @@ System.register("./BossMessage-CtyJobZW-3X5wxn3G.js", ['./__monkey.entry-B6XNIQs
   };
 }));
 
-System.register("./BossJobList-JoGNbAXn-CK2n9ex-.js", ['./__monkey.entry-B6XNIQs6.js'], (function (exports, module) {
+System.register("./BossJobList-B73JLCGl-DSwp8fZA.js", ['./__monkey.entry-C0xpbL2F.js'], (function (exports, module) {
   'use strict';
   var defineComponent, openBlock, createBlock, _export_sfc, shallowRef, createElementBlock, createVNode, withCtx, Fragment, renderList, unref, createTextVNode, toDisplayString, createBaseVNode, resolveDynamicComponent, ElMenuItem, ElMenu, inject, ServerStore, ref, PushStatus, LogRecorder, LoginStore, pushResultCount, UserStore, watch, logger$1, silentlyLogin, onUnmounted, isProdEnv, createCommentVNode, withDirectives, vShow, CircleCloseFilled, normalizeClass, reactive, Tools, onMounted, isRef, ElNotification, ElMessage, loginInterceptor, axios, fetchWithGM_request, serializeAiSeatStatus, rememberAiSeatStatus, shouldApplyAiSeatRollback, ElText, ElBadge, ElTag, ElButton, ElIcon, ElTooltip, ElButtonGroup$1, ElInput, ElCard, ElInputNumber, ElSwitch, TampermonkeyApi, ElFormItem, ElCheckbox, ElOption, ElSelect, ElUpload, ElRadioButton, ElRadioGroup, ElForm, ElCol, ElTimePicker, ElRow, ElTableColumn, ElEmpty, ElTable, ElPagination, pushScopeId, popScopeId, createStaticVNode;
   return {
