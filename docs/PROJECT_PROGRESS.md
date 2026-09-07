@@ -3,7 +3,7 @@
 ## Current Release
 
 - Version: `0.0.99-delivery-send-log-sync`
-- Status: built and ready for production deployment; pending one-job manual acceptance on BOSS
+- Status: deployed and pending one-job manual acceptance on BOSS
 - Public install: https://aijob.zxpnb.top/ai-job-hunting.user.js
 
 ## Changes
@@ -16,6 +16,13 @@
 - Text greetings wait for a usable BOSS message channel and can use the injected image websocket as a text fallback.
 - Internal greeting queue states are retained for diagnostics but hidden from user-facing logs.
 - The floating delivery panel and full run log refresh from the same visible record source until final websocket confirmation settles.
+
+## Deployment
+
+- Public userscript and install page serve `0.0.99-delivery-send-log-sync`.
+- Backend was not changed or restarted.
+- Production health: `ai-job.service` active, ports `9100` and `6768` listening, and Nginx configuration valid.
+- Real BOSS acceptance still requires one controlled single-job delivery in an authenticated browser session.
 
 ## Verification
 
