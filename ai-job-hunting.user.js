@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AI工作猎手-让ai帮您找工作！
 // @namespace    https://github.com/yangfeng20
-// @version      0.0.103-geek-chat-shared-worker
+// @version      0.0.104-chat-session-send
 // @author       maple.
 // @description  AI工作猎手：辅助岗位筛选、职位沟通与求职流程管理。
 // @license      Apache License 2.0
@@ -27,7 +27,7 @@
 !function(t){function e(t){t.registerRegistry=Object.create(null),t.namedRegisterAliases=Object.create(null)}var r=t.System;e(r);var i,s,n=r.constructor.prototype,l=r.constructor,a=function(){l.call(this),e(this)};a.prototype=n,r.constructor=a;var o=n.register;n.register=function(t,e,r,n){if("string"!=typeof t)return o.apply(this,arguments);var l=[e,r,n];return this.registerRegistry[t]=l,i||(i=l,s=t),Promise.resolve().then((function(){i=null,s=null})),o.apply(this,[e,r,n])};var u=n.resolve;n.resolve=function(t,e){try{return u.call(this,t,e)}catch(r){if(t in this.registerRegistry)return this.namedRegisterAliases[t]||t;throw r}};var c=n.instantiate;n.instantiate=function(t,e,r){var i=this.registerRegistry[t];return i?(this.registerRegistry[t]=null,i):c.call(this,t,e,r)};var g=n.getRegister;n.getRegister=function(t){var e=g.call(this,t);s&&t&&(this.namedRegisterAliases[s]=t);var r=i||e;return i=null,s=null,r}}("undefined"!=typeof self?self:global);
 ;(typeof System!='undefined')&&(System=new System.constructor());
 
-System.register("./__entry.js", ['./__monkey.entry-CFbQcMIq.js'], (function (exports, module) {
+System.register("./__entry.js", ['./__monkey.entry-DPF1Y35u.js'], (function (exports, module) {
 	'use strict';
 	return {
 		setters: [null],
@@ -39,7 +39,7 @@ System.register("./__entry.js", ['./__monkey.entry-CFbQcMIq.js'], (function (exp
 	};
 }));
 
-System.register("./__monkey.entry-CFbQcMIq.js", [], (function (exports, module) {
+System.register("./__monkey.entry-DPF1Y35u.js", [], (function (exports, module) {
   'use strict';
   return {
     execute: (function () {
@@ -22599,11 +22599,47 @@ System.register("./__monkey.entry-CFbQcMIq.js", [], (function (exports, module) 
         if (!socketConnect || typeof socketConnect.sendTextMessage !== "function" && typeof socketConnect.sendMessage !== "function") {
           return false;
         }
+        const sharedWorkerClient = getSharedWorkerClient(socketConnect);
+        if ((sharedWorkerClient == null ? void 0 : sharedWorkerClient.isReady) === true && typeof sharedWorkerClient.sendTextMessage === "function") {
+          return true;
+        }
         const strategy = (_b = (_a2 = socketConnect.socketStrategy) == null ? void 0 : _a2.broadcastManager) == null ? void 0 : _b.strategy;
         if (!strategy || strategy.socketStatus !== "CONNECTED") {
           return false;
         }
-        return ((_c = strategy.sharedWorkerClient) == null ? void 0 : _c.isReady) !== false;
+        return ((_c = strategy.sharedWorkerClient) == null ? void 0 : _c.isReady) === true;
+      }
+      function isSocketConnected(socketConnect) {
+        var _a2, _b, _c;
+        return ((_c = (_b = (_a2 = socketConnect == null ? void 0 : socketConnect.socketStrategy) == null ? void 0 : _a2.broadcastManager) == null ? void 0 : _b.strategy) == null ? void 0 : _c.socketStatus) === "CONNECTED";
+      }
+      function getSharedWorkerClient(socketConnect) {
+        var _a2, _b, _c, _d, _e;
+        try {
+          return ((_b = (_a2 = socketConnect == null ? void 0 : socketConnect.socketStrategy) == null ? void 0 : _a2.getSharedWorkerClient) == null ? void 0 : _b.call(_a2)) || ((_e = (_d = (_c = socketConnect == null ? void 0 : socketConnect.socketStrategy) == null ? void 0 : _c.broadcastManager) == null ? void 0 : _d.strategy) == null ? void 0 : _e.sharedWorkerClient);
+        } catch {
+          return void 0;
+        }
+      }
+      async function initializeGeekChatCore(socketConnect) {
+        var _a2;
+        if (!socketConnect) {
+          return;
+        }
+        if (typeof socketConnect.init === "function") {
+          const result = socketConnect.init();
+          if (isThenable(result)) {
+            void Promise.resolve(result).catch(() => void 0);
+          }
+          return;
+        }
+        const initSocket = (_a2 = socketConnect.socketStrategy) == null ? void 0 : _a2.initSocket;
+        if (typeof initSocket === "function") {
+          const result = initSocket();
+          if (isThenable(result)) {
+            void Promise.resolve(result).catch(() => void 0);
+          }
+        }
       }
       function isBossMessageSenderReady(sender) {
         var _a2;
@@ -22620,8 +22656,31 @@ System.register("./__monkey.entry-CFbQcMIq.js", [], (function (exports, module) 
       function isThenable(value) {
         return Boolean(value) && typeof value.then === "function";
       }
-      function hasReadyBossChatChannel(win) {
-        return Boolean(getOfficialChatWebsocket(win) || isReadyGeekChatCore(getSocketConnect(win)));
+      async function ensureReadyBossChatChannel(win, timeoutMs = 8e3, intervalMs = 250) {
+        if (getOfficialChatWebsocket(win)) {
+          return true;
+        }
+        const socketConnect = getSocketConnect(win);
+        if (!socketConnect) {
+          return false;
+        }
+        if (!isSocketConnected(socketConnect)) {
+          try {
+            await initializeGeekChatCore(socketConnect);
+          } catch {
+          }
+        }
+        if (isReadyGeekChatCore(socketConnect)) {
+          return true;
+        }
+        const deadline = Date.now() + timeoutMs;
+        do {
+          if (isReadyGeekChatCore(socketConnect)) {
+            return true;
+          }
+          await new Promise((resolve2) => setTimeout(resolve2, intervalMs));
+        } while (Date.now() < deadline);
+        return isReadyGeekChatCore(socketConnect);
       }
       async function sendBossChatMessageAsync(win, userLike, payload, type4, legacySender, options = {}) {
         var _a2;
@@ -22649,7 +22708,8 @@ System.register("./__monkey.entry-CFbQcMIq.js", [], (function (exports, module) 
         const socketConnect = getSocketConnect(win);
         if (isReadyGeekChatCore(socketConnect)) {
           try {
-            const acknowledgement = type4 === "text" && typeof (socketConnect == null ? void 0 : socketConnect.sendTextMessage) === "function" ? socketConnect.sendTextMessage(user, String(payload)) : (_a2 = socketConnect == null ? void 0 : socketConnect.sendMessage) == null ? void 0 : _a2.call(socketConnect, user, payload, type4);
+            const sharedWorkerClient = getSharedWorkerClient(socketConnect);
+            const acknowledgement = type4 === "text" && typeof (sharedWorkerClient == null ? void 0 : sharedWorkerClient.sendTextMessage) === "function" ? sharedWorkerClient.sendTextMessage(user, String(payload)) : type4 === "text" && typeof (socketConnect == null ? void 0 : socketConnect.sendTextMessage) === "function" ? socketConnect.sendTextMessage(user, String(payload)) : (_a2 = socketConnect == null ? void 0 : socketConnect.sendMessage) == null ? void 0 : _a2.call(socketConnect, user, payload, type4);
             if (isThenable(acknowledgement)) {
               await acknowledgement;
               return { sent: true, confirmed: true, channel: "geek-chat-core" };
@@ -22720,16 +22780,13 @@ System.register("./__monkey.entry-CFbQcMIq.js", [], (function (exports, module) 
         return senders;
       }
       function hasMessageSender() {
-        return hasReadyBossChatChannel(Tools.window);
+        return Boolean(isBossMessageSenderReady(Tools.window.ChatWebsocket) || isBossMessageSenderReady(Tools.window.ChatWebsocketImage));
       }
       async function waitForMessageSender(timeoutMs = 8e3, intervalMs = 250) {
-        const deadline = Date.now() + timeoutMs;
-        do {
-          if (hasMessageSender()) {
-            return true;
-          }
-          await Tools.sleep(intervalMs);
-        } while (Date.now() < deadline);
+        const ready = await ensureReadyBossChatChannel(Tools.window, timeoutMs, intervalMs);
+        if (ready) {
+          return true;
+        }
         return hasMessageSender();
       }
       class Message {
@@ -77855,11 +77912,11 @@ System.register("./__monkey.entry-CFbQcMIq.js", [], (function (exports, module) 
         }
         async getRenderComponent() {
           if (this.curUrl.includes("www.zhipin.com/web/geek/chat")) {
-            let promise = __vitePreload(() => module.import('./BossMessage-CDGUb6ML-Bu2MuiPT.js'), void 0 );
+            let promise = __vitePreload(() => module.import('./BossMessage-mjGRL1u1-CyR6MIKz.js'), void 0 );
             return promise.then((item) => item.default);
           }
           if (this.curUrl.includes("www.zhipin.com/web/geek/job") || this.curUrl.includes("overseas")) {
-            let promise = __vitePreload(() => module.import('./BossJobList-CXxoQeyZ-Bm1J_PD4.js'), void 0 );
+            let promise = __vitePreload(() => module.import('./BossJobList-DWkzFa-X-Ctd33iXS.js'), void 0 );
             return promise.then((item) => item.default);
           }
         }
@@ -80364,7 +80421,7 @@ System.register("./__monkey.entry-CFbQcMIq.js", [], (function (exports, module) 
   };
 }));
 
-System.register("./BossMessage-CDGUb6ML-Bu2MuiPT.js", ['./__monkey.entry-CFbQcMIq.js'], (function (exports, module) {
+System.register("./BossMessage-mjGRL1u1-CyR6MIKz.js", ['./__monkey.entry-DPF1Y35u.js'], (function (exports, module) {
   'use strict';
   var _export_sfc, defineComponent, ref, openBlock, createElementBlock, createVNode, withCtx, createTextVNode, createBaseVNode, createCommentVNode, Fragment, ElMessage, BossOption, Message, Tools, AiPower, ElButton, ElInput, pushScopeId, popScopeId;
   return {
@@ -80597,7 +80654,7 @@ System.register("./BossMessage-CDGUb6ML-Bu2MuiPT.js", ['./__monkey.entry-CFbQcMI
   };
 }));
 
-System.register("./BossJobList-CXxoQeyZ-Bm1J_PD4.js", ['./__monkey.entry-CFbQcMIq.js'], (function (exports, module) {
+System.register("./BossJobList-DWkzFa-X-Ctd33iXS.js", ['./__monkey.entry-DPF1Y35u.js'], (function (exports, module) {
   'use strict';
   var defineComponent, openBlock, createBlock, _export_sfc, shallowRef, createElementBlock, createVNode, withCtx, Fragment, renderList, unref, createTextVNode, toDisplayString, createBaseVNode, resolveDynamicComponent, ElMenuItem, ElMenu, inject, ServerStore, ref, PushStatus, LogRecorder, LoginStore, pushResultCount, UserStore, watch, logger$1, silentlyLogin, onUnmounted, isProdEnv, createCommentVNode, withDirectives, vShow, CircleCloseFilled, normalizeClass, reactive, Tools, onMounted, isRef, ElNotification, ElMessage, loginInterceptor, axios, fetchWithGM_request, serializeAiSeatStatus, rememberAiSeatStatus, shouldApplyAiSeatRollback, ElText, ElBadge, ElTag, ElButton, ElIcon, ElTooltip, ElButtonGroup$1, ElInput, ElCard, ElInputNumber, ElSwitch, TampermonkeyApi, ElFormItem, ElCheckbox, ElOption, ElSelect, ElUpload, ElRadioButton, ElRadioGroup, ElForm, ElCol, ElTimePicker, ElRow, ElTableColumn, ElEmpty, ElTable, ElPagination, pushScopeId, popScopeId, createStaticVNode;
   return {
