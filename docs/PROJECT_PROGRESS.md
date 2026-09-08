@@ -7,13 +7,14 @@
 - The delivery path now distinguishes generated, submitted, platform-confirmed, own-echo-confirmed, and failed states; a legacy BOSS client invocation with no return value is treated as submitted and waits for own-message echo instead of being retried.
 - The greeting Prompt is maintained server-side. It now asks for one concrete job fact plus one resume-supported match, keeps the opening compact and natural, and treats the user-facing field as an optional personal supplement rather than a second system Prompt.
 - Local verification completed: 20 adapter tests, all 18 frontend smoke checks, focused backend tests, `vue-tsc --noEmit`, Vite production build, public userscript verification, and backend packaging.
-- Live authenticated BOSS delivery remains the final acceptance test; it must confirm one targeted greeting, no generic platform greeting, and a visible own-message echo or platform confirmation.
+- Production deployment and GitHub synchronization completed. Live authenticated BOSS delivery remains the final acceptance test; it must confirm one targeted greeting, no generic platform greeting, and a visible own-message echo or platform confirmation.
 
 ## Current Release
 
 - Version: `0.0.106-send-confirm-greeting`
 - Status: deployed for controlled production acceptance on BOSS
 - Public install: https://aijob.zxpnb.top/ai-job-hunting.user.js
+- GitHub release: https://github.com/youyu-zr/ai-job-hunting/releases/tag/v0.0.106-send-confirm-greeting
 
 ## Root Cause
 
