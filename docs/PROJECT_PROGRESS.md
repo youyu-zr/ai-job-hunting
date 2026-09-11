@@ -8,7 +8,7 @@
 - Removed the unused legacy `isStrongHumanHandoffSignal` method from the chat service; semantic high-risk handoff logic remains where it is still part of the configured human-review boundary.
 - Rebuilt and synchronized the public userscript. The workspace build, public repository copy, and install artifact share SHA-256 `093B2B930AEB2D26C9E3F15004E3672F97D8DB6580E191A18B68A3573E735766`.
 - Local targeted backend tests, frontend type-check/build, and the available frontend smoke suite passed. Full Maven tests remain environment-blocked by unavailable MySQL name resolution and `localhost:9100`.
-- The production host was checked on 2026-09-11: the public install URL still served `0.0.106-send-confirm-greeting`, while SSH to `103.189.141.250:22` timed out. Therefore this release is prepared and pushed to GitHub but is not yet confirmed deployed to the public install host.
+- Production deployment completed on 2026-09-11 after identifying the active host at `15.204.82.147`; the previous SSH target `103.189.141.250` was stale. The backend JAR, userscript, and install page were replaced only after SHA-256 verification.
 
 ## 2026-09-08 Release Addendum
 
@@ -22,10 +22,11 @@
 ## Current Release
 
 - Version: `0.0.108-greeting-filter-cleanup`
-- Status: prepared in GitHub; public host deployment blocked by SSH/network reachability
+- Status: deployed for controlled production acceptance on BOSS
 - Public install: https://aijob.zxpnb.top/ai-job-hunting.user.js
-- GitHub commit: https://github.com/youyu-zr/ai-job-hunting/commit/00b4fc0291b9d312d869a78f77a328f723497795
-- Public install check on 2026-09-11: still served `0.0.106-send-confirm-greeting`
+- GitHub commit: https://github.com/youyu-zr/ai-job-hunting/commit/b02e0b4
+- Public install check on 2026-09-11: served `0.0.108-greeting-filter-cleanup`
+- Remote rollback backup: `/home/ubuntu/ai-job-runtime/backups/pre-0.0.108-greeting-filter-cleanup-20260911_182815`
 
 ## Root Cause
 
