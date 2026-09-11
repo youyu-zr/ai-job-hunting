@@ -1,8 +1,18 @@
 # Project Progress
 
+## 2026-09-11 Release Addendum
+
+- Release: `0.0.108-greeting-filter-cleanup`.
+- Removed fixed greeting-result rejection based on generic opening phrases and removed the hard requirement that generated text repeat the exact job title or a job anchor.
+- Kept only meaningful output validation: non-empty content and protection against unsupported resume facts.
+- Removed the unused legacy `isStrongHumanHandoffSignal` method from the chat service; semantic high-risk handoff logic remains where it is still part of the configured human-review boundary.
+- Rebuilt and synchronized the public userscript. The workspace build, public repository copy, and install artifact share SHA-256 `093B2B930AEB2D26C9E3F15004E3672F97D8DB6580E191A18B68A3573E735766`.
+- Local targeted backend tests, frontend type-check/build, and the available frontend smoke suite passed. Full Maven tests remain environment-blocked by unavailable MySQL name resolution and `localhost:9100`.
+- Live authenticated BOSS single-job acceptance is still required before claiming the production conversation flow is fully verified.
+
 ## 2026-09-08 Release Addendum
 
-- Release: `0.0.106-send-confirm-greeting`.
+- Release: `0.0.108-greeting-filter-cleanup`.
 - The public userscript was rebuilt after restoring the BOSS-owned `GeekChatCore` message path used by the previously working delivery flow.
 - The delivery path now distinguishes generated, submitted, platform-confirmed, own-echo-confirmed, and failed states; a legacy BOSS client invocation with no return value is treated as submitted and waits for own-message echo instead of being retried.
 - The greeting Prompt is maintained server-side. It now asks for one concrete job fact plus one resume-supported match, keeps the opening compact and natural, and treats the user-facing field as an optional personal supplement rather than a second system Prompt.
@@ -11,10 +21,10 @@
 
 ## Current Release
 
-- Version: `0.0.106-send-confirm-greeting`
+- Version: `0.0.108-greeting-filter-cleanup`
 - Status: deployed for controlled production acceptance on BOSS
 - Public install: https://aijob.zxpnb.top/ai-job-hunting.user.js
-- GitHub release: https://github.com/youyu-zr/ai-job-hunting/releases/tag/v0.0.106-send-confirm-greeting
+- GitHub release: https://github.com/youyu-zr/ai-job-hunting/releases/tag/v0.0.108-greeting-filter-cleanup
 
 ## Root Cause
 
@@ -42,4 +52,4 @@
 
 ## Next Action
 
-安装或更新脚本到 `0.0.106-send-confirm-greeting`，禁用旧版本，刷新 BOSS，将单次投递数量设为 `1`，再观察岗位化招呼语和发送回执。
+安装或更新脚本到 `0.0.108-greeting-filter-cleanup`，禁用旧版本，刷新 BOSS，将单次投递数量设为 `1`，再观察岗位化招呼语和发送回执。
