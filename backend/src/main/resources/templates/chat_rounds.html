@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>每轮对话邮件通知</title>
+</head>
+<body style="font-family: Arial, 'Microsoft YaHei', sans-serif; line-height: 1.6; color: #222;">
+<h2>每轮对话邮件通知</h2>
+<p><b>公司：</b><span th:text="${companyName}"></span></p>
+<p><b>岗位：</b><span th:text="${positionName}"></span></p>
+<p><b>薪资：</b><span th:text="${salary}"></span></p>
+<p><b>地点：</b><span th:text="${location}"></span></p>
+<p><b>初步判断：</b><span th:text="${qualitySummary}"></span></p>
+<p><b>推荐动作：</b><span th:text="${recommendedAction}"></span></p>
+<hr>
+<h3>HR最新消息</h3>
+<p style="white-space: pre-wrap;" th:text="${question}"></p>
+<h3>AI回复/处理状态</h3>
+<p style="white-space: pre-wrap;" th:text="${answer}"></p>
+<h3>职位需求/描述</h3>
+<p style="white-space: pre-wrap;" th:text="${jobRequirement}"></p>
+<h3>面试前可快速补的点</h3>
+<p style="white-space: pre-wrap;" th:text="${prepEasySkills}"></p>
+<h3>需要谨慎确认</h3>
+<p style="white-space: pre-wrap;" th:text="${prepHardSkills}"></p>
+<h3>风险信号</h3>
+<p style="white-space: pre-wrap;" th:text="${riskSignals}"></p>
+<h3>原始岗位上下文</h3>
+<p style="white-space: pre-wrap; color:#555;" th:text="${rawJobContext}"></p>
+</body>
+</html>

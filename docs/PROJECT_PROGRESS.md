@@ -1,57 +1,11 @@
-# Project Progress
+# 项目进度入口
 
-## 2026-09-11 Release Addendum
+本文件替代旧的生产部署日志。最新事实见 [2026-10-10 项目状态](PROJECT_STATUS_2026-10-10.md)，真实账号验收见 [验收清单](ACCEPTANCE.md)。
 
-- Release: `0.0.108-greeting-filter-cleanup`.
-- Removed fixed greeting-result rejection based on generic opening phrases and removed the hard requirement that generated text repeat the exact job title or a job anchor.
-- Kept only meaningful output validation: non-empty content and protection against unsupported resume facts.
-- Removed the unused legacy `isStrongHumanHandoffSignal` method from the chat service; semantic high-risk handoff logic remains where it is still part of the configured human-review boundary.
-- Rebuilt and synchronized the public userscript. The workspace build, public repository copy, and install artifact share SHA-256 `093B2B930AEB2D26C9E3F15004E3672F97D8DB6580E191A18B68A3573E735766`.
-- Local targeted backend tests, frontend type-check/build, and the available frontend smoke suite passed. Full Maven tests remain environment-blocked by unavailable MySQL name resolution and `localhost:9100`.
-- Production deployment completed on 2026-09-11 after identifying the active host at `15.204.82.147`; the previous SSH target `103.189.141.250` was stale. The backend JAR, userscript, and install page were replaced only after SHA-256 verification.
+2026-10-09 已将 `0.0.113-beta-auto-grant` 部署到线上安装入口与后端。首次成功导入并保存简历后自动开通内测权限至 `2026-12-30 23:59:59.999 +08:00`；支付功能明确关闭。生产数据库未执行结构迁移，现有 `user_product` 数据未改动。
 
-## 2026-09-08 Release Addendum
+部署后 `ai-job.service`、Nginx、MariaDB、Redis 均为 active，Nginx 配置检查通过，线上脚本与安装页 HTTP 200，部署产物哈希与本地一致。后端采用现有单实例重启，API 曾有约 49 秒冷启动窗口；没有修改 Nginx 路由或其他服务。
 
-- Release: `0.0.108-greeting-filter-cleanup`.
-- The public userscript was rebuilt after restoring the BOSS-owned `GeekChatCore` message path used by the previously working delivery flow.
-- The delivery path now distinguishes generated, submitted, platform-confirmed, own-echo-confirmed, and failed states; a legacy BOSS client invocation with no return value is treated as submitted and waits for own-message echo instead of being retried.
-- The greeting Prompt is maintained server-side. It now asks for one concrete job fact plus one resume-supported match, keeps the opening compact and natural, and treats the user-facing field as an optional personal supplement rather than a second system Prompt.
-- Local verification completed: 20 adapter tests, all 18 frontend smoke checks, focused backend tests, `vue-tsc --noEmit`, Vite production build, public userscript verification, and backend packaging.
-- Production deployment and GitHub synchronization completed. Live authenticated BOSS delivery remains the final acceptance test; it must confirm one targeted greeting, no generic platform greeting, and a visible own-message echo or platform confirmation.
+唯一回滚包保存在维护者受控的线上目录，不在公开文档中披露服务器路径。重启时旧 Java 进程按 systemd 停止流程收到 SIGTERM（退出码 143），新进程随后完成 Spring、数据库连接、9100 和 6768 启动；这是计划内重启，不是新版本崩溃。临时旁路进程、端口和防火墙规则均已清理。
 
-## Current Release
-
-- Version: `0.0.108-greeting-filter-cleanup`
-- Status: deployed for controlled production acceptance on BOSS
-- Public install: https://aijob.zxpnb.top/ai-job-hunting.user.js
-- GitHub commit: https://github.com/youyu-zr/ai-job-hunting/commit/b02e0b4
-- Public install check on 2026-09-11: served `0.0.108-greeting-filter-cleanup`
-- Remote rollback backup: `/home/ubuntu/ai-job-runtime/backups/pre-0.0.108-greeting-filter-cleanup-20260911_182815`
-
-## Root Cause
-
-- BOSS新版职位页使用 `GeekChatCore 2.0.3 + SharedWorker`。
-- 职位页可能显示 `DISCONNECTED`，但 SharedWorker 已就绪；旧逻辑把页面状态误当成唯一发送条件。
-- `socketConnect.sendTextMessage()` 内部会异步发送，但包装函数固定返回 `null`，不能作为发送回执。
-- 旧版固定招呼语之所以偶尔成功，是 BOSS 原生建联先创建了会话，随后旧 protobuf 通道才有机会发送第二条消息。
-
-## Changes
-
-- 投递后主动初始化 BOSS SharedWorker 会话通道，不再依赖用户先打开聊天页。
-- 识别“Worker 已就绪但页面状态滞后”的合法状态。
-- 文本消息优先调用底层 `SharedWorkerClient.sendTextMessage()`，等待真实 Promise 结果。
-- 保留目标岗位、公司、简历和求职偏好生成岗位化招呼语的原流程。
-- 不恢复固定“你好”或 BOSS 默认招呼语，避免污染和重复发送。
-- 仍以目标会话中的己方消息回执作为最终确认条件。
-
-## Verification
-
-- Adapter regression tests: 16 passed.
-- `vue-tsc --noEmit`: passed.
-- Vite production build: passed.
-- 服务器 `ai-job.service` active，9100 和 6768 正常监听。
-- 剩余验收：更新脚本后，在已登录 BOSS 环境单职位投递一次，确认真实消息回执。
-
-## Next Action
-
-安装或更新脚本到 `0.0.108-greeting-filter-cleanup`，禁用旧版本，刷新 BOSS，将单次投递数量设为 `1`，再观察岗位化招呼语和发送回执。
+真实 BOSS 账号的导入、授权、投递、HR 回复和暂停恢复仍待账号本人验收。公开 GitHub 主分支尚未同步此发布；线上部署不代表源码已公开。旧部署日志保留在本地内部归档，不属于源码分发内容。

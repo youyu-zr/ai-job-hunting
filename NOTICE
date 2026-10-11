@@ -1,0 +1,23 @@
+AI Job Hunting / AI 工作猎手
+
+This project includes work derived from yangfeng20/ai-job. The upstream
+repository currently declares the MIT License and lists Copyright (c) 2026
+Yang Feng. This project retains that upstream attribution.
+
+Exact file-level provenance and the license of every bundled third-party
+component have not yet been independently verified for this release. Do not
+treat this notice as confirmation that every upstream or third-party file may
+be relicensed under the repository license.
+Upstream project: https://github.com/yangfeng20/ai-job
+Original author references include maple / yangfeng20.
+
+The youyu-zr/ai-job-hunting workspace adds or modifies delivery confirmation,
+message compatibility, resume-fact grounding, account isolation, human
+handoff, tests, and documentation. These changes do not imply endorsement
+by upstream authors or BOSS Zhipin.
+
+Original author comments and dependency coordinates are retained. Before any
+public source or binary release, verify exact upstream provenance, copyright
+and attribution notices, the scope of each license, and all bundled
+third-party dependencies. No claim of independent authorship for upstream
+features is made.

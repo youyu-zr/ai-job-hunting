@@ -40,6 +40,10 @@
     .button.primary { color: #fff; background: var(--primary); }
     .button.primary:hover { background: var(--primary-dark); }
     .button.secondary { color: var(--primary); background: #fff; }
+    .button.disabled { color: #657089; background: #eef2f7; border-color: #dfe5ef; cursor: not-allowed; }
+    .notice { padding: 18px 20px; border: 1px solid #e7b34b; border-left: 5px solid #c27a00; border-radius: 6px; background: #fff8e8; }
+    .notice h2 { margin-bottom: 8px; color: #744900; }
+    .notice p { margin: 0; color: #604b28; }
     .section { padding: 24px 0; }
     .panel { padding: 24px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
     .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
@@ -65,87 +69,45 @@
 <body>
   <main class="wrap">
     <header>
-      <div class="eyebrow">BOSS 求职端 · 用户入口</div>
+      <div class="eyebrow">项目状态 · 2026-10-10</div>
       <h1>AI 工作猎手</h1>
-      <p class="lead">在 BOSS 直聘网页中读取职位和 HR 消息，辅助完成岗位判断、岗位化沟通、简历发送和高意向提醒。</p>
+      <p class="lead">一个正在整理为开源项目的 BOSS 求职副驾。当前处于发布前复核阶段，暂不开放新用户安装。</p>
       <div class="actions">
-        <a class="button primary" href="/ai-job-hunting.user.js">安装 / 更新脚本</a>
-        <a class="button secondary" href="https://scriptcat.org/" target="_blank" rel="noreferrer">安装 ScriptCat</a>
-        <a class="button secondary" href="https://www.zhipin.com/" target="_blank" rel="noreferrer">打开 BOSS 直聘</a>
+        <span class="button disabled" aria-disabled="true">新用户试用暂缓</span>
       </div>
       <div class="version">
-        <div><strong>当前脚本版本</strong><br><code>0.0.108-greeting-filter-cleanup</code></div>
+        <div><strong>线上版本（不建议新用户安装）</strong><br><code>0.0.113-beta-auto-grant</code></div>
+        <div><strong>本地候选版（尚未部署）</strong><br><code>0.0.114-beta-consent</code></div>
       </div>
     </header>
 
     <section class="section">
-      <div class="panel">
-        <h2>安装顺序</h2>
-        <div class="grid">
-          <article class="step"><span class="num">1</span><h3>安装脚本管理器</h3><p>新用户安装 ScriptCat；已经使用 Tampermonkey 的用户继续使用现有管理器即可，两者选择一个。</p></article>
-          <article class="step"><span class="num">2</span><h3>安装 AI 工作猎手</h3><p>点击本页的“安装 / 更新脚本”，在脚本管理器的确认页点击安装。</p></article>
-          <article class="step"><span class="num">3</span><h3>打开 BOSS 页面</h3><p>登录 BOSS 直聘，进入职位或消息页面并刷新，等待右侧出现 AI 工作猎手面板。</p></article>
-        </div>
+      <div class="notice" role="alert">
+        <h2>为什么暂停</h2>
+        <p>当前线上脚本首次登录新账号时仍会自动获取并上传 BOSS 附件简历。本地候选版已改为用户主动点击“导入简历”，但尚未部署和完成真实账号验收。更新完成前，请不要从线上或其他地址安装旧脚本。</p>
       </div>
     </section>
 
     <section class="section">
       <div class="panel">
-        <h2>免费内测</h2>
-        <ol>
-          <li>首次登录后，点击面板中的“产品列表”。</li>
-          <li>输入从发布说明或管理员处获得的内测激活码。</li>
-          <li>激活成功后，该 BOSS 账号获得全功能 7 天体验。</li>
-        </ol>
-        <p>同一个 BOSS 账号只能激活一次；内测激活码不会写入脚本或公开仓库。</p>
+        <h2>本地候选流程</h2>
+        <p>候选版不需要激活码。计划在用户主动点击“导入简历”、身份核验通过且简历成功保存后，自动开通内测权限至 2026 年 12 月 30 日。连接测试不会导入简历或开通权限。</p>
+        <p style="margin-top:12px">这只是未部署的候选行为，不代表当前线上脚本；候选流程也仍需真实 BOSS 账号验收。</p>
       </div>
     </section>
 
     <section class="section">
       <div class="panel">
-        <h2>首次使用</h2>
-        <ol>
-          <li>在 BOSS 上传 PDF 或 DOCX 附件简历。</li>
-          <li>打开 AI 工作猎手面板，点击“连接测试”，确认服务器在线。</li>
-          <li>点击“导入简历”，等待导入成功。</li>
-          <li>在“偏好设置”填写真实现居城市、目标城市、岗位方向和薪资范围。</li>
-          <li>打开“AI 过滤（语义匹配）”，让 AI 结合职位详情和公司信息进行判断。</li>
-          <li>投递会自动生成岗位化招呼语，并关闭 BOSS 自带固定招呼语；生成或设置检查失败时不会投递。</li>
-          <li>第一次把单次投递数量设为 1，先验证一个职位。</li>
-          <li>确认投递记录和消息回复正常后，再打开 AI 坐席。</li>
-        </ol>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="panel">
-        <h2>偏好设置填写示例</h2>
-        <p>使用白话填写即可，不需要编写代码或复杂规则：</p>
-        <p style="margin-top:12px;padding:14px;border:1px solid var(--line);border-radius:6px;background:var(--soft)">我想找上海及周边的工作，优先浦东、康桥、周浦、御桥、张江、临港，通勤距离要合理。我愿意尝试 AI 应用辅助、智能工具运营、AIGC 内容、资料整理、数据处理、内容质检、基础测试、运营助理、项目助理、行政文员、客服支持等工作。经验要求可以放宽到应届生、在校生、无需经验或有人带教的岗位。期望薪资 5K-10K，也可以根据岗位实际情况沟通。请结合完整职位描述、公司信息、HR 信息和聊天内容判断岗位质量，不要只根据单个关键词决定。</p>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="panel">
-        <h2>更新与常见问题</h2>
+        <h2>重新开放前</h2>
         <ul>
-          <li><span class="check">版本检查：</span>正式版本应显示 <code>0.0.108-greeting-filter-cleanup</code>。</li>
-          <li><span class="check">更新方式：</span>始终打开本页的“安装 / 更新脚本”，选择更新当前脚本，不要新建第二份。</li>
-          <li><span class="check">面板不显示：</span>确认脚本管理器已启用，关闭旧版和重复脚本，进入 BOSS 职位或消息页面后刷新。</li>
-          <li><span class="check">连接异常：</span>点击“连接测试”；曾手动修改地址时，使用面板中的重置按钮恢复默认设置。</li>
-          <li><span class="check">脚本下载：</span>始终使用本页的安装链接，不要从搜索结果下载其他版本。</li>
+          <li>确认上游代码来源、版权声明和可再分发许可；</li>
+          <li>落实简历、会话数据的留存与删除流程；</li>
+          <li>完成模型 API 出网限制、限流和用量上限；</li>
+          <li>完成干净环境构建和本人 BOSS 账号端到端验收。</li>
         </ul>
       </div>
     </section>
-
-    <section class="section">
-      <div class="panel">
-        <h2>下载说明</h2>
-        <p>普通用户只需要使用本页的<a href="/ai-job-hunting.user.js">安装 / 更新脚本</a>链接。</p>
-        <p style="margin-top:8px">ScriptCat 或 Tampermonkey 负责安装和运行脚本，用户无需自行配置 AI 服务。</p>
-      </div>
-    </section>
   </main>
-  <footer class="wrap">使用中请以 BOSS 页面实际发送记录为准。请妥善保管个人简历、邮箱和账号信息。</footer>
+  <footer class="wrap">本地候选页。线上仍为旧版；本轮未部署任何代码或配置。</footer>
 </body>
 </html>
