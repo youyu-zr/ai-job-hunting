@@ -1,0 +1,7 @@
+name: ai-job-hunting-codeql
+
+paths-ignore:
+  - ai-job-hunting.user.js
+  - frontend/dist/**
+  - frontend/node_modules/**
+  - backend/target/**
