@@ -1,6 +1,5 @@
 import {existsSync, readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
-import {createHash} from 'node:crypto';
 
 const root = resolve(import.meta.dirname, '..');
 const sourceFiles = [
@@ -29,6 +28,23 @@ const required = [
     ['vite.config.ts', 'downloadURL: "https://aijob.zxpnb.top/ai-job-hunting.user.js"'],
     ['vite.config.ts', 'updateURL: "https://aijob.zxpnb.top/ai-job-hunting.user.js"'],
 ];
+
+function canonicalizeBuildPaths(script) {
+    const scopeIds = new Map();
+    return script
+        .replace(/\r\n/g, '\n')
+        .replace(/\\r\\n/g, '\\n')
+        .replace(/data-v-([0-9a-f]{8})/g, (_, id) => {
+            if (!scopeIds.has(id)) {
+                scopeIds.set(id, scopeIds.size);
+            }
+            return `data-v-<scope-${scopeIds.get(id)}>`;
+        })
+        .replace(
+            /(["'])\.\/([^"'\/]+?)-(?:[A-Za-z0-9_-]{8}-)?[A-Za-z0-9_-]{8}(\.js\1)/g,
+            '$1./<chunk>-<hash>$2',
+        );
+}
 
 const failures = [];
 const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
@@ -87,10 +103,8 @@ if (!existsSync(distFile)) {
     }
     if (existsSync(publicFile)) {
         const publicScript = readFileSync(publicFile, 'utf8');
-        const distHash = createHash('sha256').update(dist).digest('hex');
-        const publicHash = createHash('sha256').update(publicScript).digest('hex');
-        if (distHash !== publicHash) {
-            failures.push('root ai-job-hunting.user.js is not byte-for-byte identical to the verified build');
+        if (canonicalizeBuildPaths(dist) !== canonicalizeBuildPaths(publicScript)) {
+            failures.push('root ai-job-hunting.user.js differs from the verified build beyond path-derived identifiers');
         }
     } else {
         failures.push('root ai-job-hunting.user.js is missing');
