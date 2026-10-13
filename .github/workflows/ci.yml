@@ -32,6 +32,15 @@ jobs:
       - run: pnpm verify:prelaunch
       - run: pnpm build
       - run: pnpm verify:public
+      - name: Preserve userscript artifacts when verification fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: userscript-verification-${{ github.run_id }}
+          path: |
+            ai-job-hunting.user.js
+            frontend/dist/ai-job-hunting.user.js
+          retention-days: 1
 
   backend:
     runs-on: ubuntu-latest
