@@ -14,6 +14,7 @@ import com.maple.ai.job.hunting.model.bo.UserTrialDO;
 import com.maple.ai.job.hunting.service.biz.UserAIConfigService;
 import com.maple.ai.job.hunting.service.biz.ProductService;
 import com.maple.ai.job.hunting.service.biz.BetaAccessService;
+import com.maple.ai.job.hunting.utils.LogValueSanitizer;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import jakarta.servlet.*;
@@ -118,7 +119,8 @@ public class ProductFilter implements Filter {
         }
 
         if (!hasValidPermission) {
-            log.info("userId:{} 访问url:{} 未获得授权且试用次数已用完", userId, uri);
+            log.info("userId:{} 访问url:{} 未获得授权且试用次数已用完",
+                    userId, LogValueSanitizer.sanitize(uri, 200));
             String missingPermissionDesc = String.join("、", missingPermissions);
             String userIdAndProductTypeKey = userId + "-" + missingPermissionDesc;
 

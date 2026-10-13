@@ -1,7 +1,9 @@
 package com.maple.ai.job.hunting.service.biz;
 
 import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.maple.ai.job.hunting.common.HeaderContext;
 import com.maple.ai.job.hunting.consts.AIPromptStrConstant;
 import com.maple.ai.job.hunting.mapper.UserInfoMapper;
@@ -9,6 +11,7 @@ import com.maple.ai.job.hunting.mapper.UserResumeMapper;
 import com.maple.ai.job.hunting.model.param.AIFilterParam;
 import com.maple.ai.job.hunting.model.vo.AiFilterResultVO;
 import com.maple.ai.job.hunting.service.ai.AIServiceFacade;
+import com.maple.ai.job.hunting.utils.LogValueSanitizer;
 import com.maple.ai.job.hunting.utils.PromptDataSanitizer;
 import jakarta.annotation.Resource;
 import org.apache.commons.lang3.StringUtils;
@@ -18,8 +21,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Job Filter 服务
@@ -31,14 +32,13 @@ import java.util.regex.Pattern;
 public class JobFilterService {
 
     private static final Logger log = LoggerFactory.getLogger(JobFilterService.class);
+    private static final ObjectMapper SAFE_JSON = new ObjectMapper();
     @Resource
     private AIServiceFacade aiServiceFacade;
     @Resource
     private UserResumeMapper userResumeMapper;
     @Resource
     private UserInfoMapper userInfoMapper;
-
-    private static final Pattern JSON_PATTERN = Pattern.compile("\\{.*}", Pattern.DOTALL);
 
     public AiFilterResultVO filter(AIFilterParam param) {
         AIFilterParam enrichedParam = enrichWithUserContext(param);
@@ -50,19 +50,17 @@ public class JobFilterService {
             return result;
         }
 
-        // 提取第一个 JSON 对象
-        Matcher matcher = JSON_PATTERN.matcher(answer);
-        if (matcher.find()) {
-            String json = matcher.group();
+        String json = extractFirstJsonObject(answer);
+        if (json != null) {
             try {
-                JSONObject rawResult = JSON.parseObject(json);
+                JsonNode rawResult = SAFE_JSON.readTree(json);
                 if (!hasCompleteDecisionFields(rawResult)) {
                     log.warn("AI过滤结果字段不完整，暂停人工复核");
                     AiFilterResultVO result = fallbackHumanReviewResult("AI岗位分析结果字段不完整，暂停人工复核");
                     logStructuredResult(result, param);
                     return result;
                 }
-                AiFilterResultVO result = JSON.parseObject(json, AiFilterResultVO.class);
+                AiFilterResultVO result = SAFE_JSON.treeToValue(rawResult, AiFilterResultVO.class);
                 result = normalizeStructuredResult(result);
                 logStructuredResult(result, param);
                 return result;
@@ -78,12 +76,52 @@ public class JobFilterService {
         return result;
     }
 
-    private boolean hasCompleteDecisionFields(JSONObject result) {
-        if (result == null || !(result.get("filter") instanceof Boolean)) {
+    static String extractFirstJsonObject(String text) {
+        if (StringUtils.isBlank(text)) {
+            return null;
+        }
+        int objectStart = -1;
+        int depth = 0;
+        boolean inString = false;
+        boolean escaped = false;
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if (objectStart < 0) {
+                if (ch == '{') {
+                    objectStart = i;
+                    depth = 1;
+                    inString = false;
+                    escaped = false;
+                }
+                continue;
+            }
+            if (inString) {
+                if (escaped) {
+                    escaped = false;
+                } else if (ch == '\\') {
+                    escaped = true;
+                } else if (ch == '"') {
+                    inString = false;
+                }
+                continue;
+            }
+            if (ch == '"') {
+                inString = true;
+            } else if (ch == '{') {
+                depth++;
+            } else if (ch == '}' && --depth == 0) {
+                return text.substring(objectStart, i + 1);
+            }
+        }
+        return null;
+    }
+
+    private boolean hasCompleteDecisionFields(JsonNode result) {
+        if (result == null || !result.path("filter").isBoolean()) {
             return false;
         }
-        String action = StringUtils.upperCase(StringUtils.trimToEmpty(result.getString("recommendedAction")));
-        String risk = StringUtils.upperCase(StringUtils.trimToEmpty(result.getString("riskLevel")));
+        String action = StringUtils.upperCase(StringUtils.trimToEmpty(result.path("recommendedAction").asText()));
+        String risk = StringUtils.upperCase(StringUtils.trimToEmpty(result.path("riskLevel").asText()));
         return List.of("DELIVER", "CHAT_FIRST", "FILTER", "HUMAN_REVIEW").contains(action)
                 && List.of("LOW", "MEDIUM", "HIGH").contains(risk);
     }
@@ -197,9 +235,9 @@ public class JobFilterService {
 
     private void logStructuredResult(AiFilterResultVO result, AIFilterParam param) {
         log.info("AI岗位分析 job:{} company:{} 结构化结果:{}",
-                readJsonField(param == null ? null : param.getJobBaseInfo(), "jobName"),
-                readJsonField(param == null ? null : param.getJobBaseInfo(), "brandName"),
-                JSON.toJSONString(result));
+                LogValueSanitizer.sanitize(readJsonField(param == null ? null : param.getJobBaseInfo(), "jobName"), 120),
+                LogValueSanitizer.sanitize(readJsonField(param == null ? null : param.getJobBaseInfo(), "brandName"), 120),
+                LogValueSanitizer.sanitize(JSON.toJSONString(result), 2000));
     }
 
     private String readJsonField(String rawJson, String field) {
@@ -207,8 +245,9 @@ public class JobFilterService {
             return "";
         }
         try {
-            JSONObject jsonObject = JSON.parseObject(rawJson);
-            return StringUtils.defaultString(jsonObject.getString(field));
+            JsonNode root = SAFE_JSON.readTree(rawJson);
+            JsonNode value = root == null ? null : root.get(field);
+            return value == null || value.isNull() ? "" : StringUtils.defaultString(value.asText());
         } catch (Exception e) {
             return "";
         }
@@ -243,8 +282,11 @@ public class JobFilterService {
             return "{}";
         }
         try {
-            JSONObject source = JSON.parseObject(rawPreference);
-            JSONObject view = new JSONObject();
+            JsonNode source = SAFE_JSON.readTree(rawPreference);
+            if (source == null || !source.isObject()) {
+                return "{}";
+            }
+            ObjectNode view = SAFE_JSON.createObjectNode();
             // These four fields are the current semantic preference contract.
             // Keep their names stable, but do not mix chat-only preferences into
             // screening or leak legacy keyword arrays into the AI context.
@@ -253,44 +295,44 @@ public class JobFilterService {
             copyText(source, view, "clarifyConditions");
             copyEnabledText(source, view, "srE", "sr");
             copyEnabledText(source, view, "csrE", "csr");
-            if (Boolean.TRUE.equals(source.getBoolean("locationGuardE"))) {
+            if (source.path("locationGuardE").asBoolean(false)) {
                 view.put("locationGuardE", true);
                 copyText(source, view, "resumeCity");
                 copyValue(source, view, "targetCities");
                 copyValue(source, view, "locationMismatchThreshold");
             }
-            return view.toJSONString();
+            return SAFE_JSON.writeValueAsString(view);
         } catch (Exception ignored) {
             return "{}";
         }
     }
 
-    private void copyEnabledList(JSONObject source, JSONObject target, String enableKey, String valueKey) {
-        if (Boolean.TRUE.equals(source.getBoolean(enableKey))) {
+    private void copyEnabledList(JsonNode source, ObjectNode target, String enableKey, String valueKey) {
+        if (source.path(enableKey).asBoolean(false)) {
             target.put(enableKey, true);
             copyValue(source, target, valueKey);
         }
     }
 
-    private void copyEnabledText(JSONObject source, JSONObject target, String enableKey, String valueKey) {
-        if (Boolean.TRUE.equals(source.getBoolean(enableKey))) {
+    private void copyEnabledText(JsonNode source, ObjectNode target, String enableKey, String valueKey) {
+        if (source.path(enableKey).asBoolean(false)) {
             target.put(enableKey, true);
             copyText(source, target, valueKey);
         }
     }
 
-    private void copyText(JSONObject source, JSONObject target, String key) {
+    private void copyText(JsonNode source, ObjectNode target, String key) {
         String value = PromptDataSanitizer.removeLegacyReplyLengthDirectives(
-                StringUtils.trimToEmpty(source.getString(key)));
+                StringUtils.trimToEmpty(source.path(key).asText()));
         if (StringUtils.isNotBlank(value)) {
             target.put(key, value);
         }
     }
 
-    private void copyValue(JSONObject source, JSONObject target, String key) {
-        Object value = source.get(key);
-        if (value != null) {
-            target.put(key, value);
+    private void copyValue(JsonNode source, ObjectNode target, String key) {
+        JsonNode value = source.get(key);
+        if (value != null && !value.isNull()) {
+            target.set(key, value);
         }
     }
 

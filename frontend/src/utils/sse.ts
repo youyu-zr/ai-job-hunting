@@ -1,6 +1,8 @@
 import {isProdEnv} from "./tools";
 import {EventSourcePolyfill as ESP} from "event-source-polyfill";
 import EventSourcePolyfillDefault from "event-source-polyfill";
+import {ServerStore} from "../stores/server";
+import {scopedAuthorization, userSessionScope} from "./sessionContext";
 
 const EventSourcePolyfill = isProdEnv() ? EventSourcePolyfillDefault : ESP;
 
@@ -15,7 +17,15 @@ export class SSEClient {
     }
 
     public start(): void {
-        let authorization = localStorage.getItem('Authorization');
+        const scope = userSessionScope(
+            String((window as any)._PAGE?.uid ?? "").trim(),
+            ServerStore().baseUrl
+        );
+        const authorization = scopedAuthorization(scope);
+        if (!authorization) {
+            this.close();
+            return;
+        }
         this.eventSource = new EventSourcePolyfill(this.url, {
             withCredentials: true,
             // 5分钟超时(略小于nginx sse超时时间)

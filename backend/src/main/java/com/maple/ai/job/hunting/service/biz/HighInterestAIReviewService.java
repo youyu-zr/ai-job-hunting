@@ -3,11 +3,14 @@ package com.maple.ai.job.hunting.service.biz;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maple.ai.job.hunting.model.entity.PreferenceEntity;
 import com.maple.ai.job.hunting.model.param.JobSeekerClonedParam;
 import com.maple.ai.job.hunting.service.ai.AIServiceFacade;
 import com.maple.ai.job.hunting.utils.JobContextCompleteness;
 import com.maple.ai.job.hunting.utils.JobRiskKeywordUtil;
+import com.maple.ai.job.hunting.utils.LogValueSanitizer;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -30,6 +33,7 @@ public class HighInterestAIReviewService {
     private static final int MAX_PREFERENCE_LENGTH = 5000;
     private static final int MAX_CONVERSATION_LENGTH = 8000;
     private static final int MAX_MESSAGE_LENGTH = 2500;
+    private static final ObjectMapper SAFE_JSON = new ObjectMapper();
 
     @Resource
     private AIServiceFacade aiServiceFacade;
@@ -61,7 +65,8 @@ public class HighInterestAIReviewService {
                     aiAnswer)));
         } catch (Exception e) {
             log.warn("high-interest AI review failed jobKey:{} error:{}",
-                    param.getJobKey(), e.getMessage());
+                    LogValueSanitizer.sanitize(param.getJobKey(), 160),
+                    LogValueSanitizer.sanitize(e.getMessage(), 200));
             return Decision.invalid("高意向AI复核失败，等待人工查看");
         }
     }
@@ -98,25 +103,35 @@ public class HighInterestAIReviewService {
     }
 
     static Decision parseDecision(String answer) {
-        JSONObject json = firstJsonObject(answer);
+        JsonNode json = firstJsonObject(answer);
         if (json == null) {
             return Decision.invalid("高意向AI复核结果格式异常，等待人工查看");
         }
-        Boolean requestedHighInterest = json.getBoolean("highInterest");
-        String confidence = StringUtils.upperCase(StringUtils.trimToEmpty(json.getString("confidence")));
+        if (json.has("@type")) {
+            return Decision.invalid("高意向AI复核结果包含不允许的类型元数据，等待人工查看");
+        }
+        JsonNode highInterestNode = json.get("highInterest");
+        Boolean requestedHighInterest = highInterestNode != null && highInterestNode.isBoolean()
+                ? highInterestNode.booleanValue() : null;
+        JsonNode confidenceNode = json.get("confidence");
+        String confidence = StringUtils.upperCase(
+                confidenceNode == null ? "" : StringUtils.trimToEmpty(confidenceNode.asText()));
         if (requestedHighInterest == null || !("HIGH".equals(confidence)
                 || "MEDIUM".equals(confidence) || "LOW".equals(confidence))) {
             return Decision.invalid("高意向AI复核字段不完整，等待人工查看");
         }
-        boolean needsHumanReview = Boolean.TRUE.equals(json.getBoolean("needsHumanReview"))
-                || Boolean.TRUE.equals(requestedHighInterest);
-        String reason = limit(StringUtils.defaultIfBlank(json.getString("reason"), "AI未提供具体依据"), 120);
+        JsonNode needsHumanReviewNode = json.get("needsHumanReview");
+        boolean needsHumanReview = (needsHumanReviewNode != null && needsHumanReviewNode.isBoolean()
+                && needsHumanReviewNode.booleanValue()) || Boolean.TRUE.equals(requestedHighInterest);
+        JsonNode reasonNode = json.get("reason");
+        String reason = limit(StringUtils.defaultIfBlank(
+                reasonNode == null ? null : reasonNode.asText(), "AI未提供具体依据"), 120);
         // Medium/low confidence is intentionally visible only as a manual-review hint.
         return new Decision(true, Boolean.TRUE.equals(requestedHighInterest) && "HIGH".equals(confidence),
                 needsHumanReview, confidence, reason);
     }
 
-    private static JSONObject firstJsonObject(String value) {
+    private static JsonNode firstJsonObject(String value) {
         if (StringUtils.isBlank(value)) {
             return null;
         }
@@ -146,7 +161,8 @@ public class HighInterestAIReviewService {
                 depth++;
             } else if (current == '}' && --depth == 0) {
                 try {
-                    return JSON.parseObject(text.substring(start, i + 1));
+                    JsonNode root = SAFE_JSON.readTree(text.substring(start, i + 1));
+                    return root != null && root.isObject() ? root : null;
                 } catch (Exception ignored) {
                     return null;
                 }

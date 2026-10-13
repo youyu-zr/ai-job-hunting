@@ -3,6 +3,7 @@ package com.maple.ai.job.hunting.service.biz;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.maple.ai.job.hunting.config.BetaAccessConfig;
+import com.maple.ai.job.hunting.consts.RePatternConstant;
 import com.maple.ai.job.hunting.frame.exp.ApplicationException;
 import com.maple.ai.job.hunting.mapper.UserInfoMapper;
 import com.maple.ai.job.hunting.mapper.UserResumeMapper;
@@ -23,6 +24,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.lang.reflect.Proxy;
@@ -32,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 class UserServicePrivacyTest {
 
@@ -47,6 +50,17 @@ class UserServicePrivacyTest {
         assertFalse(warning.contains("13800138000"));
         assertFalse(warning.contains("candidate@example.com"));
         assertFalse(warning.contains("candidate private resume content"));
+    }
+
+    @Test
+    void hostileResumeContactTextIsBounded() {
+        String phoneCandidate = " ".repeat(50_000) + "x";
+        String emailCandidate = "邮箱 " + "mailaa".repeat(50_000);
+
+        assertTimeoutPreemptively(Duration.ofSeconds(1), () -> {
+            RePatternConstant.PHONE_PATTERN.matcher(phoneCandidate).find();
+            RePatternConstant.EMAIL_PATTERN.matcher(emailCandidate).find();
+        });
     }
 
     @Test

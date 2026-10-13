@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.maple.ai.job.hunting.common.HeaderContext;
 import com.maple.ai.job.hunting.consts.AIPromptStrConstant;
 import com.maple.ai.job.hunting.consts.CommunicationStylePrompt;
+import com.maple.ai.job.hunting.frame.exp.ApplicationException;
 import com.maple.ai.job.hunting.mapper.MsgSessionMapper;
 import com.maple.ai.job.hunting.mapper.UserInfoMapper;
 import com.maple.ai.job.hunting.mapper.UserResumeMapper;
@@ -40,6 +41,7 @@ public abstract class AbstractAIService implements AIService {
         LambdaQueryWrapper<UserResumeDO> condition = new LambdaQueryWrapper<>();
         condition.eq(UserResumeDO::getUserId, HeaderContext.getHeader().getUserId());
         UserResumeDO userResumeDO = userResumeMapper.selectOne(condition);
+        String resumeContent = requireResumeContent(userResumeDO);
         Map<String, String> promptMap = Arrays.stream(AIPromptStrConstant.AI_SEAT_SYSTEM_PROMPT.split(AIPromptStrConstant.SPLIT_SYMBOL))
                 .map(s -> AIPromptStrConstant.SPLIT_SYMBOL + s).collect(Collectors.toMap(s -> s.split("\n")[0], s -> s));
 
@@ -53,7 +55,14 @@ public abstract class AbstractAIService implements AIService {
         String seekingRequirements = buildSeekingRequirements(preferenceEntity);
 
         return joinAndWrap(systemPrompt, communicationStyle, seekingRequirements,
-                AIPromptStrConstant.RESUME_TITLE, userResumeDO.getResumeContent());
+                AIPromptStrConstant.RESUME_TITLE, resumeContent);
+    }
+
+    static String requireResumeContent(UserResumeDO userResumeDO) {
+        if (userResumeDO == null || StringUtils.isBlank(userResumeDO.getResumeContent())) {
+            throw new ApplicationException("请先导入简历");
+        }
+        return userResumeDO.getResumeContent();
     }
 
     private String buildSeekingRequirements(PreferenceEntity preference) {

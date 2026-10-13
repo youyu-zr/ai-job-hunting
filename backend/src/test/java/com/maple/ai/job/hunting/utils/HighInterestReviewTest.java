@@ -3,8 +3,11 @@ package com.maple.ai.job.hunting.utils;
 import com.alibaba.fastjson.JSONObject;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
+
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 class HighInterestReviewTest {
 
@@ -101,6 +104,14 @@ class HighInterestReviewTest {
 
         assertTrue(result.qualified());
         assertTrue(result.promisingJob());
+    }
+
+    @Test
+    void hostileRepeatedInterviewTextIsBounded() {
+        String hostile = "面试".repeat(50_000);
+
+        assertTimeoutPreemptively(Duration.ofSeconds(1),
+                () -> assertFalse(HighInterestReview.hasConcreteHrProgressSignal(hostile)));
     }
 
     private JSONObject completeJob(String position, String description) {

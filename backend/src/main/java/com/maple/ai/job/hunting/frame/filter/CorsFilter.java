@@ -29,6 +29,7 @@ public class CorsFilter implements Filter {
 
     private static final Set<String> DEFAULT_ALLOWED_ORIGINS = new LinkedHashSet<>(Arrays.asList(
             "https://aijob.zxpnb.top",
+            "https://www.zhipin.com",
             "http://localhost:5173",
             "http://localhost:4173",
             "http://127.0.0.1:5173",
@@ -57,7 +58,8 @@ public class CorsFilter implements Filter {
     @Override
     public void doFilter(ServletRequest request, ServletResponse res, FilterChain chain) throws IOException, ServletException {
         HttpServletResponse response = (HttpServletResponse) res;
-        String origin = ((HttpServletRequest) request).getHeader("Origin");
+        HttpServletRequest httpRequest = (HttpServletRequest) request;
+        String origin = httpRequest.getHeader("Origin");
 
         if (StringUtils.hasText(origin) && resolveAllowedOrigins().contains(origin)) {
             response.setHeader("Access-Control-Allow-Origin", origin);
@@ -69,6 +71,15 @@ public class CorsFilter implements Filter {
             response.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE, PUT");
             // 命中白名单时缓存整个响应，避免同一响应在不同 Origin 下被 CDN 混用
             response.setHeader("Vary", "Origin");
+
+            boolean preflight = "OPTIONS".equalsIgnoreCase(httpRequest.getMethod())
+                    && StringUtils.hasText(httpRequest.getHeader("Access-Control-Request-Method"));
+            if (preflight) {
+                response.setHeader("Vary",
+                        "Origin, Access-Control-Request-Method, Access-Control-Request-Headers");
+                response.setStatus(HttpServletResponse.SC_OK);
+                return;
+            }
         }
 
         chain.doFilter(request, response);

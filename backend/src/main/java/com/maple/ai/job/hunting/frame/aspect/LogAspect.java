@@ -5,6 +5,7 @@ import com.maple.ai.job.hunting.common.HeaderContext;
 import com.maple.ai.job.hunting.frame.GlobalExceptionHandler;
 import com.maple.ai.job.hunting.frame.exp.ApplicationException;
 import com.maple.ai.job.hunting.model.common.Response;
+import com.maple.ai.job.hunting.utils.LogValueSanitizer;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -57,7 +58,7 @@ public class LogAspect {
         long startTime = System.currentTimeMillis();
         MDC.put("requestId", HeaderContext.getHeader().getRequestId());
         try {
-            log.info("接口uri开始:{}", requestURI);
+            log.info("接口uri开始:{}", LogValueSanitizer.sanitize(requestURI, 200));
             returnObj = pjp.proceed(pjp.getArgs());
             handlerRespMsg(returnObj);
         } catch (Throwable throwable) {
@@ -75,10 +76,12 @@ public class LogAspect {
             long execTime = System.currentTimeMillis() - startTime;
 
             if (e == null) {
-                log.info("接口uri:{}#响应rt:{}ms", requestURI, execTime);
+                log.info("接口uri:{}#响应rt:{}ms",
+                        LogValueSanitizer.sanitize(requestURI, 200), execTime);
             } else {
                 log.error("错误请求uri:{}#异常类型:{}#响应rt:{}ms",
-                        requestURI, e.getClass().getSimpleName(), execTime);
+                        LogValueSanitizer.sanitize(requestURI, 200),
+                        e.getClass().getSimpleName(), execTime);
             }
             MDC.clear();
         }

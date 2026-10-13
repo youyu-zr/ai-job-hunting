@@ -4,13 +4,18 @@ import com.maple.ai.job.hunting.frame.filter.CorsFilter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Guards the CORS credential policy.
@@ -52,6 +57,50 @@ class CorsFilterOriginTest {
         assertEquals("https://aijob.zxpnb.top", response.getHeader(ALLOW_ORIGIN));
         assertEquals("true", response.getHeader(ALLOW_CREDENTIALS));
         assertEquals("Origin", response.getHeader("Vary"));
+    }
+
+    @Test
+    void bossOriginIsAllowedForTokenedLoginPreflight() throws Exception {
+        CorsFilter filter = new CorsFilter();
+        MockHttpServletRequest request = new MockHttpServletRequest("OPTIONS", "/api/user/silently/login");
+        request.addHeader("Origin", "https://www.zhipin.com");
+        request.addHeader("Access-Control-Request-Method", "POST");
+        request.addHeader("Access-Control-Request-Headers", "content-type,zp_token");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicBoolean chainCalled = new AtomicBoolean();
+
+        filter.doFilter(request, response, (ServletRequest req, ServletResponse res) -> {
+            chainCalled.set(true);
+        });
+
+        assertEquals(HttpServletResponse.SC_OK, response.getStatus());
+        assertEquals("https://www.zhipin.com", response.getHeader(ALLOW_ORIGIN));
+        assertEquals("true", response.getHeader(ALLOW_CREDENTIALS));
+        assertEquals("Content-Type, Authorization, Zp_token", response.getHeader("Access-Control-Allow-Headers"));
+        assertEquals("POST, GET, OPTIONS, DELETE, PUT", response.getHeader("Access-Control-Allow-Methods"));
+        assertEquals("Origin, Access-Control-Request-Method, Access-Control-Request-Headers",
+                response.getHeader("Vary"));
+        assertFalse(chainCalled.get());
+    }
+
+    @Test
+    void ordinaryOptionsRequestStillReachesTheApplication() throws Exception {
+        CorsFilter filter = new CorsFilter();
+        MockHttpServletRequest request = new MockHttpServletRequest("OPTIONS", "/api/user/silently/login");
+        request.addHeader("Origin", "https://www.zhipin.com");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicBoolean chainCalled = new AtomicBoolean();
+
+        filter.doFilter(request, response, (ServletRequest req, ServletResponse res) -> {
+            chainCalled.set(true);
+        });
+
+        assertTrue(chainCalled.get());
+    }
+
+    @Test
+    void bossOriginSpoofIsNotAllowed() throws Exception {
+        assertNull(run("https://www.zhipin.com.evil.example").getHeader(ALLOW_ORIGIN));
     }
 
     @Test

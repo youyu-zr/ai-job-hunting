@@ -80,10 +80,10 @@ if (!existsSync(distFile)) {
     if (!new RegExp(`@version\\s+${expectedVersion.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(dist)) {
         failures.push('dist/ai-job-hunting.user.js has an unexpected version');
     }
-    if (!dist.includes('首次使用不会自动上传简历')
+    if (!dist.includes('这不是简历未导入导致的')
         || dist.includes('开始自动注册')
         || dist.includes('handlerImport({ value: false })')) {
-        failures.push('dist/ai-job-hunting.user.js does not preserve the explicit resume-import flow');
+        failures.push('dist/ai-job-hunting.user.js does not preserve automatic account creation with explicit resume import');
     }
     if (existsSync(publicFile)) {
         const publicScript = readFileSync(publicFile, 'utf8');

@@ -21,7 +21,8 @@
                             内测有效至：{{ formatDate(betaAccess.periodOfValidityEndTime) }}
                         </el-text>
                         <el-text v-else-if="betaAccess.betaActivated" class="info-item" type="danger">内测权限：已过期</el-text>
-                        <el-text v-else class="info-item" type="info">内测权限：导入简历后自动开通</el-text>
+                        <el-text v-else-if="betaAccess.activationEnabled" class="info-item" type="info">内测权限：BOSS 登录后自动开通</el-text>
+                        <el-text v-else class="info-item" type="info">内测权限：当前未开放</el-text>
 
                         <el-form :inline="true" class="bind-form">
                             <el-form-item label="绑定邀请码">
@@ -92,6 +93,7 @@ const activeTrialsCount = ref(0);
 
 type BetaAccess = {
     permanent: boolean
+    activationEnabled: boolean
     accessActive: boolean
     betaActivated: boolean
     periodOfValidityEndTime?: string
@@ -99,6 +101,7 @@ type BetaAccess = {
 
 const betaAccess = ref<BetaAccess>({
     permanent: false,
+    activationEnabled: false,
     accessActive: false,
     betaActivated: false,
 });

@@ -17,7 +17,8 @@
                     <el-tag v-if="betaAccess.permanent" type="success">长期有效</el-tag>
                     <el-tag v-else-if="betaAccess.accessActive" type="success">当前可用</el-tag>
                     <el-tag v-else-if="betaAccess.betaActivated" type="danger">已过期</el-tag>
-                    <el-tag v-else type="info">待导入简历</el-tag>
+                    <el-tag v-else-if="betaAccess.activationEnabled" type="info">待自动开通</el-tag>
+                    <el-tag v-else type="info">当前未开放</el-tag>
                 </div>
                 <p v-if="betaAccess.permanent" class="beta-access-copy">当前账号为长期内测账号。</p>
                 <p v-else-if="betaAccess.accessActive && betaAccess.periodOfValidityEndTime" class="beta-access-copy">
@@ -25,10 +26,13 @@
                 </p>
                 <p v-else-if="betaAccess.accessActive" class="beta-access-copy">当前已有有效产品，可继续使用。</p>
                 <p v-else-if="betaAccess.betaActivated && betaAccess.activationEnabled" class="beta-access-copy">
-                    再次成功导入简历后，内测权限会自动延长到统一截止日期。
+                    登录时会按当前开放规则自动更新内测权限；导入简历不是续期条件。
                 </p>
                 <p v-else-if="betaAccess.betaActivated" class="beta-access-copy">内测权限已结束，请等待后续开放安排。</p>
-                <p v-else class="beta-access-copy">请先在 BOSS 上传并成功导入简历，导入成功后会自动开通内测权限。</p>
+                <p v-else-if="betaAccess.activationEnabled" class="beta-access-copy">
+                    BOSS 身份验证通过后，账号会自动创建并开通内测权限，无需导入简历；开始投递或开启 AI 坐席前，请先上传本人附件简历并点击“导入简历”。
+                </p>
+                <p v-else class="beta-access-copy">当前内测自动开通已结束，请等待后续开放安排。</p>
             </div>
 
         </template>

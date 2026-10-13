@@ -34,6 +34,7 @@ import com.maple.ai.job.hunting.model.bo.UserProductDO;
 import com.maple.ai.job.hunting.model.entity.GenerateOrderGroupConfigEntity;
 import com.maple.ai.job.hunting.model.param.GenerateOrderGroupParam;
 import com.maple.ai.job.hunting.model.vo.GenerateOrderVO;
+import com.maple.ai.job.hunting.utils.LogValueSanitizer;
 import com.maple.ai.job.hunting.utils.QrCodeUtil;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
@@ -149,7 +150,8 @@ public class ALiPayService {
         try {
             AlipayTradePrecreateResponse response = alipayClient.execute(request);
             if (!response.isSuccess()) {
-                log.error("调用支付宝生成订单qr码失败 msg:{} resp:{}", response.getMsg(), response);
+                log.error("调用支付宝生成订单qr码失败 msg:{}",
+                        LogValueSanitizer.sanitize(response.getMsg(), 200));
                 throw new ApplicationException("生成订单qr码失败 case: " + response.getMsg());
             }
 
@@ -175,7 +177,7 @@ public class ALiPayService {
             log.error("支付成功回调参数为空");
             return "fail";
         }
-        log.debug("支付成功回调参数 map:{}", params);
+        log.debug("支付成功回调已收到 fieldCount:{}", params.size());
 
         try {
             //执行验签，确保结果是支付宝回调的，而不是被恶意调用，一定要做这一步
@@ -192,18 +194,20 @@ public class ALiPayService {
 
             OrderDO orderDO = orderMapper.selectById(bizOrderId);
             if (orderDO == null) {
-                log.error("订单 {} 不存在", bizOrderId);
+                log.error("订单 {} 不存在", LogValueSanitizer.sanitize(bizOrderId, 80));
                 return "fail";
             }
             Long userId = orderDO.getUserId();
 
             String orderStatus = aliOrderResult.getString("trade_status");
             if ("TRADE_SUCCESS".equals(orderStatus) || "TRADE_FINISHED".equals(orderStatus)) {
-                log.info("订单[{}]支付成功", bizOrderId);
+                log.info("订单[{}]支付成功", LogValueSanitizer.sanitize(bizOrderId, 80));
                 handlerOrderPaySuccess(bizOrderId);
                 return userId + ":success";
             }
-            log.info("订单[{}]为暂未支付成功 msg:{}", bizOrderId, aliOrderResult.getString("msg"));
+            log.info("订单[{}]为暂未支付成功 msg:{}",
+                    LogValueSanitizer.sanitize(bizOrderId, 80),
+                    LogValueSanitizer.sanitize(aliOrderResult.getString("msg"), 200));
             return userId + ":fail";
 
         } catch (AlipayApiException e) {
@@ -284,7 +288,7 @@ public class ALiPayService {
         }
         String action = response.getAction();
         if (action != null) {
-            log.warn("取消订单action:{}", action);
+            log.warn("取消订单action:{}", LogValueSanitizer.sanitize(action, 100));
         }
 
     }
@@ -346,7 +350,8 @@ public class ALiPayService {
                 orderMapper.updateOrderStatus(orderDO.getId(), OrderStatusEnum.TIMEOUT_CLOSE);
                 log.info("取消历史订单 orderId:{}", orderDO.getId());
             } catch (Exception e) {
-                log.error("取消订单失败 orderId:{} case: {}", orderDO.getId(), e.getMessage());
+                log.error("取消订单失败 orderId:{} case: {}",
+                        orderDO.getId(), LogValueSanitizer.sanitize(e.getMessage(), 200));
             }
         });
     }

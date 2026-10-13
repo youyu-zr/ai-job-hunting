@@ -2,10 +2,19 @@ package com.maple.ai.job.hunting.utils;
 
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.regex.Pattern;
+
 /**
  * Deterministic gates for events that must not be answered or accepted by AI.
  */
 public final class ConversationGateUtil {
+
+    private static final Pattern MOBILE_NUMBER_PATTERN = Pattern.compile("1[3-9]\\d{9}");
+    private static final Pattern MONTH_DAY_PATTERN = Pattern.compile("\\d{1,2}月\\d{1,2}[日号]?");
+    private static final Pattern YEAR_MONTH_DAY_PATTERN =
+            Pattern.compile("\\d{4}[-/.年]\\d{1,2}[-/.月]\\d{1,2}(?:日|号)?");
+    private static final Pattern CLOCK_TIME_PATTERN = Pattern.compile("\\d{1,2}[:：]\\d{2}");
+    private static final Pattern CHINESE_TIME_PATTERN = Pattern.compile("\\d{1,2}点(?:\\d{1,2}分)?");
 
     private ConversationGateUtil() {
     }
@@ -29,7 +38,7 @@ public final class ConversationGateUtil {
                 || text.contains("</copy>")) {
             return true;
         }
-        if (text.matches(".*1[3-9]\\d{9}.*")) {
+        if (MOBILE_NUMBER_PATTERN.matcher(text).find()) {
             return true;
         }
 
@@ -39,8 +48,7 @@ public final class ConversationGateUtil {
                 || text.contains("电话号码")
                 || text.contains("微信号")
                 || text.contains("微信");
-        boolean hasContactValue = hasContactNoun
-                && text.matches(".*(联系方式|手机号|手机号码|电话号码|微信号|微信|电话)(?:[:：=]|是|为|[\\s_-])*[A-Za-z0-9_.-]{3,}.*");
+        boolean hasContactValue = hasContactNoun && hasContactValueAfterLabel(text);
         if (hasContactValue) {
             return true;
         }
@@ -101,6 +109,153 @@ public final class ConversationGateUtil {
                 || text.contains("把您联系方式发我");
     }
 
+    public static String humanHandoffCategory(String question) {
+        if (StringUtils.isBlank(question)
+                || isRefusalOrSystemMessage(question)
+                || isExplicitHrRejection(question)
+                || isConversationClosingMessage(question)) {
+            return "";
+        }
+        if (isContactExchangeQuestion(question)) {
+            return "CONTACT";
+        }
+        if (isLocationAcceptanceDecision(question)) {
+            return "LOCATION";
+        }
+        if (isInterviewDecision(question)) {
+            return "INTERVIEW";
+        }
+        String text = compact(question).toLowerCase();
+        if ((text.contains("合同") || text.contains("协议"))
+                && containsAny(text, "签", "接受", "同意", "确认", "承诺")) {
+            return "CONTRACT";
+        }
+        if ((text.contains("offer") || text.contains("录用") || text.contains("入职通知"))
+                && containsAny(text, "接受", "同意", "确认", "答复")) {
+            return "OFFER";
+        }
+        if (isCompensationDecision(text)) {
+            return "COMPENSATION";
+        }
+        if (isStartDateDecision(text)) {
+            return "START_DATE";
+        }
+        return "";
+    }
+
+    private static boolean isLocationAcceptanceDecision(String question) {
+        if (isLocationDecisionQuestion(question)) {
+            return true;
+        }
+        String text = compact(question);
+        boolean hasLocation = containsAny(text, "工作地点", "办公地点", "工作地址", "办公地址", "上班地点", "驻场地点");
+        boolean asksForAcceptance = containsAny(text, "是否接受", "能否接受", "可以接受吗", "能接受吗",
+                "你接受吗", "您接受吗", "你能接受", "您能接受", "愿意接受", "愿意去", "能去吗",
+                "可以到吗", "方便去吗", "通勤能接受吗");
+        return hasLocation && asksForAcceptance;
+    }
+
+    private static boolean isInterviewDecision(String question) {
+        String text = compact(question);
+        String[] clauses = text.split("[，,。；;！？!?]");
+        for (String clause : clauses) {
+            String segment = compact(clause);
+            boolean hasInterview = containsAny(segment, "面试", "面谈", "初试", "复试", "一面", "二面", "三面",
+                    "试岗", "视频面", "线上面", "线下面", "约面", "邀约");
+            if (!hasInterview) {
+                continue;
+            }
+            if (containsAny(segment, "面试已取消", "面试已结束", "面试超时未接受", "不安排面试")) {
+                continue;
+            }
+            boolean explicitArrangement = containsAny(segment, "面试邀请", "面试卡片", "面试时间", "面试安排",
+                    "面试地点", "接受邀约", "请点击接受", "请确认面试", "确认面试时间", "请参加面试",
+                    "邀请您参加", "邀请你参加", "约您面试", "约你面试", "安排您参加", "安排你参加",
+                    "方便参加面试", "是否参加面试", "能否参加面试", "愿意参加面试");
+            if (explicitArrangement) {
+                return true;
+            }
+            if (!containsAny(segment, "面试流程", "面试形式", "面试轮次")
+                    && hasConcreteDateOrTime(segment)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isCompensationDecision(String text) {
+        boolean hasCompensation = containsAny(text, "薪资", "工资", "薪酬", "月薪", "年薪", "底薪", "待遇");
+        if (!hasCompensation) {
+            return false;
+        }
+        return containsAny(text, "是否接受", "能否接受", "可否接受", "可以接受吗", "能接受吗",
+                "接受吗", "薪资请确认", "工资请确认", "确认薪资", "确认工资",
+                "回复确认薪资", "回复确认工资", "薪资合适吗", "工资合适吗");
+    }
+
+    private static boolean isStartDateDecision(String text) {
+        boolean hasStartTerm = containsAny(text, "到岗", "入职", "报到");
+        boolean asksForTiming = containsAny(text, "什么时候", "何时", "哪天", "几号", "最快", "最早", "最晚",
+                "时间", "日期", "确认", "可以", "能否", "方便") || hasConcreteDateOrTime(text);
+        return hasStartTerm && asksForTiming;
+    }
+
+    public static boolean hasConcreteDateOrTime(String text) {
+        return containsAny(text, "今天", "明天", "后天", "周一", "周二", "周三", "周四", "周五", "周六", "周日",
+                "星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日", "上午", "下午", "晚上")
+                || MONTH_DAY_PATTERN.matcher(text).find()
+                || YEAR_MONTH_DAY_PATTERN.matcher(text).find()
+                || CLOCK_TIME_PATTERN.matcher(text).find()
+                || CHINESE_TIME_PATTERN.matcher(text).find();
+    }
+
+    private static boolean hasContactValueAfterLabel(String text) {
+        String[] labels = {"联系方式", "手机号", "手机号码", "电话号码", "微信号", "微信", "电话"};
+        for (String label : labels) {
+            int labelAt = text.indexOf(label);
+            while (labelAt >= 0) {
+                int index = labelAt + label.length();
+                int separatorCount = 0;
+                while (index < text.length() && separatorCount < 16 && isContactSeparator(text.charAt(index))) {
+                    index++;
+                    separatorCount++;
+                }
+                int valueStart = index;
+                while (index < text.length() && isContactValueCharacter(text.charAt(index))) {
+                    index++;
+                }
+                if (index - valueStart >= 3) {
+                    return true;
+                }
+                labelAt = text.indexOf(label, labelAt + 1);
+            }
+        }
+        return false;
+    }
+
+    private static boolean isContactSeparator(char ch) {
+        return ch == ':' || ch == '：' || ch == '=' || ch == '_' || ch == '-' || ch == '是' || ch == '为'
+                || Character.isWhitespace(ch);
+    }
+
+    private static boolean isContactValueCharacter(char ch) {
+        return ch >= 'A' && ch <= 'Z'
+                || ch >= 'a' && ch <= 'z'
+                || ch >= '0' && ch <= '9'
+                || ch == '_'
+                || ch == '.'
+                || ch == '-';
+    }
+
+    private static boolean containsAny(String text, String... terms) {
+        for (String term : terms) {
+            if (text.contains(term)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static boolean isRefusalOrSystemMessage(String question) {
         if (StringUtils.isBlank(question)) {
             return true;
@@ -139,7 +294,8 @@ public final class ConversationGateUtil {
         }
         String text = compact(question);
         if (text.contains("简历")
-                && text.matches(".*(平台|BOSS|系统).*(投递|提交|上传).*")) {
+                && containsAny(text, "平台", "BOSS", "系统")
+                && containsAny(text, "投递", "提交", "上传")) {
             return false;
         }
         if (text.contains("对话结束") || text.contains("会话结束") || text.contains("本轮结束")) {
@@ -264,9 +420,11 @@ public final class ConversationGateUtil {
             return false;
         }
         String text = compact(question);
-        boolean hasInterview = text.matches(".*(面试|面谈|初试|复试|试岗|视频面|线上面|线下面|约面).*");
-        boolean hasConcreteTime = text.matches(".*(今天|明天|后天|周一|周二|周三|周四|周五|周六|周日|\\d{1,2}月\\d{1,2}日|\\d{1,2}点|上午|下午|晚上).*");
-        boolean hasArrangement = text.matches(".*(面试邀请|面试卡片|请点击接受|已经为您安排|面试地址|到公司参加).*");
+        boolean hasInterview = containsAny(text, "面试", "面谈", "初试", "复试", "试岗",
+                "视频面", "线上面", "线下面", "约面");
+        boolean hasConcreteTime = hasConcreteDateOrTime(text);
+        boolean hasArrangement = containsAny(text, "面试邀请", "面试卡片", "请点击接受",
+                "已经为您安排", "面试地址", "到公司参加");
         return hasInterview && (hasConcreteTime || hasArrangement);
     }
 

@@ -1,12 +1,20 @@
 package com.maple.ai.job.hunting.service.biz;
 
 import com.alibaba.fastjson.JSONObject;
+import com.maple.ai.job.hunting.frame.exp.ApplicationException;
+import com.maple.ai.job.hunting.mapper.UserInfoMapper;
+import com.maple.ai.job.hunting.mapper.UserResumeMapper;
+import com.maple.ai.job.hunting.model.bo.UserResumeDO;
 import com.maple.ai.job.hunting.model.entity.PreferenceEntity;
+import com.maple.ai.job.hunting.service.ai.AIServiceFacade;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class AIAssistantServiceGroundingTest {
 
@@ -23,6 +31,21 @@ class AIAssistantServiceGroundingTest {
     @Test
     void emptyGreetingIsNotReplacedWithGenericText() {
         assertEquals("", AIAssistantService.sanitizeGreeting("", RESUME));
+    }
+
+    @Test
+    void blankImportedResumeStopsGreetingGenerationBeforeCallingAi() {
+        RecordingAIServiceFacade aiServiceFacade = new RecordingAIServiceFacade();
+        UserResumeMapper userResumeMapper = mock(UserResumeMapper.class);
+        UserInfoMapper userInfoMapper = mock(UserInfoMapper.class);
+        when(userResumeMapper.selectByUserId(42L))
+                .thenReturn(new UserResumeDO(42L, "  ", null, "resume-1"));
+        AIAssistantService service = new AIAssistantService(aiServiceFacade, userResumeMapper, userInfoMapper);
+
+        ApplicationException error = assertThrows(ApplicationException.class, () -> service.generateGreeting(42L));
+
+        assertEquals("请先导入简历", error.getMessage());
+        assertFalse(aiServiceFacade.called);
     }
 
     @Test
@@ -193,5 +216,15 @@ class AIAssistantServiceGroundingTest {
             index += fragment.length();
         }
         return count;
+    }
+
+    private static final class RecordingAIServiceFacade extends AIServiceFacade {
+        private boolean called;
+
+        @Override
+        public String askAndAnswer(String ask) {
+            called = true;
+            return "您好";
+        }
     }
 }

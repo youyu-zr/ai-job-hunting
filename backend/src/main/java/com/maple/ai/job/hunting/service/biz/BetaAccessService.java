@@ -88,7 +88,7 @@ public class BetaAccessService {
                             throw new IllegalStateException("内测权限写入失败");
                         }
                     } catch (DuplicateKeyException duplicateKeyException) {
-                        UserProductDO existingBeta = findBetaProduct(userId);
+                        UserProductDO existingBeta = findBetaProductCurrentRead(userId);
                         if (existingBeta == null) {
                             throw duplicateKeyException;
                         }
@@ -152,6 +152,14 @@ public class BetaAccessService {
 
     private UserProductDO findBetaProduct(Long userId) {
         return findLatestBetaProduct(selectBetaProducts(userId, false));
+    }
+
+    private UserProductDO findBetaProductCurrentRead(Long userId) {
+        LambdaQueryWrapper<UserProductDO> condition = new LambdaQueryWrapper<>();
+        condition.eq(UserProductDO::getUserId, userId);
+        condition.eq(UserProductDO::getProductId, ProductEnum.BETA.getCode().longValue());
+        condition.last("FOR UPDATE");
+        return findLatestBetaProduct(userProductMapper.selectList(condition));
     }
 
     private UserProductDO findAutoGrantProduct(Long userId) {

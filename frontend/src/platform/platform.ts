@@ -66,7 +66,7 @@ export abstract class AbsPlatform implements Platform {
 
     protected pushStatus: PushStatus = PushStatus.NOT_START
     protected _pushMock: boolean = false;
-    private _selfDefPushCountLimit = -1
+    private _selfDefPushCountLimit = 5
     protected locationMismatchCount = 0;
     protected locationGuardConfigKey = '';
 

@@ -1,11 +1,12 @@
 import axiosOriginal from "axios";
-import {GM_getValue} from "$";
 import axios from "../axios";
 import logger from "../logging";
 import {Tools} from "./utils";
 import {AiFilterDecision, aiFilterAction, compactAiFilterReason, shouldBlockConversationPreflight} from "./filterGate";
 import {readFriendSource} from "./friendSource";
 import {ConversationPauseRegistry} from "./pauseRegistry";
+import {userSnapshotStorageKey} from "../stores/userSnapshotKey";
+import {ServerStore} from "../stores/server";
 
 type JobDetailCacheEntry = {
     time: number;
@@ -362,10 +363,12 @@ export class AiPower {
     }
 
     private static filterProfileScope(): string {
-        const accountKey = String(GM_getValue("ck_cur", "") || "").trim() || "anonymous";
+        const accountKey = String(Tools.window?._PAGE?.uid || "").trim() || "anonymous";
+        const serverUrl = ServerStore().baseUrl;
         let profile: any = {};
         try {
-            profile = JSON.parse(localStorage.getItem("ai-job-user") || "{}");
+            const snapshotKey = userSnapshotStorageKey(accountKey, serverUrl);
+            profile = snapshotKey ? JSON.parse(localStorage.getItem(snapshotKey) || "{}") : {};
         } catch {
             profile = {};
         }
@@ -376,7 +379,7 @@ export class AiPower {
             resumeId: profile?.resumeId || "",
             preference: profile?.preference || {},
         });
-        return `${accountKey}:${this.shortHash(profileVersion)}`;
+        return `${serverUrl}:${accountKey}:${this.shortHash(profileVersion)}`;
     }
 
     private static shortHash(value: string): string {

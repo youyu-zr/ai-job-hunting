@@ -5,6 +5,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -74,11 +75,14 @@ public final class HighInterestReview {
         if (StringUtils.isBlank(hrMessage)) {
             return false;
         }
-        String text = hrMessage.replaceAll("\\s+", "");
+        String text = compactWhitespace(hrMessage);
         if (StringUtils.isBlank(text)) {
             return false;
         }
-        return text.matches(".*(面试|面谈|面聊|复试|初试|终试|笔试|试岗|视频面|电话面|线上面|线下面|约面|约时间|哪天方便|几点方便|方便电话|电话沟通|加微信|微信沟通|联系方式|手机号|手机号码|薪资|工资|到岗|入职|试用|转正|合适的话|可以安排|安排一下).*");
+        return containsAny(text, "面试", "面谈", "面聊", "复试", "初试", "终试", "笔试", "试岗",
+                "视频面", "电话面", "线上面", "线下面", "约面", "约时间", "哪天方便", "几点方便",
+                "方便电话", "电话沟通", "加微信", "微信沟通", "联系方式", "手机号", "手机号码",
+                "薪资", "工资", "到岗", "入职", "试用", "转正", "合适的话", "可以安排", "安排一下");
     }
 
     /**
@@ -90,12 +94,33 @@ public final class HighInterestReview {
         if (StringUtils.isBlank(hrMessage)) {
             return false;
         }
-        String text = hrMessage.replaceAll("\\s+", "");
-        boolean hasInterview = text.matches(".*(面试|面谈|初试|复试|试岗|视频面|线上面|线下面|约面).*");
-        boolean hasConcreteTime = text.matches(".*(今天|明天|后天|周一|周二|周三|周四|周五|周六|周日|\\d{1,2}月\\d{1,2}日|\\d{1,2}点|上午|下午|晚上).*");
-        boolean hasArrangement = text.matches(".*(面试邀请|面试卡片|请点击接受|已经为您安排|面试地址|到公司参加).*");
+        String text = compactWhitespace(hrMessage);
+        boolean hasInterview = containsAny(text, "面试", "面谈", "初试", "复试", "试岗", "视频面", "线上面", "线下面", "约面");
+        boolean hasConcreteTime = containsAny(text, "今天", "明天", "后天", "周一", "周二", "周三", "周四", "周五", "周六", "周日",
+                "上午", "下午", "晚上") || ConversationGateUtil.hasConcreteDateOrTime(text);
+        boolean hasArrangement = containsAny(text, "面试邀请", "面试卡片", "请点击接受", "已经为您安排", "面试地址", "到公司参加");
         boolean hasContactArrangement = ConversationGateUtil.isContactExchangeQuestion(hrMessage);
         return (hasInterview && (hasConcreteTime || hasArrangement)) || hasContactArrangement;
+    }
+
+    private static String compactWhitespace(String text) {
+        StringBuilder compact = new StringBuilder(text.length());
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if (!Character.isWhitespace(ch)) {
+                compact.append(ch);
+            }
+        }
+        return compact.toString();
+    }
+
+    private static boolean containsAny(String text, String... terms) {
+        for (String term : terms) {
+            if (text.contains(term)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static String buildContext(JSONObject jobInfo) {

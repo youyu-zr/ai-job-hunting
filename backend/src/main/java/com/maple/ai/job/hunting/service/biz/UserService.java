@@ -25,12 +25,14 @@ import com.maple.ai.job.hunting.model.entity.PreferenceEntity;
 import com.maple.ai.job.hunting.model.vo.UserInfoVO;
 import com.maple.ai.job.hunting.service.ai.AIServiceFacade;
 import com.maple.ai.job.hunting.utils.FileTypeDetector;
+import com.maple.ai.job.hunting.utils.LogValueSanitizer;
 import com.maple.ai.job.hunting.utils.PreferenceDefaults;
 import com.maple.ai.job.hunting.utils.ResumeTextExtractor;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StopWatch;
@@ -94,7 +96,8 @@ public class UserService {
             60L, TimeUnit.MINUTES, new java.util.concurrent.LinkedBlockingQueue<>(500));
 
     public UserInfoVO importResume(InputStream resumeFileStream, String uniqueId, String resumeId, String bossToken) throws Exception {
-        bossIdentityVerifier.requireOwnership(uniqueId, bossToken);
+        String normalizedUniqueId = StringUtils.trimToEmpty(uniqueId);
+        bossIdentityVerifier.requireOwnership(normalizedUniqueId, bossToken);
         byte[] bytes = resumeFileStream.readAllBytes();
         InputStream inputStream1 = new ByteArrayInputStream(bytes);
         InputStream inputStream2 = new ByteArrayInputStream(bytes);
@@ -122,10 +125,10 @@ public class UserService {
 
         // 3. 保存用户信息
         watch.start("保存用户信息");
-        String ossFileName = "简历-" + uniqueId + "-" + DateUtil.formatDate(new Date()) + "." + FileTypeDetector.detectFileType(bytes);
+        String ossFileName = "简历-" + normalizedUniqueId + "-" + DateUtil.formatDate(new Date()) + "." + FileTypeDetector.detectFileType(bytes);
         String resumeSummary = summarize;
         transactionTemplate.execute(status -> {
-            Long userId = saveUserInfo(uniqueId, resumeId, result, resumeSummary, ossFileName);
+            Long userId = saveUserInfo(normalizedUniqueId, resumeId, result, resumeSummary, ossFileName);
             betaAccessService.ensureAutoGrant(userId);
             return userId;
         });
@@ -164,10 +167,35 @@ public class UserService {
     }
 
     public String loginSilently(String uniqueId, String bossToken) {
-        bossIdentityVerifier.requireOwnership(uniqueId, bossToken);
-        UserInfoDO userInfoDO = userInfoMapper.selectByUniqueId(uniqueId);
+        String normalizedUniqueId = StringUtils.trimToEmpty(uniqueId);
+        bossIdentityVerifier.requireOwnership(normalizedUniqueId, bossToken);
+        UserInfoDO userInfoDO;
+        try {
+            userInfoDO = transactionTemplate.execute(status -> {
+                UserInfoDO account = userInfoMapper.selectByUniqueId(normalizedUniqueId);
+                if (account == null) {
+                    account = new UserInfoDO(null, null, normalizedUniqueId);
+                    if (userInfoMapper.insert(account) <= 0) {
+                        throw new ApplicationException("账号创建失败，请重试");
+                    }
+                }
+                betaAccessService.ensureAutoGrant(account.getId());
+                return account;
+            });
+        } catch (DuplicateKeyException duplicateKeyException) {
+            // A concurrent first login may win the unique UID insert while this transaction waits.
+            // Re-read after rollback, then continue using the winning account.
+            UserInfoDO concurrentAccount = userInfoMapper.selectByUniqueId(normalizedUniqueId);
+            if (concurrentAccount == null) {
+                throw duplicateKeyException;
+            }
+            userInfoDO = transactionTemplate.execute(status -> {
+                betaAccessService.ensureAutoGrant(concurrentAccount.getId());
+                return concurrentAccount;
+            });
+        }
         if (userInfoDO == null) {
-            throw new ApplicationException(BizCodeEnum.USER_NOT_EXIST);
+            throw new ApplicationException("账号初始化失败，请重试");
         }
 
         byte[] tokenBytes = new byte[32];
@@ -222,6 +250,10 @@ public class UserService {
 
         // 如果尝试开启AI坐席，则判断是否有在有效期内的AI坐席产品
         if (Objects.equals(userInfoVO.getAiSeatStatus(), AiSeatStatusEnum.OPEN.getBool())) {
+            UserResumeDO userResumeDO = userResumeMapper.selectByUserId(userId);
+            if (userResumeDO == null || StringUtils.isBlank(userResumeDO.getResumeContent())) {
+                throw new ApplicationException("请先导入简历");
+            }
             if (betaAccessService.requiresActivation(userId)) {
                 throw new ApplicationException("请先获得内测权限后开启AI坐席", BizCodeEnum.PRODUCT_NOT_AUTHORIZED.getCode());
             }
@@ -263,7 +295,8 @@ public class UserService {
             PreferenceEntity preferenceEntity = JSONUtil.toBean(preferenceJson, PreferenceEntity.class);
             return PreferenceDefaults.applyDefaults(preferenceEntity);
         } catch (Exception e) {
-            log.warn("偏好解析失败，回退到默认风险包: {}", e.getMessage());
+            log.warn("偏好解析失败，回退到默认风险包: {}",
+                    LogValueSanitizer.sanitize(e.getMessage(), 200));
             return PreferenceDefaults.applyDefaults(new PreferenceEntity());
         }
     }

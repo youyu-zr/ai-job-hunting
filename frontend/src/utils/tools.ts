@@ -1,73 +1,138 @@
 import {Tools} from "../platform/utils";
-import logger from "../logging";
-import {LoginStore} from "../stores";
+import {LoginStore, UserStore} from "../stores";
 import axios from '../axios'
 import {ElMessage as originalElMessage} from "element-plus";
 import {LogRecorder} from "../logging/record";
 import {GM_xmlhttpRequest} from "$";
+import {classifySilentLoginResponse, SilentLoginOutcome} from "./silentLoginState";
+import {
+    clearScopedAuthorization,
+    scopedAuthorization,
+    storeScopedAuthorization,
+    userSessionScope
+} from "./sessionContext";
+import {ServerStore} from "../stores/server";
+import {BossIdentity, waitForBossIdentity} from "./bossIdentity";
 
 const logRecorder = new LogRecorder();
-let loginIng = false;
+const silentLoginRequests = new Map<string, Map<string, Promise<SilentLoginOutcome>>>();
 
+export async function silentlyLogin(
+    bossUserId = "",
+    bossToken?: string
+): Promise<SilentLoginOutcome> {
+    const identity: BossIdentity = bossToken
+        ? {
+            accountId: String(bossUserId || "").trim(),
+            token: bossToken
+        }
+        : await waitForBossIdentity(() => Tools.window?._PAGE, bossUserId);
+    const requestedAccountId = identity.accountId;
+    const requestedServerUrl = ServerStore().baseUrl;
+    const scope = userSessionScope(requestedAccountId, requestedServerUrl);
+    if (!scope) {
+        throw new Error("登录上下文无效");
+    }
 
-export const silentlyLogin = async (bossUserId: string) => {
-    let loginCount = 0
-    while (loginIng && loginCount < 6) {
-        logger.info("login... ", loginCount)
-        await Tools.sleep(500)
-        loginCount++
+    let scopedRequests = silentLoginRequests.get(scope);
+    const existingRequest = scopedRequests?.get(identity.token);
+    if (existingRequest) {
+        return existingRequest;
     }
-    if (loginIng) {
-        throw new Error("登录请求仍在处理中")
+
+    if (!scopedRequests) {
+        scopedRequests = new Map();
+        silentLoginRequests.set(scope, scopedRequests);
     }
-    loginIng = true;
+    let trackedRequest!: Promise<SilentLoginOutcome>;
+    trackedRequest = performSilentLogin(identity, requestedServerUrl, scope)
+        .finally(() => {
+            const requests = silentLoginRequests.get(scope);
+            if (requests?.get(identity.token) === trackedRequest) {
+                requests.delete(identity.token);
+                if (requests.size === 0) {
+                    silentLoginRequests.delete(scope);
+                }
+            }
+        });
+    scopedRequests.set(identity.token, trackedRequest);
+    return trackedRequest;
+}
+
+async function performSilentLogin(
+    identity: BossIdentity,
+    requestedServerUrl: string,
+    sessionScope: string
+): Promise<SilentLoginOutcome> {
+    const {accountId: requestedAccountId, token} = identity;
     const loginStore = LoginStore();
-    try {
-        let token = Tools.window?._PAGE?.token;
-        let count = 0;
-        while (!token && count < 3) {
-            await Tools.sleep(300);
-            token = Tools.window?._PAGE?.token;
-        }
+    const contextIsCurrent = () => {
+        const page = Tools.window?._PAGE;
+        const pageAccountId = String(page?.uid ?? "").trim();
+        const pageToken = String(page?.token ?? "").trim();
+        return ServerStore().baseUrl === requestedServerUrl
+            && pageAccountId === requestedAccountId
+            && pageToken === token;
+    };
 
-        if (!token) {
-            throw new Error("未登录 BOSS，静默登录失败");
+    try {
+        if (!contextIsCurrent()) {
+            throw new Error("BOSS账号或服务器已切换，请重试");
         }
-        if (!bossUserId) {
-            bossUserId = Tools.window?._PAGE?.uid;
+        if (loginStore.login
+            && loginStore.accountScope === sessionScope
+            && scopedAuthorization(sessionScope)) {
+            return "authenticated";
         }
-        if (loginStore.login) {
-            return;
+        if (loginStore.accountScope !== sessionScope) {
+            loginStore.reset();
+            UserStore().switchAccount(requestedAccountId, requestedServerUrl);
         }
 
         const resp = await axios.post(
-            "/api/user/silently/login?uniqueId=" + bossUserId,
+            "/api/user/silently/login?uniqueId=" + encodeURIComponent(requestedAccountId),
             null,
             {headers: {"Zp_token": token}}
         );
-        if (resp.data.code === 2000) {
-            loginStore.loginFail();
-            logRecorder.info("首次使用等待用户主动导入简历");
+        if (!contextIsCurrent()) {
+            throw new Error("BOSS账号或服务器已切换，请重试");
+        }
+        const outcome = classifySilentLoginResponse(resp);
+        if (outcome === "legacy-registration-required") {
+            const previousAuthorization = scopedAuthorization(sessionScope);
+            clearScopedAuthorization(sessionScope, token);
+            if (!previousAuthorization || previousAuthorization === token) {
+                loginStore.loginFailForScope(sessionScope);
+                if (!loginStore.accountScope) {
+                    loginStore.loginFail();
+                }
+            }
+            logRecorder.warn("服务端尚未支持首次登录自动建档");
             originalElMessage.info({
-                message: "首次使用不会自动上传简历。需要开通内测时，请点击“导入简历”；成功保存后自动开通，无需激活码。",
-                duration: 7000,
+                message: "当前服务端版本尚未支持首次登录自动创建账号，这不是简历未导入导致的。请更新服务端后重试，暂勿为解决登录问题上传简历。",
+                duration: 9000,
                 showClose: true
             });
-            return;
-        }
-        if (resp.data.code !== 200 || !resp.data.data) {
-            throw new Error("静默登录返回无效状态");
+            return outcome;
         }
 
-        localStorage.setItem('Authorization', resp.data.data);
-        loginStore.loginSuccess()
+        storeScopedAuthorization(resp.data.data, sessionScope);
+        loginStore.loginSuccess(requestedAccountId, sessionScope)
         logRecorder.info("静默登录成功")
+        return outcome;
     } catch (e: any) {
-        logRecorder.error("静默登录失败", e?.name || "unknown")
-        loginStore.loginFail()
+        const details = [
+            typeof e?.code === "string" ? e.code : "",
+            Number.isInteger(e?.response?.status) ? `HTTP ${e.response.status}` : "",
+            typeof e?.message === "string" ? e.message : "",
+        ].filter(Boolean).join(" ") || (typeof e?.name === "string" ? e.name : "unknown");
+        logRecorder.error("静默登录失败", details)
+        const authorizationWasCurrent = scopedAuthorization(sessionScope) === token;
+        clearScopedAuthorization(sessionScope, token);
+        if (contextIsCurrent() && authorizationWasCurrent) {
+            loginStore.loginFailForScope(sessionScope);
+        }
         throw e;
-    } finally {
-        loginIng = false;
     }
 }
 
@@ -139,4 +204,3 @@ export const loginInterceptor = (): boolean => {
 
     return true;
 }
-

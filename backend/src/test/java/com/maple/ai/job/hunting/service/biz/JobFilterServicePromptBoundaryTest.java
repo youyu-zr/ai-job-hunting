@@ -9,6 +9,7 @@ import com.maple.ai.job.hunting.service.ai.AIServiceFacade;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -16,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 class JobFilterServicePromptBoundaryTest {
 
@@ -87,6 +89,31 @@ class JobFilterServicePromptBoundaryTest {
         assertTrue("HUMAN_REVIEW".equals(result.getRecommendedAction()));
         assertTrue("MEDIUM".equals(result.getRiskLevel()));
         assertTrue(result.getReason().contains("字段不完整"));
+    }
+
+    @Test
+    void malformedLargeAiResponseDoesNotTriggerRepeatedBraceScanning() {
+        JobFilterService service = new JobFilterService();
+        ReflectionTestUtils.setField(service, "aiServiceFacade", new RepeatedOpeningBraceAiServiceFacade());
+
+        assertTimeoutPreemptively(Duration.ofSeconds(1), () -> {
+            AiFilterResultVO result = service.filter(new AIFilterParam("岗位筛选", "{}", "{}"));
+            assertEquals("HUMAN_REVIEW", result.getRecommendedAction());
+        });
+    }
+
+    @Test
+    void structuredJobNamesCannotInjectNewLogLines() {
+        JobFilterService service = new JobFilterService();
+        RecordingAiServiceFacade ai = new RecordingAiServiceFacade();
+        ReflectionTestUtils.setField(service, "aiServiceFacade", ai);
+
+        AiFilterResultVO result = service.filter(new AIFilterParam(
+                "岗位筛选",
+                "{\"jobName\":\"后端工程师\\nFAKE_LOG=true\",\"brandName\":\"示例公司\\r\\nFORGED\"}",
+                "{}"));
+
+        assertEquals("DELIVER", result.getRecommendedAction());
     }
 
     @Test
@@ -249,6 +276,13 @@ class JobFilterServicePromptBoundaryTest {
         @Override
         public String askAndAnswer(String ask) {
             return "{\"reason\":\"岗位描述看起来可以尝试\",\"jobScore\":4}";
+        }
+    }
+
+    private static final class RepeatedOpeningBraceAiServiceFacade extends AIServiceFacade {
+        @Override
+        public String askAndAnswer(String ask) {
+            return "{".repeat(50_000);
         }
     }
 

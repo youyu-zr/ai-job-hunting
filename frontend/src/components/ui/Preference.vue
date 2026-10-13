@@ -291,11 +291,14 @@
             </el-text>
 
             <el-form-item>
-                <el-checkbox style="padding-top: 6px" v-model="userStore.user.preference.hiaE" label="" size="large">关键事项暂停AI坐席</el-checkbox>
-                <el-tooltip effect="dark" placement="top" content="由岗位信息、完整对话和HR推进内容综合判断。涉及面试安排、薪资、地点、电话、微信、到岗或合同等个人决定时，暂停并提醒你；不会因为固定关键词或聊天轮数单独暂停。">
+                <el-checkbox style="padding-top: 6px" v-model="userStore.user.preference.hiaE" label="" size="large">高意向时暂停AI坐席</el-checkbox>
+                <el-tooltip effect="dark" placement="top" content="开启后，AI完成普通回复后会复核岗位匹配和HR的明确推进；高置信度高意向或复核不可用时，暂停当前岗位会话。联系方式交换、明确面试安排、地点接受、薪资/到岗承诺等独立硬规则不受此开关影响；明显收费、拉人头等岗位风险由岗位风险规则处理。">
                     <el-text type="primary" style="cursor: help;">查看规则</el-text>
                 </el-tooltip>
             </el-form-item>
+            <el-text type="info" size="small" class="section-hint">
+                联系方式交换、明确面试安排、地点接受及薪资、到岗、录用或合同承诺，会独立暂停当前岗位会话；普通岗位交流和薪资/地点信息介绍不会仅因提到这些词而暂停。
+            </el-text>
 
             <el-form-item>
                 <el-button type="primary" @click="submitForm(ruleFormRef)">保存偏好设置</el-button>
@@ -319,11 +322,23 @@ import {AbsPlatform} from "../../platform/platform";
 import {ServerStore} from "../../stores/server";
 import {TampermonkeyApi} from "../../platform/utils";
 import {applyPersonalPreferenceDefaults} from "../../stores/preferenceDefaults";
+import {userSnapshotStorageKey} from "../../stores/userSnapshotKey";
 
 const axios = inject('$axios') as AxiosInstance
 const platform = inject('$platform') as AbsPlatform;
 const userStore = UserStore();
 const serverStore = ServerStore();
+
+function persistLocalUserConfig(): void {
+    const bossAccountId = String(Tools.window?._PAGE?.uid ?? '').trim();
+    const mirrorKey = serverStore.getMirrorKey('user_config', bossAccountId);
+    const snapshotKey = userSnapshotStorageKey(bossAccountId, serverStore.baseUrl);
+    if (!mirrorKey || !snapshotKey) {
+        return;
+    }
+    TampermonkeyApi.GmSetValue(mirrorKey, userStore.user);
+    localStorage.setItem(snapshotKey, JSON.stringify(userStore.user));
+}
 
 interface RuleForm {
     phone: string,
@@ -401,17 +416,11 @@ const submitForm = async (formEl: FormInstance | undefined) => {
         return;
     }
 
-    // 无论是否在线，都先更新本地镜像；镜像按服务器地址 + 当前 BOSS 账号隔离。
-    const bossAccountId = Tools.window?._PAGE?.uid
-    if (bossAccountId) {
-        const mirrorKey = serverStore.getMirrorKey('user_config', bossAccountId)
-        TampermonkeyApi.GmSetValue(mirrorKey, userStore.user)
-    }
-
     const phone = String(userStore.user.phone || '').trim();
     const email = String(userStore.user.email || '').trim();
     userStore.user.phone = phone;
     userStore.user.email = email;
+    persistLocalUserConfig();
     await axios.post("/api/user/save/preference", {
         phone,
         email,
@@ -440,6 +449,7 @@ const resetForm = async (formEl: FormInstance | undefined) => {
     userStore.user.email = "";
     userStore.user.preference = {} as PreferenceConfig;
     preferenceDefaultValueHandler();
+    persistLocalUserConfig();
     formEl.clearValidate();
     try {
         await axios.post("/api/user/save/preference", {

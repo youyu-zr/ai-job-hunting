@@ -4,6 +4,7 @@ package com.maple.ai.job.hunting.frame;
 import com.maple.ai.job.hunting.common.HeaderContext;
 import com.maple.ai.job.hunting.frame.exp.ApplicationException;
 import com.maple.ai.job.hunting.model.common.Response;
+import com.maple.ai.job.hunting.utils.LogValueSanitizer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -62,7 +63,8 @@ public class GlobalExceptionHandler {
     @ResponseBody
     public Response<?> handlerOtherException(Exception e) {
         log.error("错误请求uri:{}-全局异常类型:{}",
-                HeaderContext.getHeader().getRequestUri(), e.getClass().getSimpleName());
+                LogValueSanitizer.sanitize(HeaderContext.getHeader().getRequestUri(), 200),
+                e.getClass().getSimpleName());
         return Response.error("服务端错误,请稍后重试");
     }
 
@@ -73,7 +75,8 @@ public class GlobalExceptionHandler {
      * @return Response
      */
     public Response<?> handlerOtherException(Exception e, String uri) {
-        log.error("错误请求uri:{}-全局异常类型:{}", uri, e.getClass().getSimpleName());
+        log.error("错误请求uri:{}-全局异常类型:{}",
+                LogValueSanitizer.sanitize(uri, 200), e.getClass().getSimpleName());
         return Response.error("服务端错误,请稍后重试");
     }
 }

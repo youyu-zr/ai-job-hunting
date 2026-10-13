@@ -1,11 +1,12 @@
 {
   "name": "ai-job-hunting",
   "private": true,
-  "version": "0.0.114-beta-consent",
+  "version": "0.0.116-beta-identity-ready",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "verify:prelaunch": "node scripts/prelaunch-behavior.smoke.mjs && node scripts/settings-clarity.smoke.mjs",
     "verify:public": "node scripts/verify-public-userscript.mjs",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview"

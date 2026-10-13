@@ -62,7 +62,7 @@ WHERE Key_name = 'uk_beta_auto_grant_user';
 
 ## BOSS 用户标识唯一性
 
-简历导入按 `user_info.unique_id` 查找用户。并发首次导入时，如果数据库允许同一 BOSS UID 出现多行，后续 `selectOne` 会失败，因此新建数据库结构增加了 `uk_user_info_unique_id`。已有数据库需要先确认没有重复 UID，再单独迁移；不要直接在生产库执行未经检查的 ALTER。
+静默登录按 `user_info.unique_id` 查找或创建账号。并发首次登录时，如果数据库允许同一 BOSS UID 出现多行，后续 `selectOne` 会失败，因此新建数据库结构增加了 `uk_user_info_unique_id`。自动建档上线前必须确认生产库已存在该索引；已有数据库需要先确认没有重复 UID，再单独迁移，不要直接执行未经检查的 ALTER。
 
 ```sql
 SELECT unique_id, COUNT(*) AS row_count, GROUP_CONCAT(id ORDER BY id) AS user_ids
@@ -79,25 +79,47 @@ ALTER TABLE ai_job.user_info
     ADD UNIQUE KEY uk_user_info_unique_id (unique_id);
 ```
 
-迁移后用 `SHOW INDEX FROM ai_job.user_info WHERE Key_name = 'uk_user_info_unique_id';` 验证。新版本把用户、简历和自动内测权益写入放在同一个数据库事务中，避免简历更新失败时删除旧简历或留下不完整用户记录。
+迁移后用 `SHOW INDEX FROM ai_job.user_info WHERE Key_name = 'uk_user_info_unique_id';` 验证。新版本在身份核验后，将空账号创建和自动内测权益写入放在同一个数据库事务中；简历导入是独立的用户主动操作，不是注册或激活前置条件。
 
-## 每用户单份简历约束
+## 每用户一份当前有效简历
 
-简历导入和读取均按 `user_id` 视为单份简历。新建 schema 为 `user_resume.user_id` 增加唯一索引。已有实例先检查重复关系：
+简历表使用逻辑删除：`is_active = 1` 是当前有效记录，`is_active = 0` 是保留的历史版本。不能直接对 `user_id` 建普通唯一索引，否则同一用户的多条已删除历史记录也会互相冲突。新建 schema 使用生成列，只约束当前有效简历：
 
 ```sql
-SELECT user_id, COUNT(*) AS row_count, GROUP_CONCAT(id ORDER BY id) AS resume_ids
+active_user_id bigint generated always as (
+    case when is_active = b'1' then user_id else null end
+) stored,
+unique key uk_user_resume_active_user_id (active_user_id)
+```
+
+已有实例先检查每个用户的当前有效记录：
+
+```sql
+SELECT user_id, COUNT(*) AS active_row_count, GROUP_CONCAT(id ORDER BY id) AS resume_ids
 FROM ai_job.user_resume
-WHERE user_id IS NOT NULL
+WHERE user_id IS NOT NULL AND is_active = b'1'
 GROUP BY user_id
 HAVING COUNT(*) > 1;
 ```
 
-如有重复，先备份并核对简历版本、账号关系及对应用户，不要自动选一份删除。清理并确认无重复后，可在维护窗口单独添加：
+如有多条当前有效记录，先备份并核对简历版本及对应用户，不要自动删除或覆盖。确认无重复、MariaDB 版本支持 STORED generated column 且已有索引已核对后，再在维护窗口执行：
 
 ```sql
 ALTER TABLE ai_job.user_resume
-    ADD UNIQUE KEY uk_user_resume_user_id (user_id);
+    ADD COLUMN active_user_id bigint
+        GENERATED ALWAYS AS (
+            CASE WHEN is_active = b'1' THEN user_id ELSE NULL END
+        ) STORED,
+    ADD UNIQUE KEY uk_user_resume_active_user_id (active_user_id);
+```
+
+若实际表上存在普通 `uk_user_resume_user_id (user_id)`，不要与上述语句机械拼接；先备份、确认有效记录无重复，再在同一条 `ALTER TABLE` 中删除该旧索引并建立有效记录专用索引。逻辑删除记录会得到 `NULL`，因此历史版本仍可保留；重复导入则通过有效记录唯一索引触发 `ON DUPLICATE KEY UPDATE`，替换当前版本而不是新增第二条有效简历。
+
+迁移后验证：
+
+```sql
+SHOW INDEX FROM ai_job.user_resume
+WHERE Key_name = 'uk_user_resume_active_user_id';
 ```
 
 事务只能保证单次导入内用户、简历和权益的数据库变更一起提交或回滚；跨进程并发仍需以上数据库唯一约束兜底。

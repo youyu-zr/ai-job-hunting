@@ -11,6 +11,7 @@ import com.maple.ai.job.hunting.model.entity.PreferenceEntity;
 import com.maple.ai.job.hunting.service.ai.AIServiceFacade;
 import com.maple.ai.job.hunting.utils.PromptDataSanitizer;
 import jakarta.annotation.Nonnull;
+import org.apache.commons.lang3.StringUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -43,13 +44,14 @@ public class AIAssistantService {
 
     public String generateGreeting(Long userId, JSONObject jobInfo) {
         UserResumeDO userResumeDO = userResumeMapper.selectByUserId(userId);
-        if (Objects.isNull(userResumeDO)){
+        String resumeContent = userResumeDO == null ? null : userResumeDO.getResumeContent();
+        if (StringUtils.isBlank(resumeContent)) {
             throw new ApplicationException("请先导入简历");
         }
         PreferenceEntity preference = userInfoMapper.selectPreferenceByUserId(userId);
-        String prompt = buildGreetingPrompt(userResumeDO.getResumeContent(), jobInfo, preference);
+        String prompt = buildGreetingPrompt(resumeContent, jobInfo, preference);
         String greeting = aiServiceFacade.askAndAnswer(prompt);
-        return sanitizeGreeting(greeting, userResumeDO.getResumeContent(), jobInfo);
+        return sanitizeGreeting(greeting, resumeContent, jobInfo);
     }
 
     static String buildGreetingPrompt(String resumeContent, JSONObject jobInfo) {

@@ -3,6 +3,8 @@ package com.maple.ai.job.hunting.service.biz;
 import cn.hutool.core.lang.Pair;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.google.common.collect.Lists;
 import com.maple.ai.job.hunting.common.HeaderContext;
@@ -30,6 +32,7 @@ import com.maple.ai.job.hunting.utils.ConversationGateUtil;
 import com.maple.ai.job.hunting.utils.HighInterestReview;
 import com.maple.ai.job.hunting.utils.JobContextCompleteness;
 import com.maple.ai.job.hunting.utils.JobRiskKeywordUtil;
+import com.maple.ai.job.hunting.utils.LogValueSanitizer;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -51,6 +54,20 @@ import java.util.Optional;
 @Service
 @Slf4j
 public class JobSeekerClonedService {
+
+    private static final ObjectMapper SAFE_JSON = new ObjectMapper();
+    private static final String[] RESUME_REQUEST_PREFIXES = {"请", "麻烦", "方便", "可以", "能否", "能不能", "请问"};
+    private static final String[] RESUME_REQUEST_ACTIONS = {"发", "发送", "传", "上传", "投递", "提交", "给"};
+    private static final String[] RESUME_REQUEST_SUFFIXES = {
+            "请发", "发我", "发来", "发过来", "发一下", "发下", "传一下",
+            "上传一下", "投递一下", "提交一下", "可以发", "方便发", "能发"
+    };
+    private static final String[] RESUME_PLATFORM_WORDS = {"平台", "BOSS", "系统"};
+    private static final String[] RESUME_PLATFORM_ACTIONS = {"投递", "提交", "上传"};
+
+    private static String safeLogValue(String value) {
+        return LogValueSanitizer.sanitize(value, 160);
+    }
 
     @Resource
     private MsgSessionMapper msgSessionMapper;
@@ -93,15 +110,22 @@ public class JobSeekerClonedService {
         JobContextCompleteness.Result contextCompleteness = JobContextCompleteness.evaluate(
                 jobSeekerClonedParam.getJobInfo(), jobSeekerClonedParam.getQuestion());
         log.info("jobContextCompleteness jobKey:{} userId:{} score:{} missing:{} present:{}",
-                jobKey, userId, contextCompleteness.score(), contextCompleteness.missingFieldsText(),
+                safeLogValue(jobKey), userId, contextCompleteness.score(), contextCompleteness.missingFieldsText(),
                 contextCompleteness.presentFields());
         // HR 明确拒绝/不合适时，按确定性收口处理：不交给模型、不发简历、不触发高意向/面试/联系方式动作。
         // 撤回、附件已发送、文件名、表情/低价值短消息等 BOSS 系统事件先静默，避免被岗位排除逻辑或模型当作正文发送。
         Pair<Boolean, JobSeekerClonedResultVO> silentPair = preAskSilentFilter(jobSeekerClonedParam, jobKey);
         if (silentPair.getKey()) {
-            log.info("静默预过滤 jobKey:{} userId:{} questionLength:{} resultType:{}", jobSeekerClonedParam.getJobKey(),
+            log.info("静默预过滤 jobKey:{} userId:{} questionLength:{} resultType:{}", safeLogValue(jobSeekerClonedParam.getJobKey()),
                     HeaderContext.getHeader().getUserId(), textLength(jobSeekerClonedParam.getQuestion()), silentPair.getValue().getClass().getSimpleName());
             return silentPair.getValue();
+        }
+        String humanHandoffCategory = ConversationGateUtil.humanHandoffCategory(jobSeekerClonedParam.getQuestion());
+        if (StringUtils.isNotBlank(humanHandoffCategory)) {
+            msgSessionService.trySetMsgSessionStop(jobKey, true);
+            log.info("关键事项需要本人确认，暂停当前岗位AI坐席 jobKey:{} userId:{} category:{}",
+                    safeLogValue(jobKey), userId, humanHandoffCategory);
+            return new JobSeekerClonedResultVO(JobSeekerClonedAnswerTypeEnum.STOP, "", "HUMAN_HANDOFF");
         }
         // The browser performs the shared per-job AI assessment before this
         // request. Keep the server boundary authoritative so an old or
@@ -110,13 +134,10 @@ public class JobSeekerClonedService {
         if (aiJobGatePair.getKey()) {
             return aiJobGatePair.getValue();
         }
-        // 地址/地点确认卡片属于候选人决策，不能让模型把 BOSS 按钮卡片当普通 HR 文本并直接答应。
-        // 联系方式/微信/电话交换必须先经过岗位判断并交给真人确认，不能由前端或模型直接接受。
-        // 岗位质量通过后，再拦截面试/到场/时间确认类消息：此类决策必须交给用户确认，不能让模型自由答应。
         // 前置过滤处理
         Pair<Boolean, JobSeekerClonedResultVO> pair = preAskFilter(jobSeekerClonedParam);
         if (pair.getKey()) {
-            log.info("预过滤 jobKey:{} userId:{} questionLength:{} resultType:{}", jobSeekerClonedParam.getJobKey(),
+            log.info("预过滤 jobKey:{} userId:{} questionLength:{} resultType:{}", safeLogValue(jobSeekerClonedParam.getJobKey()),
                     HeaderContext.getHeader().getUserId(), textLength(jobSeekerClonedParam.getQuestion()), pair.getValue().getClass().getSimpleName());
             return pair.getValue();
         }
@@ -132,23 +153,23 @@ public class JobSeekerClonedService {
 
         String answer = sessionChat.getAnswer();
         String question = Optional.ofNullable(jobSeekerClonedParam.getQuestion()).orElse("");
-        log.info("ai回复 sessionId:{} jobKey:{} userId:{} questionLength:{} answerLength:{}", sessionId, jobKey, userId,
+        log.info("ai回复 sessionId:{} jobKey:{} userId:{} questionLength:{} answerLength:{}", sessionId, safeLogValue(jobKey), userId,
                 textLength(jobSeekerClonedParam.getQuestion()), textLength(answer));
 
-        log.info("偏好设置已加载 sessionId:{} jobKey:{} userId:{} present:{}", sessionId, jobKey, userId, preferenceEntityOpt.isPresent());
+        log.info("偏好设置已加载 sessionId:{} jobKey:{} userId:{} present:{}", sessionId, safeLogValue(jobKey), userId, preferenceEntityOpt.isPresent());
 
         InterestDecision interestDecision = highInterest(jobSeekerClonedParam, preferenceEntityOpt, jobKey, sessionId,
                 contextCompleteness, answer);
         Boolean highInterest = interestDecision.highInterest();
         boolean aiSeatStopEnabled = preferenceEntityOpt.filter(PreferenceEntity::isHiaE).isPresent();
         if (shouldStopForHumanHandoff(jobSeekerClonedParam, interestDecision, aiSeatStopEnabled)) {
-            log.info("高意向/关键事项人工接管停止AI坐席 sessionId:{} jobKey:{} userId:{}", sessionId, jobKey, userId);
+            log.info("高意向/关键事项人工接管停止AI坐席 sessionId:{} jobKey:{} userId:{}", sessionId, safeLogValue(jobKey), userId);
             msgSessionService.trySetMsgSessionStop(jobKey, true);
             if (interestDecision.highInterest()) {
                 sendInformEmail(jobSeekerClonedParam, preferenceEntityOpt, "<高意向/关键事项需要人工接管>", jobKey, true);
             } else {
                 log.warn("高意向AI复核不可用，仅停止坐席等待人工确认 sessionId:{} jobKey:{} userId:{}",
-                        sessionId, jobKey, userId);
+                        sessionId, safeLogValue(jobKey), userId);
             }
             return new JobSeekerClonedResultVO(JobSeekerClonedAnswerTypeEnum.STOP, "", "HUMAN_HANDOFF");
         }
@@ -163,7 +184,7 @@ public class JobSeekerClonedService {
                 answer = "";
             } else {
                 log.warn("忽略没有明确HR请求依据的发简历指令 jobKey:{} userId:{} questionLength:{} answerLength:{}",
-                        jobKey, userId, textLength(question), textLength(answer));
+                        safeLogValue(jobKey), userId, textLength(question), textLength(answer));
                 answer = "好的，我先了解一下岗位安排，合适后再提交简历。";
             }
         }
@@ -174,12 +195,12 @@ public class JobSeekerClonedService {
                 && answerTypeList.contains(JobSeekerClonedAnswerTypeEnum.MSG_TEXT.getCode())
                 && operationTypeList.isEmpty()) {
             log.info("AI回复被判定为空/内部注释/无关表情，停止发送 jobKey:{} userId:{} rawAnswerLength:{}",
-                    jobKey, userId, textLength(sessionChat.getAnswer()));
+                    safeLogValue(jobKey), userId, textLength(sessionChat.getAnswer()));
             return new JobSeekerClonedResultVO(JobSeekerClonedAnswerTypeEnum.STOP, "", "NO_REPLY_CONTENT");
         }
         if (answerTypeList.contains(JobSeekerClonedAnswerTypeEnum.MSG_TEXT.getCode())
                 && isRepeatedAnswer(jobKey, answer)) {
-            log.info("AI回复命中已发送答案去重，停止发送 jobKey:{} userId:{} answerLength:{}", jobKey, userId, textLength(answer));
+            log.info("AI回复命中已发送答案去重，停止发送 jobKey:{} userId:{} answerLength:{}", safeLogValue(jobKey), userId, textLength(answer));
             return new JobSeekerClonedResultVO(JobSeekerClonedAnswerTypeEnum.STOP, "", "DUPLICATE_REPLY");
         }
         // 发送通知邮件
@@ -302,18 +323,17 @@ public class JobSeekerClonedService {
         AiFilterResultVO decision;
         if (shouldContinueChatWithoutJobGate(jobInfo)) {
             log.warn("岗位上下文暂不可用，继续普通聊天，不设置岗位闸门 jobKey:{} userId:{}",
-                    jobKey, HeaderContext.getHeader().getUserId());
+                    safeLogValue(jobKey), HeaderContext.getHeader().getUserId());
             return Pair.of(false, null);
         }
         if (jobInfo.containsKey("aiFilterDecision") && jobInfo.get("aiFilterDecision") != null) {
             Object rawDecision = jobInfo.get("aiFilterDecision");
             decision = parseAiFilterDecision(rawDecision);
             if (decision == null) {
-                log.warn("岗位AI决策格式异常，暂停自动回复 jobKey:{} userId:{}", jobKey,
+                log.warn("岗位AI决策格式异常，暂停自动回复 jobKey:{} userId:{}", safeLogValue(jobKey),
                         HeaderContext.getHeader().getUserId());
-                log.warn("岗位AI分析结果格式异常，继续普通聊天，不设置岗位闸门 jobKey:{} userId:{}",
-                        jobKey, HeaderContext.getHeader().getUserId());
-                return Pair.of(false, null);
+                return Pair.of(true, stopForAiJobGate(
+                        jobKey, "岗位AI分析结果格式异常，暂停自动回复", "HUMAN_REVIEW", "MEDIUM"));
             }
         } else {
             String jobTitle = StringUtils.defaultString(jobInfo.getString("jobTitle"));
@@ -333,8 +353,8 @@ public class JobSeekerClonedService {
             msgSessionService.trySetAiJobGateStop(jobKey, false);
             if ("CHAT_FIRST".equals(action)) {
                 log.info("岗位AI闸门允许先投递进入沟通 jobKey:{} userId:{} action:{} risk:{} reason:{}",
-                        jobKey, HeaderContext.getHeader().getUserId(), action, risk,
-                        StringUtils.defaultIfBlank(decision.getReason(), "先沟通确认岗位细节"));
+                        safeLogValue(jobKey), HeaderContext.getHeader().getUserId(), action, risk,
+                        safeLogValue(StringUtils.defaultIfBlank(decision.getReason(), "先沟通确认岗位细节")));
             }
             return Pair.of(false, null);
         }
@@ -372,19 +392,25 @@ public class JobSeekerClonedService {
             if (rawDecision instanceof AiFilterResultVO result) {
                 return result;
             }
+            JsonNode root;
             if (rawDecision instanceof JSONObject jsonObject) {
-                return JSON.parseObject(jsonObject.toJSONString(), AiFilterResultVO.class);
+                root = SAFE_JSON.readTree(jsonObject.toJSONString());
+            } else if (rawDecision instanceof Map<?, ?> map) {
+                root = SAFE_JSON.valueToTree(map);
+            } else {
+                String rawText = String.valueOf(rawDecision).trim();
+                root = StringUtils.isBlank(rawText) ? null : SAFE_JSON.readTree(rawText);
             }
-            if (rawDecision instanceof Map<?, ?> map) {
-                return JSON.parseObject(JSON.toJSONString(map), AiFilterResultVO.class);
-            }
-            String rawText = String.valueOf(rawDecision).trim();
-            return StringUtils.isBlank(rawText)
+            return root == null || !root.isObject()
                     ? null
-                    : JSON.parseObject(rawText, AiFilterResultVO.class);
+                    : SAFE_JSON.treeToValue(root, AiFilterResultVO.class);
         } catch (Exception ignored) {
             return null;
         }
+    }
+
+    static boolean shouldStopForMalformedJobDecision(Object rawDecision) {
+        return rawDecision != null && parseAiFilterDecision(rawDecision) == null;
     }
 
     private JobSeekerClonedResultVO stopForAiJobGate(String jobKey, String reason) {
@@ -394,7 +420,7 @@ public class JobSeekerClonedService {
     private JobSeekerClonedResultVO stopForAiJobGate(String jobKey, String reason, String action, String risk) {
         msgSessionService.trySetAiJobGateStop(jobKey, true);
         log.info("岗位AI闸门停止自动回复 jobKey:{} userId:{} action:{} risk:{} reason:{}",
-                jobKey, HeaderContext.getHeader().getUserId(), action, risk, reason);
+                safeLogValue(jobKey), HeaderContext.getHeader().getUserId(), action, risk, safeLogValue(reason));
         return new JobSeekerClonedResultVO(JobSeekerClonedAnswerTypeEnum.STOP, "", "JOB_GATE");
     }
 
@@ -495,31 +521,101 @@ public class JobSeekerClonedService {
         if (StringUtils.isBlank(question)) {
             return false;
         }
-        String text = question.replaceAll("\\s+", "");
+        String text = compactWhitespace(question);
         if (StringUtils.isBlank(text)) {
             return false;
         }
         if (text.contains("HR明确请求发送简历") && text.contains("结构化消息")) {
             return true;
         }
-        if (text.matches(".*(抱歉|不好意思|不太合适|不合适|暂不匹配|已发送|附件简历已发送|简历已发送|对方已同意).*")) {
+        if (containsAnyText(text, "抱歉", "不好意思", "不太合适", "不合适", "暂不匹配",
+                "已发送", "附件简历已发送", "简历已发送", "对方已同意")) {
             return false;
         }
         if (!text.contains("简历")) {
             return false;
         }
         // Mentions such as "看了你的在线简历" describe what HR already saw; they are not a request.
-        if (text.matches(".*(看了|看过|查看了|收到|已读|在线简历|您的简历很|你的简历很|简历匹配|简历符合).*")) {
+        if (containsAnyText(text, "看了", "看过", "查看了", "收到", "已读", "在线简历",
+                "您的简历很", "你的简历很", "简历匹配", "简历符合")) {
             return false;
         }
-        boolean directRequest = text.matches(".*(请|麻烦|方便|可以|能否|能不能|请问).{0,8}(发|发送|传|上传|投递|提交|给).{0,5}(一份|份|附件)?简历.*")
-                || text.matches(".*简历.{0,8}(请发|发我|发来|发过来|发一下|发下|传一下|上传一下|投递一下|提交一下|可以发|方便发|能发).*" );
+        boolean directRequest = containsOrderedSequence(text, new int[]{8, 5},
+                RESUME_REQUEST_PREFIXES, RESUME_REQUEST_ACTIONS, new String[]{"简历"})
+                || containsOrderedSequence(text, new int[]{8}, new String[]{"简历"}, RESUME_REQUEST_SUFFIXES);
         boolean platformRequest = text.contains("简历投递功能提交")
                 || text.contains("平台提交简历")
                 || text.contains("通过平台投递简历")
                 || text.contains("通过平台提交")
-                || text.matches(".*(请|麻烦|需要|请您|烦请).{0,16}(平台|BOSS|系统).{0,12}(投递|提交|上传).{0,8}(简历|即可).*" );
+                || containsOrderedSequence(text, new int[]{16, 12, 8},
+                new String[]{"请", "麻烦", "需要", "请您", "烦请"},
+                RESUME_PLATFORM_WORDS, RESUME_PLATFORM_ACTIONS, new String[]{"简历", "即可"});
         return directRequest || platformRequest;
+    }
+
+    private static boolean containsOrderedSequence(String text, int[] maxGaps, String[]... terms) {
+        if (terms.length == 0 || maxGaps.length != terms.length - 1) {
+            return false;
+        }
+        for (int start = 0; start < text.length(); start++) {
+            if (matchesAnyAt(text, start, terms[0])
+                    && matchesSequenceAfter(text, start + matchingLengthAt(text, start, terms[0]),
+                    terms, maxGaps, 1)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean matchesSequenceAfter(String text, int previousEnd,
+                                                String[][] terms, int[] maxGaps, int termIndex) {
+        if (termIndex == terms.length) {
+            return true;
+        }
+        int lastStart = Math.min(text.length(), previousEnd + maxGaps[termIndex - 1]);
+        for (int start = previousEnd; start <= lastStart; start++) {
+            for (String term : terms[termIndex]) {
+                if (text.startsWith(term, start)
+                        && matchesSequenceAfter(text, start + term.length(), terms, maxGaps, termIndex + 1)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean matchesAnyAt(String text, int start, String[] terms) {
+        return matchingLengthAt(text, start, terms) > 0;
+    }
+
+    private static int matchingLengthAt(String text, int start, String[] terms) {
+        int longestMatch = 0;
+        for (String term : terms) {
+            if (text.startsWith(term, start)) {
+                longestMatch = Math.max(longestMatch, term.length());
+            }
+        }
+        return longestMatch;
+    }
+
+    private static boolean containsAnyText(String text, String... terms) {
+        for (String term : terms) {
+            if (text.contains(term)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String compactWhitespace(String text) {
+        StringBuilder compact = new StringBuilder(text.length());
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if (!Character.isWhitespace(ch)) {
+                compact.append(ch);
+            }
+        }
+        return compact.toString();
     }
 
     static String guardResumeActionClaim(String question, String answer) {
@@ -611,13 +707,13 @@ public class JobSeekerClonedService {
                 preferenceEntityOpt.orElse(null),
                 contextCompleteness);
         log.info("highInterest AI review jobKey:{} userId:{} valid:{} highInterest:{} needsHumanReview:{} confidence:{} reason:{}",
-                jobKey, HeaderContext.getHeader().getUserId(), decision.valid(), decision.highInterest(),
-                decision.needsHumanReview(), decision.confidence(), decision.reason());
+                safeLogValue(jobKey), HeaderContext.getHeader().getUserId(), decision.valid(), decision.highInterest(),
+                decision.needsHumanReview(), decision.confidence(), safeLogValue(decision.reason()));
         // A failed/ambiguous judge is not a negative interest decision. Keep the
         // AI seat at the human boundary so an outage cannot silently continue.
         if (!decision.valid()) {
             if (enableHighInterestAiStop) {
-                log.warn("highInterest AI review unavailable; handoff required jobKey:{}", jobKey);
+                log.warn("highInterest AI review unavailable; handoff required jobKey:{}", safeLogValue(jobKey));
                 return InterestDecision.manual();
             }
             return InterestDecision.none();
@@ -639,10 +735,10 @@ public class JobSeekerClonedService {
         String context = getJobContextText(jobSeekerClonedParam);
         if (hasHardRiskSignal(context)) {
             log.info("human handoff skipped because hard-risk context jobKey:{} contextLength:{}",
-                    jobSeekerClonedParam.getJobKey(), textLength(context));
+                    safeLogValue(jobSeekerClonedParam.getJobKey()), textLength(context));
             return false;
         }
-        log.info("AI high-interest review requires human handoff jobKey:{}", jobSeekerClonedParam.getJobKey());
+        log.info("AI high-interest review requires human handoff jobKey:{}", safeLogValue(jobSeekerClonedParam.getJobKey()));
         return true;
     }
 
@@ -960,8 +1056,8 @@ public class JobSeekerClonedService {
         }
         HighInterestReview.Result review = reviewHandoffQualification(jobSeekerClonedParam, answer, contextCompleteness);
         log.info("handoff email qualification jobKey:{} qualified:{} contextComplete:{} promising:{} lowRisk:{} hrProgress:{} summary:{}",
-                jobSeekerClonedParam.getJobKey(), review.qualified(), review.contextComplete(),
-                review.promisingJob(), review.companyLowRisk(), review.hrProgressSignal(), review.summary());
+                safeLogValue(jobSeekerClonedParam.getJobKey()), review.qualified(), review.contextComplete(),
+                review.promisingJob(), review.companyLowRisk(), review.hrProgressSignal(), safeLogValue(review.summary()));
         return review.qualified();
     }
 
@@ -1003,7 +1099,9 @@ public class JobSeekerClonedService {
             sendEmailEntity.setSubject(buildHandoffSubject(param, answer));
             sendEmailEntity.setTemplateName("intention_job.html");
             sendEmailEntity.setToSendUserSet(Collections.singleton(HeaderContext.getHeader().getUserId()));
-            log.info("高意向/面试人工接管邮件 jobKey:{} company:{} position:{}", jobKey, param.get("companyName"), param.get("positionName"));
+            log.info("高意向/面试人工接管邮件 jobKey:{} company:{} position:{}", safeLogValue(jobKey),
+                    safeLogValue(String.valueOf(param.get("companyName"))),
+                    safeLogValue(String.valueOf(param.get("positionName"))));
             emailService.sendEmail(sendEmailEntity);
             highInterestInformCache.set(HeaderContext.getHeader().getUserId() + jobKey, Boolean.TRUE);
         }
@@ -1021,7 +1119,7 @@ public class JobSeekerClonedService {
             MsgSessionDO sessionDO = new MsgSessionDO(null, null, MsgSessionStatusEnum.IN_USE.getCode(), userId, jobKey);
             msgSessionMapper.insert(sessionDO);
             sessionId = sessionDO.getId().toString();
-            log.info("initSession sessionId:{} jobKey:{} userId:{}", sessionId, jobKey, userId);
+            log.info("initSession sessionId:{} jobKey:{} userId:{}", sessionId, safeLogValue(jobKey), userId);
         } else {
             sessionId = msgSessionDO.getId().toString();
         }

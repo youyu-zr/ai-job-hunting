@@ -24,7 +24,6 @@ const ACTION_LABELS: Record<string, string> = {
     POST_DELIVERY_IMAGE: '投递后图片',
     AI_REPLY: 'AI回复',
     RESUME_SEND: '简历发送',
-    BATCH_MANUAL: '批量消息',
 };
 
 const FILTER_ACTION_LABELS: Record<string, string> = {

@@ -1,8 +1,11 @@
 package com.maple.ai.job.hunting.utils;
 
+import java.lang.reflect.Method;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ConversationGateUtilTest {
@@ -53,6 +56,7 @@ class ConversationGateUtilTest {
         assertTrue(ConversationGateUtil.isContactExchangeQuestion("我的手机号是13800138000"));
         assertTrue(ConversationGateUtil.isContactExchangeQuestion("微信号：zhaorui_123"));
         assertTrue(ConversationGateUtil.isContactExchangeQuestion("微信号是zhaorui_123"));
+        assertTrue(ConversationGateUtil.isContactExchangeQuestion("微信号为zhaorui_123"));
         assertTrue(ConversationGateUtil.isContactExchangeQuestion("微信：zhaorui_123"));
         assertTrue(ConversationGateUtil.isContactExchangeQuestion("电话：13800138000"));
         assertTrue(ConversationGateUtil.isContactExchangeQuestion("请把您的联系方式发给我"));
@@ -106,9 +110,53 @@ class ConversationGateUtilTest {
     }
 
     @Test
+    void explicitPersonalDecisionsRequireHumanHandoffButOrdinaryDiscussionDoesNot() {
+        assertEquals("CONTACT", handoffCategory("方便交换微信吗？"));
+        assertEquals("INTERVIEW", handoffCategory("方便明天下午三点来公司面试吗？"));
+        assertEquals("LOCATION", handoffCategory("办公地点在上海浦东，能接受吗？"));
+        assertEquals("COMPENSATION", handoffCategory("这个薪资可以接受吗？"));
+        assertEquals("START_DATE", handoffCategory("你最快什么时候可以到岗？"));
+        assertEquals("OFFER", handoffCategory("确认一下是否接受这份录用通知？"));
+
+        assertEquals("", handoffCategory("方便电话沟通一下岗位职责吗？"));
+        assertEquals("", handoffCategory("薪资结构是底薪加绩效，具体面试流程有三轮。"));
+        assertEquals("", handoffCategory("办公地点在上海浦东，团队在康桥地铁站附近。"));
+    }
+
+    @Test
+    void handoffDoesNotTriggerOnDescriptionsQuestionsOrNegatedConditions() {
+        assertEquals("", handoffCategory("工作地点不接受远程办公，统一上海现场办公。"));
+        assertEquals("", handoffCategory("我们面试流程是三轮，周一介绍团队，方便电话聊岗位职责吗？"));
+        assertEquals("", handoffCategory("请问您的期望薪资是多少？"));
+        assertEquals("", handoffCategory("转发招聘广告：薪资可接受，扫码进群领取资料。"));
+        assertEquals("", handoffCategory("不好意思，岗位不太匹配，暂时不安排面试了。"));
+    }
+
+    @Test
+    void handoffRecognizesSecondRoundAndExplicitCalendarDates() {
+        assertEquals("INTERVIEW", handoffCategory("周四14:00二面，请回复确认。"));
+        assertEquals("START_DATE", handoffCategory("恭喜录用，请于10月20日报到。"));
+    }
+
+    @Test
     void onlyEmptyAndProtocolNoiseAreSilentlySuppressedBeforeAi() {
         assertFalse(ConversationGateUtil.shouldDelegateToAi("   "));
         assertFalse(ConversationGateUtil.shouldDelegateToAi("\b\u0001\u0012\u00031.3\u001ahttps://img.bosszhipin.com/beijin/upload/avatar/a.webp\u0000\u0001\u0002\u0003\u0004"));
+    }
+
+    private String handoffCategory(String question) {
+        Method method;
+        try {
+            method = ConversationGateUtil.class.getMethod("humanHandoffCategory", String.class);
+        } catch (NoSuchMethodException e) {
+            assertNotNull(null, "humanHandoffCategory must classify explicit user decisions");
+            return "";
+        }
+        try {
+            return (String) method.invoke(null, question);
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError(e);
+        }
     }
 
 }

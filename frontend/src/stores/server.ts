@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { TampermonkeyApi } from "../platform/utils"
+import {userSessionScope} from "../utils/sessionContext";
 
 const SERVER_URL_KEY = 'custom_server_url_v2'
 export const DEFAULT_SERVER_URL = 'https://aijob.zxpnb.top/'
@@ -48,12 +49,9 @@ export const ServerStore = defineStore('server', () => {
      * 必须同时绑定服务器地址和当前 BOSS 账号：只绑定服务器时，同一台机器上
      * 切换 BOSS 账号会直接读到上一个账号的简历、偏好和坐席状态，属于账号串号。
      */
-    function getMirrorKey(type: string, accountId?: string | number) {
-        const safeUrl = baseUrl.value.replace(/[^a-zA-Z0-9]/g, '_')
-        const account = String(accountId ?? '').replace(/[^a-zA-Z0-9]/g, '_')
-        return account
-            ? `mirror_${type}_${safeUrl}_acct_${account}`
-            : `mirror_${type}_${safeUrl}`
+    function getMirrorKey(type: string, accountId?: string | number, serverUrl = baseUrl.value): string | null {
+        const scope = userSessionScope(accountId, serverUrl)
+        return scope ? `mirror_${type}_${scope}` : null
     }
 
 
@@ -62,16 +60,19 @@ export const ServerStore = defineStore('server', () => {
      */
     async function checkConnection() {
         status.value = 'checking'
+        const requestedUrl = baseUrl.value
         try {
-            const response = await fetch(`${baseUrl.value}api/user/userinfo`, {
+            const response = await fetch(`${requestedUrl}api/user/userinfo`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': localStorage.getItem('Authorization') || ''
                 },
                 body: JSON.stringify({})
             })
-            if (response.ok) {
+            if (baseUrl.value !== requestedUrl) {
+                return
+            }
+            if (response.ok || response.status === 401) {
                 status.value = 'online'
                 lastError.value = ''
             } else {
@@ -79,6 +80,9 @@ export const ServerStore = defineStore('server', () => {
                 lastError.value = `HTTP ${response.status}`
             }
         } catch (e) {
+            if (baseUrl.value !== requestedUrl) {
+                return
+            }
             status.value = 'offline'
             lastError.value = '网络连接失败'
         }

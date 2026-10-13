@@ -14,6 +14,7 @@ import com.maple.ai.job.hunting.service.biz.EmailService;
 import com.maple.ai.job.hunting.service.biz.ProductService;
 import com.maple.smart.config.core.annotation.JsonValue;
 import com.maple.ai.job.hunting.service.biz.SlidingWindowAlarmService;
+import com.maple.ai.job.hunting.utils.LogValueSanitizer;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -81,8 +82,12 @@ public class AIServiceFacade {
             if (e.getMessage() != null && e.getMessage().contains("AI坐席已过期")) {
                 throw e;
             }
+            if (e instanceof ApplicationException && "请先导入简历".equals(e.getMessage())) {
+                throw e;
+            }
             aiPowerExpAlarm(e);
-            log.error("sessionChat error sessionId:{} error:{}", sessionId, e);
+            log.error("sessionChat error sessionId:{} errorType:{} error:{}",
+                    sessionId, e.getClass().getSimpleName(), LogValueSanitizer.sanitize(e.getMessage(), 200));
             chatSessionResult.setAnswerStatus(JobSeekerClonedAnswerTypeEnum.AI_SERVICE_EXCEPTION);
             return chatSessionResult;
         }
@@ -104,7 +109,8 @@ public class AIServiceFacade {
             if (e.getMessage() != null && e.getMessage().contains("AI坐席已过期")) {
                 throw e;
             }
-            log.error("debugSessionChat error sessionId:{} error:{}", sessionId, e);
+            log.error("debugSessionChat error sessionId:{} errorType:{} error:{}",
+                    sessionId, e.getClass().getSimpleName(), LogValueSanitizer.sanitize(e.getMessage(), 200));
             chatSessionResult.setAnswerStatus(JobSeekerClonedAnswerTypeEnum.AI_SERVICE_EXCEPTION);
             return chatSessionResult;
         }
@@ -126,7 +132,9 @@ public class AIServiceFacade {
                 throw e;
             }
             aiPowerExpAlarm(e);
-            log.error("askAndAnswer error userId:{} error:{}", HeaderContext.getHeader().getUserId(), e);
+            log.error("askAndAnswer error userId:{} errorType:{} error:{}",
+                    HeaderContext.getHeader().getUserId(), e.getClass().getSimpleName(),
+                    LogValueSanitizer.sanitize(e.getMessage(), 200));
         }
         return reuslt;
     }

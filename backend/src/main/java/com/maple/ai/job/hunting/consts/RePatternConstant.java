@@ -11,7 +11,8 @@ import java.util.regex.Pattern;
 public class RePatternConstant {
 
     // 编译正则表达式
-    public static final Pattern PHONE_PATTERN = Pattern.compile("(?:电话|phone|tel|联系方式|联系电话|(?:\\s+))(?: |.)(1[34578][0-9]\\d{8})");
+    public static final Pattern PHONE_PATTERN = Pattern.compile("(?<!\\d)(1[34578]\\d{9})(?!\\d)");
 
-    public static final Pattern EMAIL_PATTERN = Pattern.compile("(?:邮箱|mail|(?:\\s+))(?: |.|：|)(\\w+@\\w+\\.[a-z]+)");
+    public static final Pattern EMAIL_PATTERN = Pattern.compile(
+            "(?<![A-Za-z0-9_])([A-Za-z0-9_]{1,128}@[A-Za-z0-9_]{1,128}\\.[A-Za-z]{1,32})(?![A-Za-z0-9_])");
 }

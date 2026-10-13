@@ -116,7 +116,8 @@ public class OpenAIPoolConfig {
                 try {
                     extraBody = jsonObject.getJSONObject("extraBody");
                 } catch (Exception e) {
-                    log.error("extraBody解析失败 extraBody:{}", jsonObject.getString("extraBody"), e);
+                    log.error("extraBody解析失败 poolName:{} errorType:{}",
+                            name, e.getClass().getSimpleName());
                 }
                 String completionsPath = aiConfigHelper.getAiConfig(jsonObject::getString, "completions-path");
                 String model = aiConfigHelper.getAiConfig(jsonObject::getString, "chat.options.model");
@@ -183,7 +184,8 @@ public class OpenAIPoolConfig {
                     .filter(configEntity -> "ai.system.prompt".equals(configEntity.getKey()))
                     .findAny()
                     .ifPresent(configEntity -> {
-                        log.info("ai.system.prompt change:{}", configEntity.getValue());
+                        log.info("ai.system.prompt change length:{}",
+                                StringUtils.length(configEntity.getValue()));
                         AIPromptStrConstant.AI_SEAT_SYSTEM_PROMPT = configEntity.getValue();
                     });
 

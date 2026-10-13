@@ -15,6 +15,7 @@ import com.maple.ai.job.hunting.mapper.UserInfoMapper;
 import com.maple.ai.job.hunting.model.bo.UserInfoDO;
 import com.maple.ai.job.hunting.model.vo.AiSeatRuntimeStatusVO;
 import com.maple.ai.job.hunting.service.ai.impl.OpenAIService;
+import com.maple.ai.job.hunting.utils.LogValueSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -147,7 +148,8 @@ public class MsgSessionService {
             result = setMsgSessionStop(jobKey, isStop);
         } catch (ApplicationException e) {
             if ("会话不存在;无需修改状态".equals(e.getMessage())) {
-                log.info("会话不存在，跳过会话停止修改 jobKey:{} isStop:{}", jobKey, isStop);
+                log.info("会话不存在，跳过会话停止修改 jobKey:{} isStop:{}",
+                        LogValueSanitizer.sanitize(jobKey, 160), isStop);
             } else {
                 log.error("设置会话停止失败", e);
             }

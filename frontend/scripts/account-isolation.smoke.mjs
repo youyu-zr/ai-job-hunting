@@ -12,13 +12,14 @@ assert.doesNotMatch(remote, /getGlobalMirrorKey/);
 assert.doesNotMatch(preference, /getGlobalMirrorKey/);
 
 // 镜像 Key 必须同时绑定服务器地址与当前 BOSS 账号。
-assert.match(server, /function getMirrorKey\(type: string, accountId\?: string \| number\)/);
-assert.match(server, /mirror_\$\{type\}_\$\{safeUrl\}_acct_\$\{account\}/);
-assert.match(remote, /getMirrorKey\('user_config', accountId\)/);
+assert.match(server, /function getMirrorKey\(type: string, accountId\?: string \| number, serverUrl = baseUrl\.value\): string \| null/);
+assert.match(server, /userSessionScope\(accountId, serverUrl\)/);
+assert.doesNotMatch(server, /getLegacyMirrorKey/);
+assert.match(remote, /getMirrorKey\('user_config', accountId, serverUrl\)/);
 assert.match(preference, /getMirrorKey\('user_config', bossAccountId\)/);
 
 // 账号未知时只写 localStorage，不写任何共享镜像。
-assert.match(remote, /if \(!accountId\) \{[\s\S]*?return;[\s\S]*?\}/);
+assert.match(remote, /if \(!accountId \|\| !snapshotKey \|\| !mirrorKey\) \{[\s\S]*?return;[\s\S]*?\}/);
 assert.doesNotMatch(remote, /GmGetValue\(serverStore\.getMirrorKey\('user_config'\)/);
 
 console.log('account isolation smoke: PASS');

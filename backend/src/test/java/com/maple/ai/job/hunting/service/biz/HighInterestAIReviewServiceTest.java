@@ -61,6 +61,17 @@ class HighInterestAIReviewServiceTest {
         assertTrue(decision.needsHumanReview());
     }
 
+    @Test
+    void typeMetadataNeverEnablesAutomaticHighInterest() {
+        HighInterestAIReviewService.Decision decision = HighInterestAIReviewService.parseDecision(
+                "{\"@type\":\"java.lang.String\",\"highInterest\":true,\"confidence\":\"HIGH\","
+                        + "\"needsHumanReview\":true,\"reason\":\"岗位匹配且HR已明确安排面试\"}");
+
+        assertFalse(decision.valid());
+        assertFalse(decision.highInterest());
+        assertTrue(decision.needsHumanReview());
+    }
+
     private JSONObject jobInfo() {
         JSONObject jobInfo = new JSONObject();
         jobInfo.put("jobTitle", "示例科技-内容运营助理-招聘负责人");

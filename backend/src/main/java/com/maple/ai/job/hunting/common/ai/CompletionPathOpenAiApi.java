@@ -115,7 +115,7 @@ public class CompletionPathOpenAiApi extends OpenAiApi {
         try {
             bodyJsonObj = BeanUtil.copyProperties(extraBody, JSONObject.class);
         } catch (Exception e) {
-            log.error("扩展body解析失败 body:{}", extraBody, e);
+            log.error("扩展body解析失败 errorType:{}", e.getClass().getSimpleName());
             return chatRequest;
         }
 

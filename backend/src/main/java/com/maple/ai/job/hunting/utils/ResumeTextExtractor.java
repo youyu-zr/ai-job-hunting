@@ -13,7 +13,6 @@ import java.util.zip.ZipInputStream;
 
 public class ResumeTextExtractor {
 
-    private static final Pattern XML_TAG = Pattern.compile("<[^>]+>");
     private static final Pattern XML_ENTITY_NBSP = Pattern.compile("&nbsp;|&#160;", Pattern.CASE_INSENSITIVE);
 
     public static String extract(byte[] bytes) {
@@ -95,8 +94,20 @@ public class ResumeTextExtractor {
     }
 
     private static String stripXml(String xml) {
-        String text = XML_TAG.matcher(xml).replaceAll(" ");
-        text = XML_ENTITY_NBSP.matcher(text).replaceAll(" ");
+        StringBuilder stripped = new StringBuilder(xml.length());
+        boolean insideTag = false;
+        for (int i = 0; i < xml.length(); i++) {
+            char ch = xml.charAt(i);
+            if (!insideTag && ch == '<') {
+                insideTag = true;
+                stripped.append(' ');
+            } else if (insideTag && ch == '>') {
+                insideTag = false;
+            } else if (!insideTag) {
+                stripped.append(ch);
+            }
+        }
+        String text = XML_ENTITY_NBSP.matcher(stripped).replaceAll(" ");
         return text
                 .replace("&amp;", "&")
                 .replace("&lt;", "<")

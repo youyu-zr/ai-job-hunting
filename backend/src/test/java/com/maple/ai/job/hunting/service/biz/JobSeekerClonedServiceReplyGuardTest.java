@@ -9,6 +9,7 @@ import com.maple.ai.job.hunting.model.vo.AiFilterResultVO;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -16,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 class JobSeekerClonedServiceReplyGuardTest {
 
@@ -90,6 +92,14 @@ class JobSeekerClonedServiceReplyGuardTest {
     }
 
     @Test
+    void presentButMalformedBrowserJobDecisionMustStopTheJobGate() {
+        assertTrue(JobSeekerClonedService.shouldStopForMalformedJobDecision("{malformed"));
+        assertFalse(JobSeekerClonedService.shouldStopForMalformedJobDecision(null));
+        assertFalse(JobSeekerClonedService.shouldStopForMalformedJobDecision(
+                "{\"filter\":false,\"recommendedAction\":\"CHAT_FIRST\",\"riskLevel\":\"LOW\"}"));
+    }
+
+    @Test
     void browserMapJobDecisionIsParsedBeforeTheConversationGate() {
         Map<String, Object> browserDecision = new LinkedHashMap<>();
         browserDecision.put("filter", false);
@@ -153,6 +163,14 @@ class JobSeekerClonedServiceReplyGuardTest {
                 "请通过平台简历投递功能提交即可，后续事宜请耐心等待评估。"));
         assertTrue(JobSeekerClonedService.isResumeRequestQuestion(
                 "HR明确请求发送简历（结构化消息）"));
+    }
+
+    @Test
+    void hostileRepeatedResumeTextIsBoundedAndDoesNotBecomeARequest() {
+        String hostile = "抱歉".repeat(50_000);
+
+        assertTimeoutPreemptively(Duration.ofSeconds(1),
+                () -> assertFalse(JobSeekerClonedService.isResumeRequestQuestion(hostile)));
     }
 
     @Test

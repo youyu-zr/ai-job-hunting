@@ -69,30 +69,30 @@
 <body>
   <main class="wrap">
     <header>
-      <div class="eyebrow">项目状态 · 2026-10-10</div>
+      <div class="eyebrow">项目状态 · 2026-10-12</div>
       <h1>AI 工作猎手</h1>
-      <p class="lead">一个正在整理为开源项目的 BOSS 求职副驾。当前处于发布前复核阶段，暂不开放新用户安装。</p>
+      <p class="lead">一个正在整理为开源项目的 BOSS 求职副驾。线上更新已完成基础检查，真实账号验收仍在进行，暂不开放新用户安装。</p>
       <div class="actions">
         <span class="button disabled" aria-disabled="true">新用户试用暂缓</span>
       </div>
       <div class="version">
-        <div><strong>线上版本（不建议新用户安装）</strong><br><code>0.0.113-beta-auto-grant</code></div>
-        <div><strong>本地候选版（尚未部署）</strong><br><code>0.0.114-beta-consent</code></div>
+        <div><strong>线上联调版（真实账号验收中）</strong><br><code>0.0.115-beta-auto-create</code></div>
+        <div><strong>本地待验候选版（未部署）</strong><br><code>0.0.116-beta-identity-ready</code></div>
       </div>
     </header>
 
     <section class="section">
       <div class="notice" role="alert">
         <h2>为什么暂停</h2>
-        <p>当前线上脚本首次登录新账号时仍会自动获取并上传 BOSS 附件简历。本地候选版已改为用户主动点击“导入简历”，但尚未部署和完成真实账号验收。更新完成前，请不要从线上或其他地址安装旧脚本。</p>
+        <p>线上登录预检已恢复，BOSS 来源的跨域预检返回 200。当前版本改为先验证 BOSS 身份，再自动创建空账号并开通内测；首次登录不会读取或上传简历。生产数据库唯一约束已核验，后端和脚本已更新。真实 BOSS 首次登录及无简历建档仍待账号本人验收，因此暂不开放新用户安装。</p>
       </div>
     </section>
 
     <section class="section">
       <div class="panel">
-        <h2>本地候选流程</h2>
-        <p>候选版不需要激活码。计划在用户主动点击“导入简历”、身份核验通过且简历成功保存后，自动开通内测权限至 2026 年 12 月 30 日。连接测试不会导入简历或开通权限。</p>
-        <p style="margin-top:12px">这只是未部署的候选行为，不代表当前线上脚本；候选流程也仍需真实 BOSS 账号验收。</p>
+        <h2>候选流程</h2>
+        <p>不需要激活码。BOSS 身份核验通过后，服务端自动创建空账号并开通内测权限至 2026 年 12 月 30 日。导入简历是用户主动选择的独立操作，不是注册或激活的前置条件。</p>
+        <p style="margin-top:12px">0.0.116 仅为本地候选修复，尚未部署；线上真实首次登录、空账号创建、自动授权和默认偏好仍需账号本人验收。</p>
       </div>
     </section>
 
@@ -108,6 +108,6 @@
       </div>
     </section>
   </main>
-  <footer class="wrap">本地候选页。线上仍为旧版；本轮未部署任何代码或配置。</footer>
+  <footer class="wrap">线上联调版：0.0.115-beta-auto-create；本地待验候选版：0.0.116-beta-identity-ready。真实账号验收完成前，请暂缓新用户安装。</footer>
 </body>
 </html>

@@ -139,7 +139,10 @@ create table ai_job.user_resume
     oss_file_name  varchar(64)          null comment 'oss唯一对象名',
     preset_problem text charset utf8mb4 null,
     resume_id      varchar(64)          null comment 'boss平台简历id',
-    unique key uk_user_resume_user_id (user_id)
+    active_user_id bigint generated always as (
+        case when is_active = b'1' then user_id else null end
+    ) stored,
+    unique key uk_user_resume_active_user_id (active_user_id)
 )
     comment '用户简历表';
 

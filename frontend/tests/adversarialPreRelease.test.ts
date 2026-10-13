@@ -95,15 +95,31 @@ test('adversarial: the pause guard is actually wired into the reply send path', 
 test('adversarial: no code path can read a cross-account config mirror', () => {
     const server = ui('stores/server.ts');
     const remote = ui('stores/remote.ts');
+    const userStore = ui('stores/index.ts');
     const preference = ui('components/ui/Preference.vue');
 
-    for (const source of [server, remote, preference]) {
+    for (const source of [server, remote, userStore, preference]) {
         assert.doesNotMatch(source, /global_latest/);
         assert.doesNotMatch(source, /getGlobalMirrorKey/);
+        assert.doesNotMatch(source, /localStorage\.getItem\(["']ai-job-user["']\)/);
     }
     // 账号未知时必须拒绝写镜像，而不是退回共享 key。
-    assert.match(remote, /if \(!accountId\) \{/);
-    assert.match(remote, /const mirrorData = accountId/);
+    assert.match(remote, /if \(!accountId \|\| !snapshotKey \|\| !mirrorKey\) \{/);
+    assert.match(remote, /userSnapshotStorageKey\(accountId, serverUrl\)/);
+    assert.match(userStore, /userSnapshotStorageKey\(accountId, serverUrl\)/);
+    assert.match(remote, /const mirrorKey = serverStore\.getMirrorKey\('user_config', requestedAccountId, requestedServerUrl\)/);
+});
+
+test('adversarial: stale 401 responses cannot invalidate a newer session token', () => {
+    const axios = ui('axios.ts');
+    const response401 = axios.slice(axios.indexOf('if (result.code === 401)'), axios.indexOf('if (!result.code'));
+    const http401 = axios.slice(axios.indexOf('if (error.response?.status === 401)'), axios.indexOf('// 到达前端axios'));
+    assert.match(response401, /const authorizationIsCurrent = isScopedAuthorizationCurrent/);
+    assert.ok(response401.indexOf("const authorizationIsCurrent") < response401.indexOf("clearScopedAuthorization"));
+    assert.match(response401, /isCurrentSessionRequest\(resp\.config\) && authorizationIsCurrent/);
+    assert.match(http401, /const authorizationIsCurrent = isScopedAuthorizationCurrent/);
+    assert.ok(http401.indexOf("const authorizationIsCurrent") < http401.indexOf("clearScopedAuthorization"));
+    assert.match(http401, /isCurrentSessionRequest\(error\.config\) && authorizationIsCurrent/);
 });
 
 test('adversarial: a hostile log payload cannot inject markup into either view', () => {

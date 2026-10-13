@@ -42,7 +42,7 @@
         }}&nbsp;&nbsp;&nbsp;
     </el-text>
     <el-text size="large" class="mx-1"> 单次投递限制数量：</el-text>
-    <el-input-number v-model="selfDefPushCountLimit" :min="-1" :max="100"
+    <el-input-number v-model="selfDefPushCountLimit" :min="1" :max="100"
                      @change="selfDefPushCountLimitChange"/>
     <el-tag :type="resumeImportStatus === '成功导入简历' ? 'success' : 'info'" effect="plain" style="margin-left: 10px;">
         {{ resumeImportStatus }}
@@ -73,10 +73,11 @@
     </el-tooltip>
 
     <el-tooltip effect="dark" raw-content content="
-    AI坐席：成功导入简历并开通内测权限后可开启。<br/>
+    AI坐席：登录并自动开通内测权限后可开启。<br/>
+    - 开始投递和开启 AI 坐席前，请先导入本人简历。<br/>
     - 根据简历、求职要求和岗位信息回复HR。<br/>
     - HR索要简历时才通过平台发送简历。<br/>
-    - 涉及个人决定时暂停，等待人工确认。<br/>
+    - 联系方式交换、明确面试安排及需要本人承诺的事项会暂停当前岗位会话。<br/>
     " placement="bottom">
         <el-button :icon="Service as any" color="#626aef" :disabled="!serverStore.isOnline">
             <p style="font-size: 15px">
@@ -129,7 +130,7 @@ import {inject, ref, onUnmounted, watch} from "vue";
 import {PushStatus} from "../../enums";
 import {AbsPlatform} from "../../platform/platform";
 import {Tools} from "../../platform/utils";
-import {ElMessage, fetchWithGM_request, isProdEnv, loginInterceptor, silentlyLogin} from "../../utils/tools";
+import {ElMessage, fetchWithGM_request, isProdEnv, loginInterceptor} from "../../utils/tools";
 import logger from '../../logging'
 import {LoginStore, pushResultCount, UserStore} from "../../stores";
 import {ServerStore} from "../../stores/server";
@@ -138,6 +139,7 @@ import {LogRecorder} from "../../logging/record";
 import {getLatestPushLogs, getRecordLevelClass} from "../../logging/queries";
 import {serializeAiSeatStatus, shouldApplyAiSeatRollback} from "../../stores/seatState";
 import {rememberAiSeatStatus, userRemoteLoad} from "../../stores/remote";
+import {storeScopedAuthorization, userSessionScope} from "../../utils/sessionContext";
 
 declare const GM_info: any;
 declare const __APP_VERSION__: string;
@@ -149,12 +151,24 @@ const tempServerUrl = ref(serverStore.baseUrl);
 const scriptVersion = ref(typeof GM_info !== 'undefined' && GM_info?.script?.version ? GM_info.script.version : CURRENT_SCRIPT_VERSION);
 
 const handleUpdateServer = async () => {
+    const previousServerUrl = serverStore.baseUrl;
     serverStore.setBaseUrl(tempServerUrl.value);
+    const serverChanged = serverStore.baseUrl !== previousServerUrl;
+    if (serverChanged) {
+        loginStore.reset();
+        const accountId = String(Tools.window?._PAGE?.uid ?? "").trim();
+        userStore.switchAccount(accountId, serverStore.baseUrl);
+    }
     await serverStore.checkConnection();
     if (serverStore.isOnline) {
+        if (serverChanged && String(Tools.window?._PAGE?.uid ?? "").trim()) {
+            void userRemoteLoad();
+        }
         ElNotification({
             title: '连接成功',
-            message: '已成功连接服务器；不会刷新页面，也不会重置 AI 坐席状态。',
+            message: serverChanged
+                ? '已连接新服务器，正在加载当前账号配置。'
+                : '已成功连接服务器；不会刷新页面，也不会重置 AI 坐席状态。',
             type: 'success',
             duration: 3000
         });
@@ -170,14 +184,12 @@ const handleUpdateServer = async () => {
 
 const handleResetServer = async () => {
     if (typeof serverStore.resetBaseUrl === 'function') {
-        serverStore.resetBaseUrl();
-        tempServerUrl.value = serverStore.baseUrl;
+        tempServerUrl.value = 'https://aijob.zxpnb.top/';
         ElMessage.success('已重置为默认服务器地址');
         await handleUpdateServer();
     } else {
         // 容错处理
         const DEFAULT_URL = 'https://aijob.zxpnb.top/';
-        serverStore.setBaseUrl(DEFAULT_URL);
         tempServerUrl.value = DEFAULT_URL;
         ElMessage.success('已重置为默认服务器地址');
         await handleUpdateServer();
@@ -203,6 +215,18 @@ let pushResultCounter = pushResultCount();
 const userStore = UserStore();
 const resumeImportStatus = ref(userStore.user.resumeId ? '成功导入简历' : '未成功导入简历');
 let resumeImportAttempted = false;
+
+const requireImportedResume = () => {
+    if (userStore.user.resumeId) {
+        return true;
+    }
+    ElMessage({
+        type: 'warning',
+        message: '请先在 BOSS 上传本人附件简历，再点击“导入简历”；完成后才能开始投递或开启 AI 坐席。',
+        duration: 5000,
+    });
+    return false;
+};
 
 watch(() => userStore.user.resumeId, (resumeId) => {
     if (!resumeImportAttempted) {
@@ -283,10 +307,23 @@ const handlerImport = async () => {
         })
         return;
     }
+    const requestedAccountId = String(bossUserId).trim();
+    const requestedServerUrl = serverStore.baseUrl;
+    const requestedScope = userSessionScope(requestedAccountId, requestedServerUrl);
+    if (!requestedScope) {
+        ElMessage({message: "当前账号或服务地址无效，请刷新后重试", type: 'error', duration: 3000});
+        return;
+    }
+    const contextIsCurrent = () =>
+        String(Tools.window?._PAGE?.uid ?? "").trim() === requestedAccountId
+        && serverStore.baseUrl === requestedServerUrl;
 
     importResumeLoading.value = true;
     try {
         const resumeInfoResp = await axiosOriginal.get("https://www.zhipin.com/wapi/zpgeek/resume/sidebar.json", {headers: {"Zp_token": token}} as {});
+        if (!contextIsCurrent()) {
+            return;
+        }
         const zpData = resumeInfoResp.data.zpData;
         if (!zpData.attachmentList || zpData.attachmentList.length === 0) {
             ElMessage({
@@ -301,12 +338,18 @@ const handlerImport = async () => {
             "https://docdownload.zhipin.com/wflow/zpgeek/download/download4geek?resumeId=" + resumeId,
             {headers: {"Zp_token": token}, responseType: 'arraybuffer'} as {},
         );
+        if (!contextIsCurrent()) {
+            return;
+        }
         const fileBlob = new Blob([resumeFileResp.response], {type: 'application/pdf'});
         const formData = new FormData();
         formData.append("file", fileBlob);
         formData.append("resumeId", resumeId);
         formData.append("uniqueId", bossUserId);
         const importResp = await axios.post("/api/user/import/resume", formData, {headers: {'Content-Type': "multipart/form-data", "Zp_token": token}});
+        if (!contextIsCurrent()) {
+            return;
+        }
         if (importResp.data.code !== 200) {
             ElMessage({
                 message: "导入简历失败：" + (importResp.data?.message || '请稍后重试'),
@@ -315,21 +358,27 @@ const handlerImport = async () => {
             });
             return;
         }
-        userStore.user.resumeId = resumeId;
-        resumeImportStatus.value = '成功导入简历';
         let loginSessionReady = false;
         try {
-            const loginResp = await axios.post("/api/user/silently/login?uniqueId=" + bossUserId, null, {headers: {"Zp_token": token}});
+            const loginResp = await axios.post("/api/user/silently/login?uniqueId=" + encodeURIComponent(requestedAccountId), null, {headers: {"Zp_token": token}});
+            if (!contextIsCurrent()) {
+                return;
+            }
             if (loginResp.data?.code !== 200 || !loginResp.data?.data) {
                 throw new Error("登录状态刷新失败");
             }
-            localStorage.setItem('Authorization', loginResp.data.data);
-            loginStore.loginSuccess();
+            storeScopedAuthorization(loginResp.data.data, requestedScope);
+            loginStore.loginSuccess(requestedAccountId, requestedScope);
             loginSessionReady = true;
             await userRemoteLoad();
         } catch {
             logger.warn('简历已保存，但登录状态刷新失败');
         }
+        if (!contextIsCurrent()) {
+            return;
+        }
+        userStore.user.resumeId = resumeId;
+        resumeImportStatus.value = '成功导入简历';
         const refreshWarning = loginSessionReady ? '' : '；请刷新页面重新连接';
         const emailWarning = importResp.data?.data?.email
             ? ''
@@ -390,6 +439,9 @@ const startPush = () => {
     if (!loginInterceptor()) {
         return;
     }
+    if (!requireImportedResume()) {
+        return;
+    }
 
     platform.pushMock = mockPush.value
 
@@ -441,6 +493,10 @@ const handlerAISeatStatusChange = async (val: boolean) => {
     const previousAiSeatStatus = serializeAiSeatStatus(userStore.user.aiSeatStatus);
     const nextAiSeatStatus = serializeAiSeatStatus(val);
 
+    if (val && !requireImportedResume()) {
+        return;
+    }
+
     if (!loginInterceptor()) {
         return;
     }
@@ -464,10 +520,24 @@ const handlerAISeatStatusChange = async (val: boolean) => {
                 duration: 2000
             });
         }
-    }).catch(_ => {
+    }).catch((error: any) => {
         if (shouldApplyAiSeatRollback(operationRevision)) {
             userStore.user.aiSeatStatus = previousAiSeatStatus
             rememberAiSeatStatus(Boolean(previousAiSeatStatus), userStore.user);
+        }
+        const message = error?.response?.data?.message || error?.message || '';
+        if (message.includes('请先导入简历')) {
+            ElMessage({
+                type: 'warning',
+                message: '请先导入本人简历，再开启 AI 坐席。',
+                duration: 5000,
+            });
+        } else {
+            ElMessage({
+                type: 'error',
+                message: message || 'AI 坐席状态保存失败，请检查连接后重试。',
+                duration: 4000,
+            });
         }
     })
 }
@@ -476,13 +546,6 @@ const handlerAISeatStatusChange = async (val: boolean) => {
 // --------------------------------------------------事件处理-------------------------------------------------------------
 
 // --------------------------------------------------流程处理-------------------------------------------------------------
-
-// 静默登录
-if (!loginStore.login && !loginStore.loginFailStatus) {
-    logger.info("页面静默登录")
-    silentlyLogin("").catch(_ => {
-    })
-}
 
 // 组件卸载时清理定时器
 onUnmounted(() => {

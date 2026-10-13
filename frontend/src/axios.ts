@@ -3,6 +3,14 @@ import {ElMessage} from "./utils/tools";
 import {BizCodeEnum} from "./types";
 import {ProductStore} from "./stores";
 import {DEFAULT_SERVER_URL, ServerStore} from "./stores/server";
+import {LoginStore} from "./stores";
+import {Tools} from "./platform/utils";
+import {
+    clearScopedAuthorization,
+    isScopedAuthorizationCurrent,
+    scopedAuthorization,
+    userSessionScope
+} from "./utils/sessionContext";
 
 
 /**
@@ -22,22 +30,45 @@ const request = axios.create({
  * 请求拦截器
  */
 request.interceptors.request.use(req => {
+        let serverUrl = DEFAULT_SERVER_URL
         try {
             const serverStore = ServerStore()
-            req.baseURL = serverStore.baseUrl
+            serverUrl = serverStore.baseUrl
+            req.baseURL = serverUrl
         } catch (e) {
             // 如果在 Pinia 初始化前调用了 axios，回退到默认地址
             req.baseURL = DEFAULT_SERVER_URL
         }
 
-        let authorization = localStorage.getItem('Authorization');
-        // 请求时携带token
+        const accountId = String(Tools.window?._PAGE?.uid ?? "").trim()
+        const scope = userSessionScope(accountId, serverUrl)
+        ;(req as any).__aiSessionScope = scope
+        ;(req as any).__aiServerUrl = serverUrl
+        const authorization = scopedAuthorization(scope)
+        ;(req as any).__aiAuthorization = authorization
+
+        // Never let an explicitly supplied or stale token cross the current account/server boundary.
         if (authorization) {
-            req.headers['Authorization'] = authorization;
+            req.headers.set('Authorization', authorization);
+        } else {
+            req.headers.delete('Authorization');
         }
         return req;
     }
 )
+
+function isCurrentServerRequest(config: any): boolean {
+    return Boolean(config?.__aiServerUrl)
+        && config.__aiServerUrl === ServerStore().baseUrl
+}
+
+function isCurrentSessionRequest(config: any): boolean {
+    const currentScope = userSessionScope(
+        String(Tools.window?._PAGE?.uid ?? "").trim(),
+        ServerStore().baseUrl
+    )
+    return Boolean(config?.__aiSessionScope && config.__aiSessionScope === currentScope)
+}
 
 function handlerErrorCode(result: any) {
     if (!result || result?.code < 5000) {
@@ -54,7 +85,9 @@ function handlerErrorCode(result: any) {
  */
 request.interceptors.response.use((resp: any) => {
         const serverStore = ServerStore()
-        serverStore.setStatus('online')
+        if (isCurrentServerRequest(resp.config)) {
+            serverStore.setStatus('online')
+        }
 
         // http的响应状态码会进入这里
         let result = resp.data;
@@ -67,13 +100,21 @@ request.interceptors.response.use((resp: any) => {
         }
 
         if (result.code === 401) {
-            let authorization = localStorage.getItem('Authorization');
-            if (authorization) {
+            const scope = (resp.config as any)?.__aiSessionScope as string | null | undefined
+            const authorizationIsCurrent = isScopedAuthorizationCurrent(
+                scope || null,
+                (resp.config as any)?.__aiAuthorization
+            )
+            clearScopedAuthorization(
+                scope || null,
+                (resp.config as any)?.__aiAuthorization
+            )
+            if (isCurrentSessionRequest(resp.config) && authorizationIsCurrent) {
+                LoginStore().loginFailForScope(scope || null)
                 ElMessage({
                     type: "error",
                     message: "登录过期，请刷新页面重试"
                 });
-                return;
             }
             return Promise.reject(result.message)
         }
@@ -98,9 +139,23 @@ request.interceptors.response.use((resp: any) => {
     error => {
         const serverStore = ServerStore()
 
+        if (error.response?.status === 401) {
+            const scope = error.config?.__aiSessionScope as string | null | undefined
+            const authorizationIsCurrent = isScopedAuthorizationCurrent(
+                scope || null,
+                error.config?.__aiAuthorization
+            )
+            clearScopedAuthorization(scope || null, error.config?.__aiAuthorization)
+            if (isCurrentSessionRequest(error.config) && authorizationIsCurrent) {
+                LoginStore().loginFailForScope(scope || null)
+            }
+        }
+
         // 到达前端axios设置的超时时间
         if (error.code === 'ECONNABORTED') {
-            serverStore.setStatus('offline', '请求超时')
+            if (isCurrentServerRequest(error.config)) {
+                serverStore.setStatus('offline', '请求超时')
+            }
             // 弹窗提示
             ElMessage({
                 message: '网络超时',
@@ -113,7 +168,9 @@ request.interceptors.response.use((resp: any) => {
         }
         // 网络不通，无法访问后端，或者服务器不在线
         if (error.code === 'ERR_NETWORK') {
-            serverStore.setStatus('offline', '无法访问服务器')
+            if (isCurrentServerRequest(error.config)) {
+                serverStore.setStatus('offline', '无法访问服务器')
+            }
             // 弹窗提示
             ElMessage({
                 message: '系统异常,请稍后重试',
@@ -122,8 +179,7 @@ request.interceptors.response.use((resp: any) => {
                 duration: 2000
             })
             // 使请求不进入正常的响应处理函数
-            return Promise.reject(() => {
-            })
+            return Promise.reject(error)
         }
 
         // 获取后端返回的错误信息

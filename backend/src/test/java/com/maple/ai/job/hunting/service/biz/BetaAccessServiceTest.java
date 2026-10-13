@@ -57,7 +57,7 @@ class BetaAccessServiceTest {
     }
 
     @Test
-    void statusChecksDoNotGrantBeforeResumeImport() {
+    void statusChecksDoNotGrantAccessAsASideEffect() {
         RecordingProductMapper recordingMapper = new RecordingProductMapper();
         BetaAccessService service = service(recordingMapper, false);
 
@@ -168,6 +168,37 @@ class BetaAccessServiceTest {
 
         assertEquals(1, rows.size());
         assertEquals(1, successfulInserts.get());
+    }
+
+    @Test
+    void duplicateGrantRecoveryUsesCurrentReadInsteadOfTheOldTransactionSnapshot() {
+        List<UserProductDO> committedByConcurrentRequest = new ArrayList<>();
+        UserProductMapper mapper = (UserProductMapper) Proxy.newProxyInstance(
+                getClass().getClassLoader(),
+                new Class[]{UserProductMapper.class},
+                (proxy, method, args) -> switch (method.getName()) {
+                    case "selectList" -> {
+                        LambdaQueryWrapper<?> condition = (LambdaQueryWrapper<?>) args[0];
+                        String sqlSegment = condition.getSqlSegment();
+                        yield sqlSegment.endsWith("FOR UPDATE")
+                                ? committedByConcurrentRequest
+                                : List.of();
+                    }
+                    case "insert" -> {
+                        committedByConcurrentRequest.add((UserProductDO) args[0]);
+                        throw new DuplicateKeyException("uk_beta_auto_grant_user");
+                    }
+                    case "updateById" -> 1;
+                    default -> throw new UnsupportedOperationException(method.getName());
+                });
+        BetaAccessService service = new BetaAccessService(
+                mapper, new TestProductService(false),
+                new BetaAccessConfig("2026-12-30T23:59:59.999+08:00"));
+
+        service.ensureAutoGrant(9L, OPENED_AT);
+
+        assertEquals(1, committedByConcurrentRequest.size());
+        assertEquals(-2L, committedByConcurrentRequest.get(0).getOrderId());
     }
 
     @Test

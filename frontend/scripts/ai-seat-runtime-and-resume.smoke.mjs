@@ -8,6 +8,7 @@ const aiPower = fs.readFileSync(new URL('../src/platform/aiPower.ts', import.met
 const product = fs.readFileSync(new URL('../src/components/ui/Product.vue', import.meta.url), 'utf8');
 const invitationExchange = fs.readFileSync(new URL('../src/components/ui/InvitationExchange.vue', import.meta.url), 'utf8');
 
+assert.doesNotMatch(bossMessage, /批量发送消息|BATCH_MANUAL|batch-send/);
 assert.match(aiPower, /session\/status/);
 assert.match(bossMessage, /status: 'WAITING'/);
 assert.match(bossMessage, /status === 'RUNNING'/);
