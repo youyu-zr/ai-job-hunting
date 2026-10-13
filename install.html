@@ -69,22 +69,22 @@
 <body>
   <main class="wrap">
     <header>
-      <div class="eyebrow">项目状态 · 2026-10-12</div>
+      <div class="eyebrow">项目状态 · 2026-10-13</div>
       <h1>AI 工作猎手</h1>
-      <p class="lead">一个正在整理为开源项目的 BOSS 求职副驾。线上更新已完成基础检查，真实账号验收仍在进行，暂不开放新用户安装。</p>
+      <p class="lead">一个正在整理为开源项目的 BOSS 求职副驾。0.0.116 已部署到联调服务，先由维护者完成真实账号验收，再逐步扩大使用范围。</p>
       <div class="actions">
-        <span class="button disabled" aria-disabled="true">新用户试用暂缓</span>
+        <a class="button primary" href="./ai-job-hunting.user.js">安装联调脚本</a>
       </div>
       <div class="version">
-        <div><strong>线上联调版（真实账号验收中）</strong><br><code>0.0.115-beta-auto-create</code></div>
-        <div><strong>本地待验候选版（未部署）</strong><br><code>0.0.116-beta-identity-ready</code></div>
+        <div><strong>线上联调版（真实账号验收中）</strong><br><code>0.0.116-beta-identity-ready</code></div>
+        <div><strong>源码与线上候选</strong><br><code>release/open-source-20261011</code></div>
       </div>
     </header>
 
     <section class="section">
       <div class="notice" role="alert">
-        <h2>为什么暂停</h2>
-        <p>线上登录预检已恢复，BOSS 来源的跨域预检返回 200。当前版本改为先验证 BOSS 身份，再自动创建空账号并开通内测；首次登录不会读取或上传简历。生产数据库唯一约束已核验，后端和脚本已更新。真实 BOSS 首次登录及无简历建档仍待账号本人验收，因此暂不开放新用户安装。</p>
+        <h2>当前联调说明</h2>
+        <p>线上服务已切换到 0.0.116。当前版本会先验证 BOSS 身份，再自动创建空账号并开通内测；首次登录不会读取或上传简历。真实 BOSS 首次登录、无简历建档和后续投递流程仍需账号本人验收，建议先小范围使用，不要直接大规模导流。</p>
       </div>
     </section>
 
@@ -92,13 +92,13 @@
       <div class="panel">
         <h2>候选流程</h2>
         <p>不需要激活码。BOSS 身份核验通过后，服务端自动创建空账号并开通内测权限至 2026 年 12 月 30 日。导入简历是用户主动选择的独立操作，不是注册或激活的前置条件。</p>
-        <p style="margin-top:12px">0.0.116 仅为本地候选修复，尚未部署；线上真实首次登录、空账号创建、自动授权和默认偏好仍需账号本人验收。</p>
+        <p style="margin-top:12px">自动授权有效至 2026 年 12 月 30 日 23:59:59（中国标准时间）。导入简历是用户主动选择的独立操作；开始投递或开启 AI 坐席前，仍必须主动导入自己的附件简历。</p>
       </div>
     </section>
 
     <section class="section">
       <div class="panel">
-        <h2>重新开放前</h2>
+        <h2>正式开放前</h2>
         <ul>
           <li>确认上游代码来源、版权声明和可再分发许可；</li>
           <li>落实简历、会话数据的留存与删除流程；</li>
@@ -108,6 +108,6 @@
       </div>
     </section>
   </main>
-  <footer class="wrap">线上联调版：0.0.115-beta-auto-create；本地待验候选版：0.0.116-beta-identity-ready。真实账号验收完成前，请暂缓新用户安装。</footer>
+  <footer class="wrap">线上联调版：0.0.116-beta-identity-ready。当前为小范围联调，不代表真实账号流程已经完成验收。</footer>
 </body>
 </html>
