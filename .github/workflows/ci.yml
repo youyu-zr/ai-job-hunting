@@ -11,7 +11,9 @@ permissions:
 
 jobs:
   frontend:
-    runs-on: ubuntu-latest
+    # The checked-in public userscript is generated on Windows. Keep the
+    # byte-for-byte release check on the same platform as that artifact.
+    runs-on: windows-latest
     defaults:
       run:
         working-directory: frontend
