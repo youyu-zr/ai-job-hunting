@@ -40,6 +40,7 @@ function canonicalizeBuildPaths(script) {
             }
             return `data-v-<scope-${scopeIds.get(id)}>`;
         })
+        .replace(/\bseat-pulse-[0-9a-f]{8}\b/g, 'seat-pulse-<hash>')
         .replace(
             /(["'])\.\/([^"'\/]+?)-(?:[A-Za-z0-9_-]{8}-)?[A-Za-z0-9_-]{8}(\.js\1)/g,
             '$1./<chunk>-<hash>$2',
