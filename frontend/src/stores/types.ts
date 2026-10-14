@@ -124,6 +124,8 @@ export type PreferenceConfig = {
      * 高意向ai坐席停止开关
      */
     hiaE: boolean,
+    /** 营销推广类消息自动回复，默认关闭。 */
+    marketingReplyE?: boolean,
     /**
      * 投递间隔时间（秒）
      */

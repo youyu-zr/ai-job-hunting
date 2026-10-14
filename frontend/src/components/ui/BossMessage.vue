@@ -19,6 +19,14 @@ import {AiPower} from "../../platform/aiPower";
 import {ElMessage} from "../../utils/tools";
 import {BossOption} from "../../platform/bossPlatform";
 import {computed, onMounted, onUnmounted, ref} from "vue";
+import {UserStore} from "../../stores";
+import {rememberAiSeatStatus} from "../../stores/remote";
+import {ConversationPauseRegistry} from "../../platform/pauseRegistry";
+import {getAiSeatStatusRevision} from "../../stores/seatState";
+import {parseAiSeatRuntimeStatus} from "../../platform/aiSeatDelivery";
+
+const userStore = UserStore();
+const lastServerPausedByJob = new Map<string, boolean>();
 
 const seatStatus = ref({
     status: 'WAITING',
@@ -51,14 +59,33 @@ const refreshSeatStatus = async () => {
         seatStatus.value = {...seatStatus.value, status: 'WAITING', label: '等待进入聊天窗口', sessionExists: false}
         return
     }
+    const requestSeatRevision = getAiSeatStatusRevision();
+    const requestPauseGeneration = ConversationPauseRegistry.beginTurn(jobKey);
     try {
         const response = await AiPower.getSessionStatus(jobKey)
-        const data = response?.data?.data
-        if (data?.status && data?.label) {
-            seatStatus.value = data
-        } else {
+        const data = response?.data?.data;
+        const runtimeStatus = parseAiSeatRuntimeStatus(data);
+        if (!runtimeStatus || getCurrentJobKey() !== jobKey) {
             seatStatus.value = {...seatStatus.value, status: 'ERROR', label: '状态检测失败'}
+            return;
         }
+        seatStatus.value = data;
+        if (requestSeatRevision === getAiSeatStatusRevision()
+            && Boolean(userStore.user.aiSeatStatus) !== runtimeStatus.globalEnabled) {
+            rememberAiSeatStatus(runtimeStatus.globalEnabled, userStore.user);
+        }
+
+        const serverPaused = runtimeStatus.manuallyPaused || runtimeStatus.gatePaused;
+        if (requestPauseGeneration === ConversationPauseRegistry.beginTurn(jobKey)) {
+            if (serverPaused && !ConversationPauseRegistry.isPaused(jobKey)) {
+                ConversationPauseRegistry.pause(jobKey);
+            } else if (lastServerPausedByJob.get(jobKey) === true
+                && !serverPaused
+                && ConversationPauseRegistry.isPaused(jobKey)) {
+                ConversationPauseRegistry.resume(jobKey);
+            }
+        }
+        lastServerPausedByJob.set(jobKey, serverPaused);
     } catch (error) {
         seatStatus.value = {...seatStatus.value, status: 'ERROR', label: '状态检测失败'}
     }

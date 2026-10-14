@@ -2,6 +2,7 @@ package com.maple.ai.job.hunting.utils;
 
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.List;
 import java.util.regex.Pattern;
 
 /**
@@ -25,6 +26,78 @@ public final class ConversationGateUtil {
      */
     public static boolean shouldDelegateToAi(String question) {
         return StringUtils.isNotBlank(question) && !isNoisyProtocolPayload(question);
+    }
+
+    /**
+     * 判断消息是否更像营销引流，而不是岗位沟通。
+     *
+     * <p>单独出现“推广”“销售”“市场”等岗位词不能触发静默；
+     * 需要同时出现扫码、进群、注册、付费、返佣等引流或转化动作，
+     * 才认为当前消息默认不值得由求职者自动回复。</p>
+     */
+    public static boolean isPromotionalMessage(String question) {
+        if (StringUtils.isBlank(question)) {
+            return false;
+        }
+        String text = compact(question);
+        if (isHardPromotionalRisk(text)) {
+            return true;
+        }
+        boolean promotionContext = containsUnnegatedAny(text,
+                "推广", "宣传", "营销", "广告", "课程", "培训", "代理", "加盟",
+                "招商", "返佣", "拉新", "裂变", "招聘广告", "资料领取", "获取资料", "项目");
+        boolean funnelAction = containsUnnegatedAny(text,
+                "扫码进群", "扫码加群", "扫码领取", "扫码报名", "扫码下载", "扫码了解",
+                "扫描二维码", "进群领取", "加群领取", "注册后", "注册即可", "注册领取",
+                "下载后", "点击链接", "填写邀请码", "邀请好友", "成为代理", "加入社群",
+                "添加客服", "加客服", "加老师", "联系导师", "添加微信", "加微信",
+                "微信领取", "领取课程资料", "关注公众号",
+                "请扫码", "请注册", "请下载", "请进群", "请加群", "请领取",
+                "报名即可", "报名领取", "付款后", "缴费后", "先充值");
+        if (!promotionContext || !funnelAction) {
+            return false;
+        }
+        boolean jobDutyContext = containsUnnegatedAny(text,
+                "岗位职责", "工作职责", "日常工作", "主要工作", "工作内容", "负责");
+        boolean candidateDirectedAction = containsUnnegatedAny(text,
+                "请你", "请您", "应聘者", "求职者", "领取资料", "填写邀请码",
+                "添加客服", "加客服", "微信领取", "领取课程资料",
+                "邀请好友", "成为代理");
+        return !jobDutyContext || candidateDirectedAction;
+    }
+
+    /**
+     * 付费、刷单、传销、账号交易等硬风险不受“允许营销回复”选项影响。
+     */
+    public static boolean isHardPromotionalRisk(String question) {
+        if (StringUtils.isBlank(question)) {
+            return false;
+        }
+        String text = compact(question);
+        boolean paymentOrTrainingRisk = containsUnnegatedAny(text,
+                "先交费", "先缴费", "培训贷", "押金", "保证金",
+                "培训费", "设备费", "报名费", "付费培训", "购买课程", "付款后");
+        boolean membershipFeeRisk = java.util.Arrays.stream(
+                        text.split("[，,。.;；!！?？\\n\\r]"))
+                .anyMatch(clause -> containsUnnegatedAny(clause, "入会费")
+                        && containsUnnegatedAny(clause,
+                        "缴纳", "交纳", "先交", "先缴", "支付", "收取", "交费", "缴费"));
+        boolean pyramidOrCommissionRisk = containsUnnegatedAny(text,
+                "传销", "拉人头", "团队裂变", "层级返利", "邀请好友返佣",
+                "发展下线", "代理加盟", "招商加盟");
+        boolean fraudOrAccountRisk = containsUnnegatedAny(text,
+                "刷单", "刷流水", "账号租借", "租账号", "账号买卖", "买卖账号",
+                "购买账号", "账号交易", "代实名", "博彩", "代充");
+        return paymentOrTrainingRisk || membershipFeeRisk || pyramidOrCommissionRisk || fraudOrAccountRisk;
+    }
+
+    private static boolean containsUnnegatedAny(String text, String... terms) {
+        for (String term : terms) {
+            if (JobRiskKeywordUtil.findExcludeKeyword(text, List.of(term)).isPresent()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static boolean isContactExchangeQuestion(String question) {

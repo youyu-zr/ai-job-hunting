@@ -45,7 +45,11 @@ public final class PreferenceDefaults {
     }
 
     public static PreferenceEntity applyDefaults(PreferenceEntity preference) {
-        return applyDefaultPersonalPreferences(applyDefaultRiskPack(preference));
+        PreferenceEntity result = applyDefaultPersonalPreferences(applyDefaultRiskPack(preference));
+        if (result.getAiSeatRevision() == null || result.getAiSeatRevision() < 0) {
+            result.setAiSeatRevision(0L);
+        }
+        return result;
     }
 
     /**

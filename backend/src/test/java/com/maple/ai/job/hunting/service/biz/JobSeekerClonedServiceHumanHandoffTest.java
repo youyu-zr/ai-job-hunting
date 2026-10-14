@@ -3,7 +3,6 @@ package com.maple.ai.job.hunting.service.biz;
 import com.maple.ai.job.hunting.common.Header;
 import com.maple.ai.job.hunting.common.HeaderContext;
 import com.maple.ai.job.hunting.frame.cache.AiJobGateStopCache;
-import com.maple.ai.job.hunting.frame.cache.MsgSessionStopCache;
 import com.maple.ai.job.hunting.frame.cache.QuestionCache;
 import com.maple.ai.job.hunting.frame.cache.SessionKeyIdCache;
 import com.maple.ai.job.hunting.mapper.MsgSessionMapper;
@@ -65,7 +64,7 @@ class JobSeekerClonedServiceHumanHandoffTest {
         private boolean paused;
 
         private RecordingMsgSessionService(MsgSessionMapper mapper, UserInfoMapper userInfoMapper) {
-            super(new MsgSessionStopCache(), new AiJobGateStopCache(), mapper, userInfoMapper, new SessionKeyIdCache());
+            super(new AiJobGateStopCache(), mapper, userInfoMapper);
         }
 
         @Override

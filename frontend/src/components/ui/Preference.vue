@@ -299,6 +299,24 @@
             <el-text type="info" size="small" class="section-hint">
                 联系方式交换、明确面试安排、地点接受及薪资、到岗、录用或合同承诺，会独立暂停当前岗位会话；普通岗位交流和薪资/地点信息介绍不会仅因提到这些词而暂停。
             </el-text>
+            <el-form-item>
+                <el-checkbox
+                    style="padding-top: 6px"
+                    v-model="userStore.user.preference.marketingReplyE"
+                    label=""
+                    size="large"
+                >营销推广类消息自动回复</el-checkbox>
+                <el-tooltip
+                    effect="dark"
+                    placement="top"
+                    content="默认关闭。扫码进群、注册充值、课程引流、返佣拉新等明显推广消息不会自动回复；打开后只允许普通推广消息进入AI，收费、刷单、传销和账号交易等硬风险仍不会自动回复。"
+                >
+                    <el-text type="primary" style="cursor: help;">查看规则</el-text>
+                </el-tooltip>
+            </el-form-item>
+            <el-text type="info" size="small" class="section-hint">
+                默认不回复营销引流消息；正常岗位职责里出现“推广”“市场”“销售”等词，不会单独触发静默。
+            </el-text>
 
             <el-form-item>
                 <el-button type="primary" @click="submitForm(ruleFormRef)">保存偏好设置</el-button>
@@ -530,6 +548,7 @@ const preferenceDefaultValueHandler = () => {
     preference.resumeCity = preference.resumeCity || '';
     preference.targetCities = Array.isArray(preference.targetCities) ? preference.targetCities : [];
     preference.locationMismatchThreshold = preference.locationMismatchThreshold || 2;
+    preference.marketingReplyE = preference.marketingReplyE ?? false;
     if (!userStore.user.preference.communicationStyle) {
         userStore.user.preference.communicationStyle = 'NATURAL';
     }

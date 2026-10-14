@@ -27,6 +27,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -54,8 +55,27 @@ public class OpenAIService extends AbstractAIService {
     public void init() {
         log.info("OpenAIService init");
         List<MsgSessionDO> msgSessionDOList = msgSessionMapper.selectUseListByType(AITypeEnum.OPENAI);
-        msgSessionDOList.forEach(msgSessionDO -> getMsgSessionMap().put(msgSessionDO.getId().toString(),
-                new CopyOnWriteArrayList<>(JSONUtil.parseArray(msgSessionDO.getMsgContext()).toList(OpenaiMessage.class))));
+        msgSessionDOList.forEach(this::restoreSession);
+    }
+
+    /** Restore persisted context when a paused conversation is explicitly resumed. */
+    public void restoreSession(MsgSessionDO session) {
+        if (session == null || session.getId() == null
+                || !Objects.equals(AITypeEnum.OPENAI.getCode(), session.getAiType())
+                || session.getMsgContext() == null || session.getMsgContext().isBlank()) {
+            return;
+        }
+        try {
+            List<OpenaiMessage> messages = JSONUtil.parseArray(session.getMsgContext())
+                    .toList(OpenaiMessage.class);
+            if (messages != null) {
+                getMsgSessionMap().putIfAbsent(session.getId().toString(),
+                        new CopyOnWriteArrayList<>(messages));
+            }
+        } catch (RuntimeException e) {
+            log.warn("会话上下文恢复失败 sessionId:{} errorType:{}",
+                    session.getId(), e.getClass().getSimpleName());
+        }
     }
 
     @Override

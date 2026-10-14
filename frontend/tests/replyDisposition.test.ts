@@ -11,6 +11,7 @@ test('unknown STOP responses remain retryable', () => {
 test('explicit terminal STOP responses can be completed', () => {
     assert.equal(shouldCompleteStoppedReply({stopReason: 'SESSION_PAUSED'}), true);
     assert.equal(shouldCompleteStoppedReply({stopReason: 'SILENT_SYSTEM'}), true);
+    assert.equal(shouldCompleteStoppedReply({stopReason: 'MARKETING_SILENT'}), true);
     assert.equal(shouldCompleteStoppedReply({jobFilterDecision: {
         filter: true,
         recommendedAction: 'FILTER',
