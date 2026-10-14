@@ -6,6 +6,8 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.maple.ai.job.hunting.model.bo.UserInfoDO;
 import com.maple.ai.job.hunting.model.entity.PreferenceEntity;
 import com.maple.ai.job.hunting.utils.PreferenceDefaults;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 import java.util.Optional;
 
@@ -16,6 +18,9 @@ import java.util.Optional;
  * @since 2024-05-13 15:49:51
  */
 public interface UserInfoMapper extends BaseMapper<UserInfoDO> {
+
+    @Select("SELECT * FROM user_info WHERE id = #{userId} FOR UPDATE")
+    UserInfoDO selectByIdForUpdate(@Param("userId") Long userId);
 
     default UserInfoDO selectByPhone(String phone) {
         return this.selectOne(new LambdaQueryWrapper<UserInfoDO>().eq(UserInfoDO::getPhone, phone));

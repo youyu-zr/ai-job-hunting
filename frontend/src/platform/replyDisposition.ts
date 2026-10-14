@@ -10,6 +10,7 @@ const TERMINAL_STOP_REASONS = new Set([
     'DUPLICATE_REPLY',
     'JOB_GATE',
     'SILENT_SYSTEM',
+    'MARKETING_SILENT',
 ]);
 
 /**

@@ -45,6 +45,9 @@ assert.match(aiJob, /catch \(error: any\) \{[\s\S]*?resumeImportStatus\.value = 
 
 assert.match(preference, /系统底层规则/);
 assert.match(preference, /求职要求/);
+assert.match(preference, /营销推广类消息自动回复/);
+assert.match(preference, /默认关闭/);
+assert.match(preferenceTypes, /marketingReplyE/);
 assert.doesNotMatch(preference, /未在【产品列表】中购买【ai过滤】产品请勿开启/);
 assert.match(preference, /applyPersonalPreferenceDefaults\(preference\)/);
 assert.match(preferenceDefaults, /优先结合我的简历经历、技能和当前岗位职责判断匹配度/);

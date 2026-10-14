@@ -405,4 +405,15 @@ export class AiPower {
     public static async getSessionStatus(jobKey: string): Promise<any> {
         return axios.get(`/api/job/seeker/cloned/session/status?jobKey=${encodeURIComponent(jobKey)}`)
     }
+
+    public static async getGlobalAiSeatStatus(): Promise<boolean | null> {
+        try {
+            const response = await axios.post("/api/user/userinfo", {});
+            const status = response?.data?.data?.aiSeatStatus;
+            return typeof status === "boolean" ? status : null;
+        } catch (error: any) {
+            logger.warn("【未读补扫】无法确认账号级AI坐席开关，本轮停止", error?.message || error);
+            return null;
+        }
+    }
 }

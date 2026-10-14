@@ -87,9 +87,83 @@ test('adversarial: the pause guard is actually wired into the reply send path', 
 
     // 生成前取代次，发送前校验；两者缺一都等于没有防护。
     assert.match(bossPlatform, /const turnGeneration = ConversationPauseRegistry\.beginTurn\(jobKey\)/);
-    assert.match(bossPlatform, /if \(!ConversationPauseRegistry\.canDeliver\(jobKey, turnGeneration\)\)/);
+    assert.match(bossPlatform, /const turnSeatRevision = getAiSeatStatusRevision\(\)/);
+    assert.match(bossPlatform, /const canDeliverLocally = \(\) => canDeliverAiSeatTurn/);
+    assert.match(bossPlatform, /const canDeliverAtServer = async \(\) =>/);
+    assert.match(bossPlatform, /loadAiSeatRuntimeStatus\(jobKey\)/);
+    assert.match(bossPlatform, /if \(canSend && !\(await canSend\(\)\)\)/);
     assert.match(aiPower, /ConversationPauseRegistry\.pause\(jobKey\)/);
     assert.match(aiPower, /ConversationPauseRegistry\.resume\(jobKey\)/);
+});
+
+test('adversarial: marketing defaults are enforced before contacting an older server', () => {
+    const bossPlatform = ui('platform/bossPlatform.ts');
+    const requestAt = bossPlatform.indexOf('return AiPower.ask(');
+    const localMarketingGateAt = bossPlatform.indexOf('shouldSilencePromotionalMessage(');
+
+    assert.ok(localMarketingGateAt >= 0 && requestAt > localMarketingGateAt);
+    assert.match(bossPlatform, /markBatchMessagesAsCompleted\(batch\)/);
+});
+
+test('adversarial: unread recovery confirms account-level seat status before reading contacts', async () => {
+    const source = readFileSync(new URL('../src/platform/bossPlatform.ts', import.meta.url), 'utf8');
+    const scanStart = source.indexOf('private static async scanUnreadConversationOnce');
+    const scanEnd = source.indexOf('private static hasUnreadMarker', scanStart);
+    assert.ok(scanStart >= 0 && scanEnd > scanStart);
+    const scan = source.slice(scanStart, scanEnd);
+    const statusRead = scan.indexOf('AiPower.getGlobalAiSeatStatus()');
+    const contactRead = scan.indexOf("document.querySelectorAll('.friend-content");
+    assert.ok(statusRead >= 0, 'the scanner must read the authoritative global seat status');
+    assert.ok(contactRead > statusRead, 'the scanner must not inspect contacts before confirming the seat is open');
+    assert.match(scan, /canScanUnreadConversations\(/);
+});
+
+test('adversarial: an uncertain resume exchange is never automatically retried', () => {
+    const bossPlatform = ui('platform/bossPlatform.ts');
+    const retryStart = bossPlatform.indexOf("hasPendingOperation(bossId, text, 'SEND_RESUME')");
+    const retryEnd = bossPlatform.indexOf('logger.debug("接收消息解码内容：", text)', retryStart);
+    assert.ok(retryStart >= 0 && retryEnd > retryStart);
+    const retryBranch = bossPlatform.slice(retryStart, retryEnd);
+
+    assert.match(retryBranch, /markMessageAsCompleted/);
+    assert.doesNotMatch(retryBranch, /sendResumeFile/);
+
+    assert.doesNotMatch(bossPlatform, /markBatchPendingOperation\(batch, 'SEND_RESUME'\)/);
+    assert.match(bossPlatform, /为避免重复发送，请人工检查 BOSS 会话后再决定是否发送/);
+});
+
+test('adversarial: unread recovery does not guess when the selected conversation sender is unknown', () => {
+    const pendingConversation = ui('platform/pendingConversation.ts');
+    assert.match(pendingConversation, /if \(input\.selected\) \{\s*return input\.latestSender === 'boss';\s*\}/);
+});
+
+test('adversarial: unread recovery verifies the target contact before using global chat text', () => {
+    const bossPlatform = ui('platform/bossPlatform.ts');
+    const scanStart = bossPlatform.indexOf('private static async scanUnreadConversationOnce');
+    const scanEnd = bossPlatform.indexOf('private static getFriendSource', scanStart);
+    const unreadScanner = bossPlatform.slice(scanStart, scanEnd);
+    const runtimeStatusCheckAt = unreadScanner.indexOf('loadAiSeatRuntimeStatus');
+    const handlerAt = unreadScanner.indexOf('handlerBossMessage(msgObj, bossId, text)');
+
+    assert.ok(scanStart >= 0 && scanEnd > scanStart);
+    const statusReadAt = unreadScanner.indexOf('AiPower.getGlobalAiSeatStatus()');
+    const contactReadAt = unreadScanner.indexOf("document.querySelectorAll('.friend-content");
+    assert.ok(statusReadAt >= 0 && contactReadAt > statusReadAt);
+    assert.match(unreadScanner, /canScanUnreadConversations\(/);
+    assert.ok(runtimeStatusCheckAt >= 0 && handlerAt > runtimeStatusCheckAt);
+    assert.doesNotMatch(unreadScanner, /friendEle\.click\(|clickFriendElement|waitForActiveConversation/);
+    assert.match(bossPlatform, /expectedSenderId:\s*BossOption\.getBossIdFromSource\(source\)/);
+});
+
+test('adversarial: confirmed resume exchange remains terminal if read cleanup fails', () => {
+    const bossPlatform = ui('platform/bossPlatform.ts');
+    const resumeStart = bossPlatform.indexOf('const sent = await this.sendResumeFile');
+    const readReceipt = bossPlatform.indexOf('new MessageRead({', resumeStart);
+    const resumeBranch = bossPlatform.slice(resumeStart, readReceipt);
+
+    assert.ok(resumeStart >= 0 && readReceipt > resumeStart);
+    assert.match(resumeBranch, /\}\s*this\.markBatchMessagesAsCompleted\(batch\)/);
+    assert.match(bossPlatform, /preserveSentReply && \([\s\S]*BossOption\.messageCache\.isMessageCompleted\(bossId, text\)/);
 });
 
 test('adversarial: no code path can read a cross-account config mirror', () => {

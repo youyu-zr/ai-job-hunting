@@ -3,6 +3,7 @@ import {Message, MessageRead, TechwolfChatProtocol} from "../webSocket/protobuf"
 import {MessageCache, Tools} from "./utils";
 import {MessageMergeBatch, MessageMergeQueue} from "./messageMerge";
 import {UserStore} from '../stores'
+import {rememberAiSeatStatus} from '../stores/remote'
 import logging from "../logging";
 import logger from "../logging";
 import {LogRecorder} from "../logging/record";
@@ -14,11 +15,19 @@ import {SendStateTracker, SendTraceContext} from "./sendState";
 import {AiFilterDecision, aiFilterAction, compactAiFilterReason} from "./filterGate";
 import {shouldCompleteStoppedReply} from "./replyDisposition";
 import {ConversationPauseRegistry} from "./pauseRegistry";
-import {readElementComponentData, readFriendSource} from "./friendSource";
+import {canDeliverAiSeatTurn, canScanUnreadConversations, parseAiSeatRuntimeStatus} from "./aiSeatDelivery";
+import {getAiSeatStatusRevision} from "../stores/seatState";
+import {readElementComponentData, readFriendSource, readMessageSenderId} from "./friendSource";
 import {shouldDelegateConversationTextToAi} from "./conversationInput";
+import {
+    isPendingConversationIdentityVerified,
+    shouldTreatPendingConversationAsReplyable,
+} from "./pendingConversation";
 import {bodyTypeOf, messageIdOf, msgTypeOf, senderOf} from "../webSocket/packetMessage";
+import {shouldSilencePromotionalMessage} from "./marketingGate";
 
 let userStore = null as any;
+const remotelyPausedJobs = new Set<string>();
 
 export class BossOption {
 
@@ -273,19 +282,9 @@ export class BossOption {
             return true;
         }
         if (BossOption.messageCache.hasPendingOperation(bossId, text, 'SEND_RESUME')) {
-            logging.info("【待完成动作重试】发送简历 bossId:", bossId);
-            const sent = await this.sendResumeFile(bossId);
-            if (sent) {
-                BossOption.markMessageAsCompleted(bossId, text);
-                return true;
-            }
-            BossOption.messageCache.markPendingOperation(
-                bossId,
-                text,
-                'SEND_RESUME',
-                BossOption.MESSAGE_COMPLETED_TTL,
-            );
-            return false;
+            logging.warn("【简历发送结果不确定】为避免重复发送，已停止自动重试，请先人工检查该会话 bossId:", bossId);
+            BossOption.markMessageAsCompleted(bossId, text);
+            return true;
         }
         logger.debug("接收消息解码内容：", text)
 
@@ -307,10 +306,73 @@ export class BossOption {
         const mergedText = batch.texts.join("\n").slice(0, 5000);
         BossOption.logRecorder.info("【合并HR连续消息】bossId:", bossUserInfo.bossId,
             "count:", batch.texts.length, "text:", mergedText.slice(0, 120));
+        const marketingReplyEnabled = Boolean(userStore?.user?.preference?.marketingReplyE);
+        if (shouldSilencePromotionalMessage(mergedText, marketingReplyEnabled)) {
+            BossOption.logRecorder.info("【营销/引流消息静默】本地规则已终止本轮自动回复");
+            this.markBatchMessagesAsCompleted(batch);
+            return true;
+        }
 
         // 记录本轮的暂停代次：模型生成期间用户手动暂停会递增代次，
         // 发送前核对失败就丢弃这条回复，而不是把它补发出去。
+        const initialStatus = await this.loadAiSeatRuntimeStatus(jobKey);
+        if (!initialStatus) {
+            BossOption.logRecorder.warn("【自动回复暂缓】服务端坐席状态暂时无法确认，保留消息等待重试");
+            this.removeBatchMessages(batch);
+            return false;
+        }
+        if (initialStatus.manuallyPaused || initialStatus.gatePaused) {
+            this.removeBatchMessages(batch);
+            return false;
+        }
         const turnGeneration = ConversationPauseRegistry.beginTurn(jobKey);
+        const turnSeatRevision = getAiSeatStatusRevision();
+        const canDeliverLocally = () => canDeliverAiSeatTurn({
+            aiSeatEnabled: Boolean(userStore?.user?.aiSeatStatus),
+            turnSeatRevision,
+            currentSeatRevision: getAiSeatStatusRevision(),
+            jobKey,
+            turnGeneration,
+            serverStatusFresh: true,
+            serverSeatEnabled: initialStatus.globalEnabled,
+            serverSessionPaused: initialStatus.manuallyPaused,
+            serverGatePaused: initialStatus.gatePaused,
+            turnServerRevision: initialStatus.globalRevision,
+            currentServerRevision: initialStatus.globalRevision,
+            turnSessionRevision: initialStatus.sessionRevision,
+            currentSessionRevision: initialStatus.sessionRevision,
+        });
+        let serverTurnRevoked = false;
+        const canDeliverAtServer = async () => {
+            if (!canDeliverLocally()) {
+                return false;
+            }
+            const latestStatus = await this.loadAiSeatRuntimeStatus(jobKey);
+            if (!latestStatus) {
+                return false;
+            }
+            if (latestStatus.globalEnabled !== Boolean(userStore?.user?.aiSeatStatus)) {
+                rememberAiSeatStatus(latestStatus.globalEnabled, userStore?.user);
+            }
+            if (latestStatus.manuallyPaused || latestStatus.gatePaused) {
+                serverTurnRevoked = true;
+                if (!ConversationPauseRegistry.isPaused(jobKey)) {
+                    ConversationPauseRegistry.pause(jobKey);
+                }
+                return false;
+            }
+            if (latestStatus.globalRevision !== initialStatus.globalRevision
+                || latestStatus.sessionRevision !== initialStatus.sessionRevision) {
+                serverTurnRevoked = true;
+                return false;
+            }
+            return canDeliverLocally();
+        };
+
+        if (!canDeliverLocally()) {
+            this.removeBatchMessages(batch);
+            return false;
+        }
 
         return AiPower.ask(
             mergedText,
@@ -318,6 +380,18 @@ export class BossOption {
             bossUserInfo,
             AiPower.SEMANTIC_SCREENING_PROMPT,
         ).then(async resp => {
+            const canDeliverTurn = canDeliverLocally;
+            const canDeliverImmediatelyBeforeSend = canDeliverAtServer;
+            const canDeliverStateChanged = () => serverTurnRevoked
+                || !canDeliverLocally();
+            const markBlockedTurn = () => {
+                if (canDeliverStateChanged()) {
+                    this.markBatchMessagesAsCompleted(batch);
+                    return true;
+                }
+                this.removeBatchMessages(batch);
+                return false;
+            };
             const data = resp?.data?.data || {};
             const answerTypeList: number[] = Array.isArray(data.answerTypeList)
                 ? data.answerTypeList.map((value: unknown) => Number(value)).filter(Number.isFinite)
@@ -368,17 +442,22 @@ export class BossOption {
                         data.answerContent,
                         AiPower.getCachedFilterDecision(bossUserInfo),
                     )
-                    if (!ConversationPauseRegistry.canDeliver(jobKey, turnGeneration)) {
+                    if (!canDeliverTurn()) {
                         // 用户在生成期间暂停或恢复了会话：这条回复已过期，
-                        // 标记为已完成以免未读补扫把它重新发一遍。
-                        BossOption.logRecorder.info("【人工接管】生成期间会话已暂停，丢弃本条自动回复 bossId:", bossUserInfo.bossId);
+                        // 或关闭/重新开启了总开关；标记完成以免断线补扫重复发送。
+                        BossOption.logRecorder.info("【自动回复已取消】生成期间总开关或会话状态发生变化，bossId:", bossUserInfo.bossId);
                         this.markBatchMessagesAsCompleted(batch);
                         return true;
                     }
-                    const sent = await this.sendMsg(bossUserInfo.bossId, data.answerContent + Tools.getEndChar(), undefined, html)
+                    const sent = await this.sendMsg(
+                        bossUserInfo.bossId,
+                        data.answerContent + Tools.getEndChar(),
+                        undefined,
+                        html,
+                        canDeliverImmediatelyBeforeSend,
+                    )
                     if (!sent) {
-                        this.removeBatchMessages(batch);
-                        return false;
+                        return markBlockedTurn();
                     }
                     this.markBatchRepliesAsSent(batch);
                 }
@@ -387,12 +466,21 @@ export class BossOption {
             if (answerTypeList.includes(JobSeekerClonedAnswerTypeEnum.BOSS_OPERATION)) {
                 const operationTypeList = data?.operationTypeList || [];
                 if (operationTypeList.includes(BossOperationTypeEnum.SEND_RESUME)) {
-                    const sent = await this.sendResumeFile(bossUserInfo.bossId);
-                    if (!sent) {
-                        this.markBatchPendingOperation(batch, 'SEND_RESUME');
-                        this.removeBatchMessages(batch, true);
-                        return false;
+                    if (!canDeliverTurn()) {
+                        this.markBatchMessagesAsCompleted(batch);
+                        return true;
                     }
+                    const sent = await this.sendResumeFile(bossUserInfo.bossId, canDeliverImmediatelyBeforeSend);
+                    if (!sent) {
+                        if (canDeliverStateChanged()) {
+                            this.markBatchMessagesAsCompleted(batch);
+                            return true;
+                        }
+                        BossOption.logRecorder.warn("【简历发送结果不确定】为避免重复发送，请人工检查 BOSS 会话后再决定是否发送 bossId:", bossUserInfo.bossId);
+                        this.markBatchMessagesAsCompleted(batch);
+                        return true;
+                    }
+                    this.markBatchMessagesAsCompleted(batch);
                 }
             }
 
@@ -472,7 +560,8 @@ export class BossOption {
             return;
         }
         for (const text of batch.texts) {
-            if (preserveSentReply && (BossOption.messageCache.wasReplySent(bossId, text)
+            if (preserveSentReply && (BossOption.messageCache.isMessageCompleted(bossId, text)
+                || BossOption.messageCache.wasReplySent(bossId, text)
                 || BossOption.messageCache.hasPendingOperation(bossId, text, 'SEND_RESUME'))) {
                 continue;
             }
@@ -556,15 +645,23 @@ export class BossOption {
         if (!userStore) {
             userStore = UserStore();
         }
-        if (!userStore.user.aiSeatStatus) {
-            return;
-        }
-        const friendEleList = Array.from(document.querySelectorAll('.friend-content, [class*="friend-content"]')) as any[];
-        if (friendEleList.length === 0) {
-            return;
-        }
         BossOption.unreadScanRunning = true;
         try {
+            const authoritativeSeatEnabled = await AiPower.getGlobalAiSeatStatus();
+            if (!canScanUnreadConversations(authoritativeSeatEnabled)) {
+                if (authoritativeSeatEnabled === false && userStore.user?.aiSeatStatus) {
+                    rememberAiSeatStatus(false, userStore.user);
+                }
+                BossOption.logRecorder.info("【未读补扫】账号级AI坐席已关闭或状态未知，未扫描联系人");
+                return;
+            }
+            if (!userStore.user?.aiSeatStatus) {
+                rememberAiSeatStatus(true, userStore.user);
+            }
+            const friendEleList = Array.from(document.querySelectorAll('.friend-content, [class*="friend-content"]')) as any[];
+            if (friendEleList.length === 0) {
+                return;
+            }
             const bossOption = new BossOption();
             // Inspect every rendered contact so an unread contact below the
             // first viewport cannot starve forever. Processing remains one
@@ -594,7 +691,7 @@ export class BossOption {
                 if (!pending.needsReply) {
                     continue;
                 }
-                const text = pending.text;
+                let text = pending.text;
                 if (!text) {
                     skippedNoText += 1;
                     BossOption.logRecorder.warn("【未读补扫】跳过：未提取到待回复文本 bossId:", bossId);
@@ -608,9 +705,20 @@ export class BossOption {
                 BossOption.logRecorder.info(
                     pending.source === 'read-pending' ? "【已读待回复补扫】触发AI坐席" : "【未读补扫】触发AI坐席",
                     "bossId:", bossId, "text:", text.slice(0, 60));
-                if (pending.clicked !== true) {
-                    BossOption.clickFriendElement(friendEle);
-                    await Tools.sleep(800);
+                const bossUserInfo = await bossOption.getBossUserInfoByBossId(bossId);
+                if (!bossUserInfo) {
+                    BossOption.logRecorder.warn("【未读补扫】无法确认目标岗位，跳过以保留原未读状态", "bossId:", bossId);
+                    continue;
+                }
+                const runtimeStatus = await bossOption.loadAiSeatRuntimeStatus(
+                    BossOption.buildJobKey(bossUserInfo),
+                );
+                if (!runtimeStatus
+                    || !runtimeStatus.globalEnabled
+                    || runtimeStatus.manuallyPaused
+                    || runtimeStatus.gatePaused) {
+                    BossOption.logRecorder.info("【未读补扫】服务端坐席状态不允许接续，跳过本轮", "bossId:", bossId);
+                    continue;
                 }
                 const msgObj = BossOption.buildSyntheticTextMessage(bossId, source, text);
                 const handled = await bossOption.handlerBossMessage(msgObj, bossId, text);
@@ -731,13 +839,18 @@ export class BossOption {
         return true;
     }
 
-    private static clickFriendElement(friendEle: any): void {
-        try {
-            friendEle.scrollIntoView({block: 'center'});
-            friendEle.click();
-        } catch (e) {
-            BossOption.logRecorder.warn("【未读补扫】点击未读联系人失败", e);
-        }
+    private static getActiveConversationBossId(): number {
+        const activeSelector = [
+            '.friend-content.selected',
+            '.friend-content.active',
+            '[class*="friend-content"].selected',
+            '[class*="friend-content"].active',
+        ].join(', ');
+        const activeFriends = Array.from(document.querySelectorAll(activeSelector)) as any[];
+        const activeIds = new Set(activeFriends
+            .map(friendEle => BossOption.getBossIdFromSource(BossOption.getFriendSource(friendEle)))
+            .filter(bossId => bossId > 0));
+        return activeIds.size === 1 ? Array.from(activeIds)[0] : 0;
     }
 
     private static buildSyntheticTextMessage(bossId: number, source: any, text: string): TechwolfChatProtocol {
@@ -768,7 +881,7 @@ export class BossOption {
     public async sendMsg(bossId: number, msg: string, image: {
         originImage: string,
         tinyImage: string
-    } | undefined, html?: string): Promise<boolean> {
+    } | undefined, html?: string, canSend?: () => boolean | Promise<boolean>): Promise<boolean> {
         return this.getBossUserInfoByBossId(bossId).then(async (bossUserInfo: BossUserInfo | undefined) => {
             if (!bossUserInfo) {
                 BossOption.logRecorder.error("发送消息失败，联系人信息获取失败");
@@ -805,6 +918,10 @@ export class BossOption {
             // candidate's own message back through the chat channel. Waiting
             // here keeps retries and the unread compensator aligned with the
             // actual platform state instead of the local sender invocation.
+            if (canSend && !(await canSend())) {
+                BossOption.logRecorder.info("自动回复发送前状态已变化，已取消 bossId:", bossId);
+                return false;
+            }
             const sent = await message.sendAndConfirm()
 
             if (sent && html) {
@@ -824,7 +941,7 @@ export class BossOption {
         })
     }
 
-    public async sendResumeFile(bossId: number): Promise<boolean> {
+    public async sendResumeFile(bossId: number, canSend?: () => boolean | Promise<boolean>): Promise<boolean> {
         let resumeId = userStore.user.resumeId;
         if (!resumeId) {
             BossOption.logRecorder.error("简历发送失败：当前账号没有可用简历");
@@ -840,6 +957,10 @@ export class BossOption {
 
             BossOption.logRecorder.info("已识别HR明确索要简历，正在调用平台简历交换接口");
 
+            if (canSend && !(await canSend())) {
+                BossOption.logRecorder.info("简历发送前坐席状态已变化，已取消 bossId:", bossId);
+                return false;
+            }
             const response = await axiosOriginal.post("https://www.zhipin.com/wapi/zpchat/exchange/request", {
                 securityId: bossUserInfo.securityId,
                 type: 3,
@@ -867,34 +988,78 @@ export class BossOption {
     private static async resolvePendingConversation(
         friendEle: any,
         source: any,
-    ): Promise<{ needsReply: boolean; text: string; source: 'unread' | 'read-pending' | 'unknown'; clicked?: boolean }> {
+    ): Promise<{ needsReply: boolean; text: string; source: 'unread' | 'read-pending' | 'unknown' }> {
         const unread = BossOption.hasUnreadMarker(friendEle, source);
         const preview = BossOption.extractUnreadPreviewText(friendEle, source);
         const senderId = BossOption.getLastMessageSenderId(source, friendEle);
         const currentUserId = BossOption.getCurrentUserId();
+        const selected = BossOption.isSelectedFriendElement(friendEle);
 
-        if (unread && preview) {
-            return {needsReply: true, text: preview, source: 'unread'};
-        }
-        if (!unread && senderId !== null && currentUserId > 0) {
-            if (senderId === currentUserId) {
-                return {needsReply: false, text: '', source: 'unknown'};
+        if (selected) {
+            const latest = BossOption.readLatestConversationMessage();
+            const targetBossId = BossOption.getBossIdFromSource(source);
+            const activeBossId = BossOption.getActiveConversationBossId();
+            if (latest?.text
+                && isPendingConversationIdentityVerified(targetBossId, activeBossId, latest.senderId)) {
+                const needsReply = shouldTreatPendingConversationAsReplyable({
+                    unread,
+                    preview: latest.text,
+                    lastMessageSenderId: senderId,
+                    currentUserId,
+                    selected: true,
+                    latestSender: latest.sender,
+                    latestMessageObserved: true,
+                });
+                return needsReply
+                    ? {needsReply: true, text: latest.text, source: unread ? 'unread' : 'read-pending'}
+                    : {needsReply: false, text: '', source: 'unknown'};
             }
-            return {needsReply: Boolean(preview), text: preview, source: 'read-pending'};
-        }
-
-        // Some BOSS versions clear the unread badge as soon as the list is
-        // rendered. Inspect only the already-selected conversation when
-        // metadata is inconclusive; never navigate through all contacts just
-        // to guess who sent the last message.
-        if (!BossOption.isSelectedFriendElement(friendEle)) {
             return {needsReply: false, text: '', source: 'unknown'};
         }
-        const latest = BossOption.readLatestConversationMessage();
-        if (latest?.sender === 'boss' && latest.text) {
-            return {needsReply: true, text: latest.text, source: unread ? 'unread' : 'read-pending', clicked: true};
+
+        if (shouldTreatPendingConversationAsReplyable({
+            unread,
+            preview,
+            lastMessageSenderId: senderId,
+            currentUserId,
+            selected: false,
+            latestSender: 'unknown',
+            expectedSenderId: BossOption.getBossIdFromSource(source),
+        })) {
+            return {
+                needsReply: true,
+                text: preview,
+                source: unread ? 'unread' : 'read-pending',
+            };
         }
+
         return {needsReply: false, text: '', source: 'unknown'};
+    }
+
+    private async loadAiSeatRuntimeStatus(jobKey: string) {
+        try {
+            const response = await AiPower.getSessionStatus(jobKey);
+            const status = parseAiSeatRuntimeStatus(response?.data?.data);
+            if (!status) {
+                return null;
+            }
+            if (status.globalEnabled !== Boolean(userStore?.user?.aiSeatStatus)) {
+                rememberAiSeatStatus(status.globalEnabled, userStore?.user);
+            }
+            if (status.manuallyPaused || status.gatePaused) {
+                remotelyPausedJobs.add(jobKey);
+                if (!ConversationPauseRegistry.isPaused(jobKey)) {
+                    ConversationPauseRegistry.pause(jobKey);
+                }
+            } else if (remotelyPausedJobs.has(jobKey)) {
+                remotelyPausedJobs.delete(jobKey);
+                ConversationPauseRegistry.resume(jobKey);
+            }
+            return status;
+        } catch (error: any) {
+            BossOption.logRecorder.warn("【坐席状态读取失败】本轮不自动发送，等待服务恢复", error?.message || error);
+            return null;
+        }
     }
 
     private static isSelectedFriendElement(friendEle: any): boolean {
@@ -962,7 +1127,11 @@ export class BossOption {
         return null;
     }
 
-    private static readLatestConversationMessage(): { sender: 'boss' | 'candidate' | 'unknown'; text: string } | null {
+    private static readLatestConversationMessage(): {
+        sender: 'boss' | 'candidate' | 'unknown';
+        senderId: number | null;
+        text: string;
+    } | null {
         const container = document.querySelector(
             '.chat-conversation, .conversation-content, .chat-message-list, [class*="conversation"], [class*="chat-list"]'
         ) as HTMLElement | null;
@@ -978,9 +1147,8 @@ export class BossOption {
                 continue;
             }
             const sender = BossOption.readConversationNodeSender(node);
-            if (sender !== 'unknown') {
-                return {sender, text};
-            }
+            const senderId = BossOption.readConversationNodeSenderId(node);
+            return {sender, senderId, text};
         }
         return null;
     }
@@ -988,12 +1156,9 @@ export class BossOption {
     private static readConversationNodeSender(node: any): 'boss' | 'candidate' | 'unknown' {
         const props = readElementComponentData(node);
         const currentUserId = BossOption.getCurrentUserId();
-        const uidValues = [props?.from?.uid, props?.sender?.uid, props?.user?.uid, props?.uid, props?.fromUid, props?.senderUid];
-        for (const value of uidValues) {
-            const uid = Number(value);
-            if (Number.isFinite(uid) && uid > 0 && currentUserId > 0) {
-                return uid === currentUserId ? 'candidate' : 'boss';
-            }
+        const senderId = BossOption.readConversationNodeSenderId(node);
+        if (senderId !== null && currentUserId > 0) {
+            return senderId === currentUserId ? 'candidate' : 'boss';
         }
         for (const key of ['isMine', 'isMe', 'isSelf', 'fromMe', 'sentByMe']) {
             if (typeof props?.[key] === 'boolean') {
@@ -1008,6 +1173,10 @@ export class BossOption {
             return 'boss';
         }
         return 'unknown';
+    }
+
+    private static readConversationNodeSenderId(node: any): number | null {
+        return readMessageSenderId(node);
     }
 
     private static readConversationNodeText(node: HTMLElement): string {

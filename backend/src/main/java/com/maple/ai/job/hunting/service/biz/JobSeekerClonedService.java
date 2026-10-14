@@ -120,6 +120,16 @@ public class JobSeekerClonedService {
                     HeaderContext.getHeader().getUserId(), textLength(jobSeekerClonedParam.getQuestion()), silentPair.getValue().getClass().getSimpleName());
             return silentPair.getValue();
         }
+        boolean marketingReplyEnabled = preferenceEntityOpt
+                .map(PreferenceEntity::isMarketingReplyE)
+                .orElse(false);
+        String questionText = Optional.ofNullable(jobSeekerClonedParam.getQuestion()).orElse("");
+        if (ConversationGateUtil.isHardPromotionalRisk(questionText)
+                || (!marketingReplyEnabled && ConversationGateUtil.isPromotionalMessage(questionText))) {
+            log.info("营销/引流消息默认静默 jobKey:{} userId:{} marketingReplyEnabled:{} questionLength:{}",
+                    safeLogValue(jobKey), userId, marketingReplyEnabled, textLength(questionText));
+            return new JobSeekerClonedResultVO(JobSeekerClonedAnswerTypeEnum.STOP, "", "MARKETING_SILENT");
+        }
         String humanHandoffCategory = ConversationGateUtil.humanHandoffCategory(jobSeekerClonedParam.getQuestion());
         if (StringUtils.isNotBlank(humanHandoffCategory)) {
             msgSessionService.trySetMsgSessionStop(jobKey, true);
@@ -1109,11 +1119,7 @@ public class JobSeekerClonedService {
     }
 
     protected @NotNull String getOrInitSession(String jobKey, Long userId) {
-        LambdaQueryWrapper<MsgSessionDO> condition = new LambdaQueryWrapper<>();
-        condition.eq(MsgSessionDO::getSessionKey, jobKey);
-        condition.eq(MsgSessionDO::getUserId, userId);
-        condition.eq(MsgSessionDO::getStatus, MsgSessionStatusEnum.IN_USE.getCode());
-        MsgSessionDO msgSessionDO = msgSessionMapper.selectOne(condition);
+        MsgSessionDO msgSessionDO = msgSessionMapper.selectInUseByUserAndSessionKey(userId, jobKey);
         String sessionId;
         if (msgSessionDO == null) {
             MsgSessionDO sessionDO = new MsgSessionDO(null, null, MsgSessionStatusEnum.IN_USE.getCode(), userId, jobKey);

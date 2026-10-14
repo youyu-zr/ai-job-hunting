@@ -63,6 +63,31 @@ export function readElementComponentData(element: any): AnyRecord {
     return readComponentData(element) || {};
 }
 
+export function readMessageSenderId(element: any): number | null {
+    const component = element?.__vueParentComponent || element?.__vue__;
+    for (const candidate of componentCandidates(component)) {
+        for (const message of [candidate.message, candidate.msg, candidate.data, candidate]) {
+            const values = [
+                message?.from?.uid, message?.sender?.uid, message?.fromUid,
+                message?.senderUid, message?.senderId,
+            ];
+            for (const value of values) {
+                const uid = Number(value);
+                if (Number.isSafeInteger(uid) && uid > 0) {
+                    return uid;
+                }
+            }
+        }
+    }
+    for (const attribute of ['data-from-uid', 'data-sender-id']) {
+        const uid = Number(element?.getAttribute?.(attribute));
+        if (Number.isSafeInteger(uid) && uid > 0) {
+            return uid;
+        }
+    }
+    return null;
+}
+
 export function readFriendSource(element: any): AnyRecord {
     const data = readComponentData(element);
     const source = data?.source;
