@@ -231,6 +231,17 @@ class MessageTriageServiceTest {
     }
 
     @Test
+    void oversizedPreferenceIsRejectedBeforeCallingClassifier() {
+        ai.response = response(Category.NORMAL_JOB, Action.REPLY, "不应调用模型");
+        preference.setJobGoal("P".repeat(5_000));
+
+        MessageTriageResultVO result = classify("岗位消息", 1);
+
+        assertEquals(0, ai.calls);
+        assertProcessingError(result);
+    }
+
+    @Test
     void masksPhoneNumbersAndEmailsFromEveryReturnedTextField() {
         ai.response = "{\"category\":\"NORMAL_JOB\",\"action\":\"REPLY\",\"reasonCode\":\"CONTACT_FOUND\","
                 + "\"plainLanguageReason\":\"联系候选人 13800138000 或 jane@example.com\","
@@ -304,10 +315,9 @@ class MessageTriageServiceTest {
     void boundsEachPromptInputAndRejectsAnOversizedHrMessage() {
         ai.response = response(Category.NORMAL_JOB, Action.REPLY, "岗位信息足够");
         classify("普通消息", 1, "J".repeat(6_000) + "JOB_TAIL",
-                "R".repeat(8_000) + "RESUME_TAIL", preferenceWithGoal("P".repeat(6_000) + "PREF_TAIL"));
+                "R".repeat(8_000) + "RESUME_TAIL", new PreferenceEntity());
         assertFalse(ai.lastUserPayload.contains("JOB_TAIL"));
         assertFalse(ai.lastUserPayload.contains("RESUME_TAIL"));
-        assertFalse(ai.lastUserPayload.contains("PREF_TAIL"));
         assertTrue(ai.lastUserPayload.contains("内容已截断"));
 
         int callsBeforeOversizedMessage = ai.calls;
@@ -323,12 +333,6 @@ class MessageTriageServiceTest {
     private MessageTriageResultVO classify(String message, Integer bodyType, String jobContext,
                                            String resumeContent, PreferenceEntity preference) {
         return service.classify(message, jobContext, resumeContent, preference, bodyType);
-    }
-
-    private static PreferenceEntity preferenceWithGoal(String goal) {
-        PreferenceEntity result = new PreferenceEntity();
-        result.setJobGoal(goal);
-        return result;
     }
 
     private static void assertProcessingError(MessageTriageResultVO result) {

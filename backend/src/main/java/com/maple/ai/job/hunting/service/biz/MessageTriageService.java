@@ -293,9 +293,9 @@ public class MessageTriageService {
             if (json.length() <= MAX_PREFERENCE_LENGTH) {
                 return json;
             }
-            return SAFE_JSON.writeValueAsString(Map.of("_truncated", "内容已截断"));
+            throw new IllegalArgumentException("Preference payload exceeds supported limit");
         } catch (Exception ignored) {
-            return "{}";
+            throw new IllegalStateException("Unable to serialize classifier preferences", ignored);
         }
     }
 
