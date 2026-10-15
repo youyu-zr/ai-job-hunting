@@ -50,7 +50,7 @@ public class AiFilterResultVO {
     private String riskLevel;
 
     /**
-     * 建议动作：DELIVER / CHAT_FIRST / FILTER / HUMAN_REVIEW。
+     * 建议动作：DELIVER / FILTER；技术异常通过服务/API 错误路径处理。
      */
     private String recommendedAction;
 

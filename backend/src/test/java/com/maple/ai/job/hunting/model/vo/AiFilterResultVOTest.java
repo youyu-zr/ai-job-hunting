@@ -6,6 +6,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class AiFilterResultVOTest {
 
@@ -30,5 +31,15 @@ class AiFilterResultVOTest {
         assertEquals("LOW", result.getRiskLevel());
         assertEquals("DELIVER", result.getRecommendedAction());
         assertIterableEquals(List.of("工作地点在哪里？"), result.getClarificationQuestions());
+    }
+
+    @Test
+    void allowsClarificationQuestionsToBeOmitted() {
+        AiFilterResultVO result = AiFilterResultVO.builder()
+                .filter(false)
+                .recommendedAction("DELIVER")
+                .build();
+
+        assertNull(result.getClarificationQuestions());
     }
 }
