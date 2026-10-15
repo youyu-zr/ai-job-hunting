@@ -5,6 +5,7 @@ export type AiFilterDecision = {
     workMode?: string
     workModeEvidence?: string[]
     reason?: string
+    clarificationQuestions?: string[]
     jobScore?: number
     companyScore?: number
     matchScore?: number
@@ -14,13 +15,14 @@ export type AiFilterDecision = {
 }
 
 /**
- * The delivery gate only blocks an explicit semantic rejection or a high-risk
- * result. HUMAN_REVIEW is not a rejection: it means the job is ambiguous and
- * should be clarified with HR after delivery. This keeps delivery and chat on
- * the same boundary instead of silently dropping otherwise usable jobs.
+ * Technical analysis failures are blocked and kept retryable; missing job facts
+ * are not a reason to block a valid DELIVER decision.
  */
 export function shouldBlockAfterAiFilter(result: AiFilterDecision | null | undefined): boolean {
     if (!result) {
+        return true
+    }
+    if (shouldRetryAfterAiFilter(result)) {
         return true
     }
     if (result.filter === true) {
@@ -28,10 +30,22 @@ export function shouldBlockAfterAiFilter(result: AiFilterDecision | null | undef
     }
     const action = String(result.recommendedAction || '').trim().toUpperCase()
     const risk = String(result.riskLevel || '').trim().toUpperCase()
-    if (risk === 'HIGH') {
+    if (risk === 'HIGH' || action === 'PROCESSING_ERROR') {
         return true
     }
     return action === 'FILTER'
+}
+
+export function shouldRetryAfterAiFilter(result: AiFilterDecision | null | undefined): boolean {
+    if (!result || typeof result !== 'object') {
+        return true
+    }
+    const action = String(result.recommendedAction || '').trim().toUpperCase()
+    const risk = String(result.riskLevel || '').trim().toUpperCase()
+    return action === 'PROCESSING_ERROR'
+        || !['DELIVER', 'FILTER'].includes(action)
+        || typeof result.filter !== 'boolean'
+        || !['LOW', 'MEDIUM', 'HIGH'].includes(risk)
 }
 
 /**

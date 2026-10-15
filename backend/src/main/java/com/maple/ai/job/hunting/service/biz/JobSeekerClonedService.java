@@ -404,36 +404,23 @@ public class JobSeekerClonedService {
                     safeLogValue(jobKey), HeaderContext.getHeader().getUserId());
             return Pair.of(false, null);
         }
-        if (jobInfo.containsKey("aiFilterDecision") && jobInfo.get("aiFilterDecision") != null) {
-            Object rawDecision = jobInfo.get("aiFilterDecision");
-            decision = parseAiFilterDecision(rawDecision);
-            if (decision == null) {
-                log.warn("岗位AI决策格式异常，暂停自动回复 jobKey:{} userId:{}", safeLogValue(jobKey),
-                        HeaderContext.getHeader().getUserId());
-                return Pair.of(true, stopForAiJobGate(
-                        jobKey, "岗位AI分析结果格式异常，暂停自动回复", "HUMAN_REVIEW", "MEDIUM"));
-            }
-        } else {
-            String jobTitle = StringUtils.defaultString(jobInfo.getString("jobTitle"));
-            String jobContext = StringUtils.defaultString(jobInfo.getString("jobContext"));
-            if (StringUtils.isBlank(jobContext)) {
-                jobContext = StringUtils.defaultString(jobInfo.getString("visibleJobCard"));
-            }
-            decision = jobFilterService.filter(new AIFilterParam(
-                    "逐个读取完整岗位信息后做语义判断；DELIVER表示可直接投递，CHAT_FIRST表示低/中风险、可先投递进入沟通并确认细节，HUMAN_REVIEW表示交给真人，FILTER表示过滤。",
-                    JSON.toJSONString(Collections.singletonMap("jobName", jobTitle)),
-                    JSON.toJSONString(Collections.singletonMap("postDescription", jobContext))));
+        String jobTitle = StringUtils.defaultString(jobInfo.getString("jobTitle"));
+        String jobContext = StringUtils.defaultString(jobInfo.getString("jobContext"));
+        if (StringUtils.isBlank(jobContext)) {
+            jobContext = StringUtils.defaultString(jobInfo.getString("visibleJobCard"));
         }
+        decision = jobFilterService.filter(new AIFilterParam(
+                "结合岗位、简历和已保存的求职条件判断是否继续投递。岗位资料不完整且没有明确风险或硬条件冲突时继续投递，并列出需要后续确认的问题。",
+                JSON.toJSONString(Collections.singletonMap("jobName", jobTitle)),
+                JSON.toJSONString(Collections.singletonMap("postDescription", jobContext))));
         String action = decision == null ? "" : StringUtils.upperCase(StringUtils.trimToEmpty(decision.getRecommendedAction()));
         String risk = decision == null ? "" : StringUtils.upperCase(StringUtils.trimToEmpty(decision.getRiskLevel()));
         boolean filtered = decision != null && Boolean.TRUE.equals(decision.getFilter());
+        if ("PROCESSING_ERROR".equals(action)) {
+            throw new com.maple.ai.job.hunting.frame.exp.ApplicationException("岗位分析暂时不可用，请稍后重试");
+        }
         if (isSafeAiJobAction(filtered, action, risk)) {
             msgSessionService.trySetAiJobGateStop(jobKey, false);
-            if ("CHAT_FIRST".equals(action)) {
-                log.info("岗位AI闸门允许先投递进入沟通 jobKey:{} userId:{} action:{} risk:{} reason:{}",
-                        safeLogValue(jobKey), HeaderContext.getHeader().getUserId(), action, risk,
-                        safeLogValue(StringUtils.defaultIfBlank(decision.getReason(), "先沟通确认岗位细节")));
-            }
             return Pair.of(false, null);
         }
         String reason = decision == null ? "没有拿到岗位AI分析结果" : StringUtils.defaultIfBlank(decision.getReason(), "岗位需要人工确认");
@@ -443,9 +430,7 @@ public class JobSeekerClonedService {
     static boolean isSafeAiJobAction(boolean filtered, String action, String risk) {
         return !filtered
                 && !"HIGH".equals(risk)
-                && ("DELIVER".equals(action)
-                || "CHAT_FIRST".equals(action)
-                || "HUMAN_REVIEW".equals(action));
+                && "DELIVER".equals(action);
     }
 
     /**

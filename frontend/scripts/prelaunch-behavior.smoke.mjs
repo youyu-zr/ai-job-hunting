@@ -49,11 +49,18 @@ test('the preference toggle is explicitly limited to high-interest handoff', () 
         'the independent hard gates must be described');
 });
 
-test('important personal decisions pause the job session before AI generation', () => {
-    assert.match(conversationGate, /humanHandoffCategory/, 'backend must classify the decision category');
-    const sensitiveGateIndex = clonedService.indexOf('ConversationGateUtil.humanHandoffCategory');
+test('only concrete commitments pause the current job session before reply generation', () => {
+    const triageIndex = clonedService.indexOf('messageTriageService.classify(');
+    const commitmentGateIndex = clonedService.indexOf(
+        'if (isConcreteCurrentCommitment(jobSeekerClonedParam.getQuestion()))',
+    );
     const aiCallIndex = clonedService.indexOf('aiServiceFacade.sessionChat');
-    assert.ok(sensitiveGateIndex >= 0 && sensitiveGateIndex < aiCallIndex,
-        'explicit decision messages must be paused before AI generation');
-    assert.match(clonedService.slice(sensitiveGateIndex, aiCallIndex), /trySetMsgSessionStop\(jobKey, true\)/);
+    assert.ok(triageIndex >= 0 && triageIndex < commitmentGateIndex,
+        'server AI must classify HR meaning before applying personal-commitment rules');
+    assert.ok(commitmentGateIndex < aiCallIndex,
+        'concrete personal commitments must stop before reply generation');
+    assert.match(clonedService.slice(commitmentGateIndex, aiCallIndex), /trySetMsgSessionStop\(jobKey, true\)/);
+    assert.doesNotMatch(clonedService.slice(triageIndex, aiCallIndex),
+        /humanHandoffCategory/,
+        'salary, location, and contact topics must not use the retired keyword pause gate');
 });

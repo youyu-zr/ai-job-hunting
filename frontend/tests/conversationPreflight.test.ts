@@ -28,10 +28,13 @@ test('stops chat early only when the client screening result explicitly blocks i
     }), false);
 });
 
-test('does not block delivery for an ambiguous low-risk job that should be clarified in chat', () => {
-    assert.equal(shouldBlockAfterAiFilter({
+test('does not block chat preflight for an ambiguous low-risk job that should be clarified in chat', () => {
+    const result = {
         filter: false,
         recommendedAction: 'HUMAN_REVIEW',
         riskLevel: 'MEDIUM',
-    }), false);
+    };
+
+    assert.equal(shouldBlockConversationPreflight(result), false);
+    assert.equal(shouldBlockAfterAiFilter(result), true);
 });

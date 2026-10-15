@@ -150,7 +150,9 @@ public class AIServiceFacade {
                 throw new ApplicationException("AI产品能力已过期");
             }
         } catch (Exception e) {
-            if (e.getMessage() != null && e.getMessage().contains("AI产品能力已过期")) {
+            if ((e.getMessage() != null && e.getMessage().contains("AI产品能力已过期"))
+                    || (e instanceof ApplicationException
+                    && "当前 AI 服务不支持分离系统规则与用户内容".equals(e.getMessage()))) {
                 throw e;
             }
             aiPowerExpAlarm(e);

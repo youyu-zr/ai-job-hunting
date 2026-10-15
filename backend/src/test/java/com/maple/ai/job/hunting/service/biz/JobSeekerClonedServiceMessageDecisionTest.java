@@ -1,5 +1,6 @@
 package com.maple.ai.job.hunting.service.biz;
 
+import com.alibaba.fastjson.JSONObject;
 import com.maple.ai.job.hunting.common.Header;
 import com.maple.ai.job.hunting.common.HeaderContext;
 import com.maple.ai.job.hunting.entity.MsgSessionDO;
@@ -13,7 +14,9 @@ import com.maple.ai.job.hunting.mapper.UserResumeMapper;
 import com.maple.ai.job.hunting.model.ChatSessionResult;
 import com.maple.ai.job.hunting.model.bo.UserResumeDO;
 import com.maple.ai.job.hunting.model.entity.PreferenceEntity;
+import com.maple.ai.job.hunting.model.param.AIFilterParam;
 import com.maple.ai.job.hunting.model.param.JobSeekerClonedParam;
+import com.maple.ai.job.hunting.model.vo.AiFilterResultVO;
 import com.maple.ai.job.hunting.model.vo.JobSeekerClonedResultVO;
 import com.maple.ai.job.hunting.model.vo.MessageTriageResultVO;
 import com.maple.ai.job.hunting.model.vo.MessageTriageResultVO.Action;
@@ -25,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -203,10 +207,41 @@ class JobSeekerClonedServiceMessageDecisionTest {
                 .getPlatformBodyType());
     }
 
+    @Test
+    void serverRecomputesJobDecisionInsteadOfTrustingBrowserSuppliedResult() {
+        Fixture fixture = new Fixture();
+        fixture.triageResult(Category.NORMAL_JOB, Action.REPLY);
+        fixture.jobFilter.decision = AiFilterResultVO.builder()
+                .filter(true)
+                .reason("岗位存在明确风险")
+                .riskLevel("HIGH")
+                .recommendedAction("FILTER")
+                .build();
+
+        JSONObject jobInfo = new JSONObject();
+        jobInfo.put("jobTitle", "资料运营");
+        jobInfo.put("jobContext", "实际工作内容");
+        jobInfo.put("aiFilterDecision", Map.of(
+                "filter", false,
+                "riskLevel", "LOW",
+                "recommendedAction", "DELIVER",
+                "reason", "客户端伪造的放行结果"));
+        JobSeekerClonedResultVO result = fixture.ask(
+                "岗位沟通", "job-forged-client-decision", 1, jobInfo);
+
+        assertEquals(1, fixture.jobFilter.calls.get());
+        assertTrue(fixture.jobFilter.lastParam.getJobBaseInfo().contains("资料运营"));
+        assertTrue(fixture.jobFilter.lastParam.getJobExtInfo().contains("实际工作内容"));
+        assertEquals("JOB_GATE", result.getStopReason());
+        assertEquals(List.of("job-forged-client-decision:true"), fixture.sessions.aiJobGateStops);
+        assertEquals(0, fixture.ai.sessionChatCalls.get());
+    }
+
     private static final class Fixture {
         private final RecordingTriageService triage = new RecordingTriageService();
         private final RecordingAIServiceFacade ai = new RecordingAIServiceFacade();
         private final RecordingMsgSessionService sessions = new RecordingMsgSessionService();
+        private final RecordingJobFilterService jobFilter = new RecordingJobFilterService();
         private final JobSeekerClonedService service = new JobSeekerClonedService() {
             @Override
             protected String getOrInitSession(String jobKey, Long userId) {
@@ -233,6 +268,7 @@ class JobSeekerClonedServiceMessageDecisionTest {
             HeaderContext.setHeader(new Header(user, "request", "/api/job/seeker/cloned/ask",
                     null, false, null, null));
             ReflectionTestUtils.setField(service, "messageTriageService", triage);
+            ReflectionTestUtils.setField(service, "jobFilterService", jobFilter);
             ReflectionTestUtils.setField(service, "aiServiceFacade", ai);
             ReflectionTestUtils.setField(service, "msgSessionService", sessions);
             ReflectionTestUtils.setField(service, "msgSessionMapper", msgSessionMapper);
@@ -265,9 +301,26 @@ class JobSeekerClonedServiceMessageDecisionTest {
         }
 
         private JobSeekerClonedResultVO ask(String question, String jobKey, Integer bodyType) {
-            JobSeekerClonedParam param = new JobSeekerClonedParam(question, jobKey, null);
+            return ask(question, jobKey, bodyType, null);
+        }
+
+        private JobSeekerClonedResultVO ask(String question, String jobKey, Integer bodyType, JSONObject jobInfo) {
+            JobSeekerClonedParam param = new JobSeekerClonedParam(question, jobKey, jobInfo);
             param.setPlatformBodyType(bodyType);
             return service.ask(param);
+        }
+    }
+
+    private static final class RecordingJobFilterService extends JobFilterService {
+        private final AtomicInteger calls = new AtomicInteger();
+        private AIFilterParam lastParam;
+        private AiFilterResultVO decision;
+
+        @Override
+        public AiFilterResultVO filter(AIFilterParam param) {
+            calls.incrementAndGet();
+            lastParam = param;
+            return decision;
         }
     }
 
