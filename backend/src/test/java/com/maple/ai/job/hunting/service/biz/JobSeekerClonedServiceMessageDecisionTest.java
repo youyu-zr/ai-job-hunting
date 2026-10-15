@@ -153,6 +153,23 @@ class JobSeekerClonedServiceMessageDecisionTest {
     }
 
     @Test
+    void ordinaryConversationClosingTextSilencesOnlyThatMessage() {
+        Fixture fixture = new Fixture();
+        fixture.triageResult(Category.NORMAL_JOB, Action.REPLY);
+
+        JobSeekerClonedResultVO closing = fixture.ask(
+                "本轮结束，后续有机会再联系", "job-closing", 1);
+        JobSeekerClonedResultVO followUp = fixture.ask(
+                "后续有个岗位细节想再确认", "job-closing", 1);
+
+        assertEquals("SILENT_SYSTEM", closing.getStopReason());
+        assertNull(followUp.getStopReason());
+        assertTrue(fixture.sessions.pausedJobs.isEmpty());
+        assertEquals(2, fixture.triage.calls.get());
+        assertEquals(1, fixture.ai.sessionChatCalls.get());
+    }
+
+    @Test
     void resumeRequestCannotBypassHighRiskOrProcessingErrorAndProcessingErrorCanRetry() {
         Fixture fixture = new Fixture();
         fixture.triageResult(Category.HIGH_RISK, Action.BLOCK_CURRENT_JOB);

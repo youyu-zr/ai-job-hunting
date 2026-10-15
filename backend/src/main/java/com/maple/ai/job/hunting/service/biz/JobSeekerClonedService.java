@@ -555,9 +555,6 @@ public class JobSeekerClonedService {
         question = question.trim();
         boolean closingMessage = !isResumeRequestQuestion(question)
                 && ConversationGateUtil.isConversationClosingMessage(question);
-        if (closingMessage) {
-            msgSessionService.trySetMsgSessionStop(jobKey, true);
-        }
         if (!ConversationGateUtil.shouldDelegateToAi(question)
                 || isSilentSystemQuestion(question)
                 || isLowValueOrStickerQuestion(question)

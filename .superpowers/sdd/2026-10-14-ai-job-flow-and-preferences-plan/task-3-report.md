@@ -39,6 +39,8 @@ Task 3 backend production files, Task 3 regression tests, and this report.
   location, and generic discussion are not deterministic pause triggers.
   Concrete interview/start-date commitments and explicit contract/offer
   commitments remain covered.
+- Ordinary conversation-closing text now silences only that message; it no
+  longer persists a session pause, so a later HR message can be processed.
 - Added a retryable flag to `JobSeekerClonedResultVO`.
 
 ## TDD Evidence
@@ -69,6 +71,31 @@ mvn -o '-Dtest=JobSeekerClonedServiceMessageDecisionTest,JobSeekerClonedServiceM
 ```
 
 Result: `63` tests run, `0` failures, `0` errors, `0` skipped.
+
+### Scoped Review Fix
+
+Review found that a generic closing phrase could still persist a session pause.
+A new regression test first failed because `pausedJobs` contained the current
+job. The pause side effect was removed while retaining current-message
+silencing; a subsequent message in the same job session is now allowed through
+the AI chat path.
+
+Focused RED command:
+
+```powershell
+mvn -o '-Dtest=JobSeekerClonedServiceMessageDecisionTest#ordinaryConversationClosingTextSilencesOnlyThatMessage' test
+```
+
+Result before the fix: `1` test failed at the assertion that no session pause
+was recorded.
+
+Focused GREEN command:
+
+```powershell
+mvn -o '-Dtest=JobSeekerClonedServiceMessageDecisionTest,JobSeekerClonedServiceMarketingTest,JobSeekerClonedServiceHumanHandoffTest,JobSeekerClonedServiceReplyGuardTest,ConversationGateUtilTest,MessageTriageServiceTest' test
+```
+
+Result after the fix: `64` tests run, `0` failures, `0` errors, `0` skipped.
 
 Additional packaging verification:
 
