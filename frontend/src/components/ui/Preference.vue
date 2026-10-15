@@ -28,23 +28,32 @@
 
             <el-text class="mx-1 top-title" type="warning">求职要求</el-text>
             <el-text type="info" size="small" class="section-hint">
-                已预填通用建议，保存后会参与岗位匹配和相关沟通。你可以直接使用，也可以按自己的情况删改或补充；清空并保存后，该项会保持为空，不会自动填回。
+                已预填通用建议，保存后会参与岗位匹配和相关沟通。按自己的情况删改或补充即可；已初始化的内容清空并保存后，会保持为空。
             </el-text>
-            <el-form-item label="你想找什么样的工作？" style="margin-top: 10px;">
+            <el-form-item label="我想找什么工作" style="margin-top: 10px;">
                 <el-input v-model="userStore.user.preference.jobGoal" type="textarea" :rows="2" :maxlength="1200"
-                          show-word-limit placeholder="补充你的目标岗位、经验阶段、城市或工作方式等个人要求。" />
+                          show-word-limit placeholder="可以删改默认内容，补充你自己的岗位目标或工作方式。" />
+                <el-text type="info" size="small">填写参考：优先考虑什么岗位？优先哪个城市或采用什么工作方式？例子仅供参考，不会自动保存为你的条件。</el-text>
             </el-form-item>
-            <el-form-item label="哪些条件明确不能接受？">
+            <el-form-item label="哪些情况我不能接受">
                 <el-input v-model="userStore.user.preference.unacceptableConditions" type="textarea" :rows="2" :maxlength="1200"
-                          show-word-limit placeholder="补充你个人明确不能接受的条件；没有的话可以清空。" />
+                          show-word-limit placeholder="只填写你个人明确不能接受的条件；没有的话可以清空。" />
+                <el-text type="info" size="small">填写参考：最低薪资是多少？加班、出差、试用期或合同期限有哪些底线？</el-text>
             </el-form-item>
-            <el-form-item label="哪些情况需要先了解清楚？">
+            <el-form-item label="信息不全时优先问什么">
                 <el-input v-model="userStore.user.preference.clarifyConditions" type="textarea" :rows="2" :maxlength="1200"
-                          show-word-limit placeholder="补充你希望先向 HR 了解的个人问题。" />
+                          show-word-limit placeholder="调整你希望 AI 在聊天中优先向 HR 确认的信息。" />
+                <el-text type="info" size="small">填写参考：薪资构成、工作内容、办公地点或方式、工时与加班、出差、试用期、合同期限。</el-text>
             </el-form-item>
-            <el-form-item label="沟通与面试偏好">
+            <el-form-item label="跟 HR 沟通时按什么方式">
                 <el-input v-model="userStore.user.preference.communicationPreferences" type="textarea" :rows="3" :maxlength="1600"
-                          show-word-limit placeholder="补充你的沟通时间、方式或面试安排偏好。" />
+                          show-word-limit placeholder="补充联系方式使用习惯、可沟通时间或需要你本人确认的事项。" />
+                <el-text type="info" size="small">填写参考：能否接受微信沟通？哪些时间方便面试？薪资、地点或联系方式未填时，AI 会先询问，不替你作决定。</el-text>
+            </el-form-item>
+            <el-form-item label="我不希望 AI 回复哪些推广">
+                <el-input v-model="userStore.user.preference.promotionReplyPolicy" type="textarea" :rows="2" :maxlength="1200"
+                          show-word-limit placeholder="可删改默认内容，写明你不希望 AI 回复的推广类型。" />
+                <el-text type="info" size="small">正常招聘抖音/短视频运营、市场、品牌和销售岗位，不会只因岗位名称或单个词被过滤。</el-text>
             </el-form-item>
 
             <el-text class="mx-1 top-title" type="warning">投递设置</el-text>
@@ -206,7 +215,7 @@
                               style="width: 324px"
                               placeholder="例如 8-12、12以上或20以下"/>
                 </div>
-                <el-text type="info" size="small">只填写数字范围：8-12 表示区间，12以上表示最低要求，20以下表示最高要求；留空或关闭表示不限制。AI语义筛选开启时会结合岗位完整信息综合判断，关闭时才按范围严格跳过。</el-text>
+                <el-text type="info" size="small">填写参考：8-12、12以上或20以下。这里的数字只是格式示例；只有你实际填写并开启后才作为个人薪资条件。</el-text>
             </el-form-item>
 
             <div style="display: flex">
@@ -292,12 +301,12 @@
 
             <el-form-item>
                 <el-checkbox style="padding-top: 6px" v-model="userStore.user.preference.hiaE" label="" size="large">高意向时暂停AI坐席</el-checkbox>
-                <el-tooltip effect="dark" placement="top" content="开启后，AI完成普通回复后会复核岗位匹配和HR的明确推进；高置信度高意向或复核不可用时，暂停当前岗位会话。联系方式交换、明确面试安排、地点接受、薪资/到岗承诺等独立硬规则不受此开关影响；明显收费、拉人头等岗位风险由岗位风险规则处理。">
+                <el-tooltip effect="dark" placement="top" content="开启后，AI完成普通回复后会复核岗位匹配和 HR 的明确推进；高意向时暂停当前岗位会话。普通联系方式和面试安排沟通、薪资与地点信息不受此开关影响；具体面试时间或明确承诺仍需本人确认。">
                     <el-text type="primary" style="cursor: help;">查看规则</el-text>
                 </el-tooltip>
             </el-form-item>
             <el-text type="info" size="small" class="section-hint">
-                联系方式交换、明确面试安排、地点接受及薪资、到岗、录用或合同承诺，会独立暂停当前岗位会话；普通岗位交流和薪资/地点信息介绍不会仅因提到这些词而暂停。
+                薪资、地点、联系方式、合同、加班和出差按上方的个人偏好判断，不会只因 HR 提到这些话题就暂停。具体面试时间或明确接受 offer、签约等决定会留给你本人确认。
             </el-text>
             <el-form-item>
                 <el-checkbox

@@ -80,7 +80,8 @@ public class MessageTriageService {
                 return processingError();
             }
 
-            Action action = resolveAction(decision.category(), decision.action());
+            Action action = resolveAction(
+                    decision.category(), decision.action(), safePreference.isMarketingReplyE());
             if (action == null) {
                 return processingError();
             }
@@ -165,14 +166,18 @@ public class MessageTriageService {
         return new ParsedDecision(category, action, reasonCode, reason, questions, evidence);
     }
 
-    private static Action resolveAction(Category category, Action requested) {
+    private static Action resolveAction(Category category, Action requested, boolean marketingReplyEnabled) {
         return switch (category) {
             case NORMAL_JOB -> requested == Action.REPLY || requested == Action.NEEDS_USER_CONFIRMATION
                     ? requested : null;
-            case PROMOTION -> requested == Action.REPLY || requested == Action.SILENT_CURRENT_MESSAGE
-                    ? Action.SILENT_CURRENT_MESSAGE : null;
-            case HIGH_RISK -> requested == Action.NO_ACTION_RETRY
-                    ? null : Action.BLOCK_CURRENT_JOB;
+            case PROMOTION -> {
+                if (requested != Action.REPLY && requested != Action.SILENT_CURRENT_MESSAGE) {
+                    yield null;
+                }
+                yield marketingReplyEnabled && requested == Action.REPLY
+                        ? Action.REPLY : Action.SILENT_CURRENT_MESSAGE;
+            }
+            case HIGH_RISK -> Action.BLOCK_CURRENT_JOB;
             case UNCERTAIN -> requested == Action.REPLY ? Action.REPLY : null;
             case PLATFORM_EVENT -> null;
             case PROCESSING_ERROR -> null;
@@ -278,6 +283,8 @@ public class MessageTriageService {
         values.put("clarifyConditions", preference.getClarifyConditions());
         values.put("communicationPreferences", preference.getCommunicationPreferences());
         values.put("communicationStyle", preference.getCommunicationStyle());
+        values.put("marketingReplyE", preference.isMarketingReplyE());
+        values.put("promotionReplyPolicy", preference.getPromotionReplyPolicy());
         values.put("salaryRange", preference.getSr());
         values.put("resumeCity", preference.getResumeCity());
         values.put("targetCities", preference.getTargetCities());

@@ -110,4 +110,48 @@ class PreferenceDefaultsTest {
 
         assertEquals("", result.getJobGoal());
     }
+
+    @Test
+    void upgradesOnlyKnownOldPersonalDefaultsAndPreservesCustomTextByteForByte() {
+        PreferenceEntity preference = JSONUtil.toBean(
+                "{\"pdpV\":\"personal-preferences-20261011-v1\","
+                        + "\"jobGoal\":\"优先结合我的简历经历、技能和当前岗位职责判断匹配度；不要假设我未说明的行业、城市、薪资或岗位偏好。\","
+                        + "\"unacceptableConditions\":\"  我的自定义限制  \","
+                        + "\"clarifyConditions\":\"薪资构成、实际工作内容、办公地点或方式、工时与加班、出差或驻场、试用期等重要信息未写清时，优先提醒我向 HR 确认。\","
+                        + "\"communicationPreferences\":\"\"}",
+                PreferenceEntity.class);
+
+        PreferenceEntity result = PreferenceDefaults.applyDefaults(preference);
+
+        assertEquals(PreferenceDefaults.DEFAULT_JOB_GOAL, result.getJobGoal());
+        assertEquals("  我的自定义限制  ", result.getUnacceptableConditions());
+        assertEquals(PreferenceDefaults.DEFAULT_CLARIFY_CONDITIONS, result.getClarifyConditions());
+        assertEquals("", result.getCommunicationPreferences());
+        assertEquals(PreferenceDefaults.PERSONAL_PREFERENCE_DEFAULTS_VERSION, result.getPdpV());
+    }
+
+    @Test
+    void initializesNewPromotionPolicyWithoutChangingDefaultOffPromotionReplySwitch() {
+        PreferenceEntity preference = PreferenceDefaults.applyDefaults(new PreferenceEntity());
+        String serialized = JSONUtil.toJsonStr(preference);
+        Object promotionPolicy = JSONUtil.parseObj(serialized).get("promotionReplyPolicy");
+
+        assertNotNull(promotionPolicy);
+        assertTrue(promotionPolicy.toString().contains("加群"));
+        assertTrue(promotionPolicy.toString().contains("抖音"));
+        assertFalse(preference.isMarketingReplyE());
+    }
+
+    @Test
+    void preservesPromotionPolicyAndMarketingSwitchFromExistingJson() {
+        PreferenceEntity preference = JSONUtil.toBean(
+                "{\"marketingReplyE\":true,\"promotionReplyPolicy\":\"只屏蔽课程拉群\"}",
+                PreferenceEntity.class);
+
+        PreferenceEntity result = PreferenceDefaults.applyDefaults(preference);
+        var serialized = JSONUtil.parseObj(JSONUtil.toJsonStr(result));
+
+        assertTrue(result.isMarketingReplyE());
+        assertEquals("只屏蔽课程拉群", serialized.getStr("promotionReplyPolicy"));
+    }
 }

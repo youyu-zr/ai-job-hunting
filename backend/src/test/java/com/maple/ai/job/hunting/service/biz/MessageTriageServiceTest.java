@@ -77,15 +77,45 @@ class MessageTriageServiceTest {
     }
 
     @Test
-    void promotionsAlwaysRemainSilentInTaskTwo() {
-        for (Action modelAction : List.of(Action.REPLY, Action.SILENT_CURRENT_MESSAGE)) {
-            ai.response = response(Category.PROMOTION, modelAction, "候选人被引导进入课程群");
+    void promotionsAreSilentByDefaultButMayReplyWhenTheUserOptsIn() throws Exception {
+        ai.response = response(Category.PROMOTION, Action.REPLY, "普通推广且用户允许回复");
+        preference.setPromotionReplyPolicy("默认不回复课程群引流");
 
-            MessageTriageResultVO result = classify("加群领取求职课程", 1);
+        MessageTriageResultVO disabled = classify("招聘相关的普通推广", 1);
 
-            assertEquals(Category.PROMOTION, result.getCategory());
-            assertEquals(Action.SILENT_CURRENT_MESSAGE, result.getAction());
-        }
+        assertEquals(Action.SILENT_CURRENT_MESSAGE, disabled.getAction());
+        JsonNode disabledPreference = new ObjectMapper().readTree(ai.lastUserPayload).path("preference");
+        assertFalse(disabledPreference.path("marketingReplyE").asBoolean(true));
+        assertEquals("默认不回复课程群引流", disabledPreference.path("promotionReplyPolicy").asText());
+
+        preference.setMarketingReplyE(true);
+        MessageTriageResultVO enabled = classify("招聘相关的普通推广", 1);
+
+        assertEquals(Category.PROMOTION, enabled.getCategory());
+        assertEquals(Action.REPLY, enabled.getAction());
+        JsonNode enabledPreference = new ObjectMapper().readTree(ai.lastUserPayload).path("preference");
+        assertTrue(enabledPreference.path("marketingReplyE").asBoolean(false));
+        assertEquals("默认不回复课程群引流", enabledPreference.path("promotionReplyPolicy").asText());
+        assertTrue(ai.lastSystemPrompt.contains("marketingReplyE"));
+        assertTrue(ai.lastSystemPrompt.contains("promotionReplyPolicy"));
+    }
+
+    @Test
+    void highRiskAlwaysBlocksEvenWhenPromotionalRepliesAreEnabled() {
+        preference.setMarketingReplyE(true);
+        preference.setPromotionReplyPolicy("所有推广都允许回复");
+        ai.response = response(Category.HIGH_RISK, Action.REPLY, "招聘前收费并发展下线");
+
+        MessageTriageResultVO result = classify("先交费用才能入职，之后发展下线返佣", 1);
+
+        assertEquals(Category.HIGH_RISK, result.getCategory());
+        assertEquals(Action.BLOCK_CURRENT_JOB, result.getAction());
+        assertTrue(ai.lastUserPayload.contains("\"marketingReplyE\":true"));
+        assertTrue(ai.lastUserPayload.contains("所有推广都允许回复"));
+
+        ai.response = response(Category.HIGH_RISK, Action.NO_ACTION_RETRY, "招聘前收费并发展下线");
+        MessageTriageResultVO retryRequest = classify("先交费用才能入职，之后发展下线返佣", 1);
+        assertEquals(Action.BLOCK_CURRENT_JOB, retryRequest.getAction());
     }
 
     @Test

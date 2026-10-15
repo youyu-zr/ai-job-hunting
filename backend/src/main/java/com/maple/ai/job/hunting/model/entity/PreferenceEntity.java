@@ -171,6 +171,9 @@ public class PreferenceEntity {
     /** 普通营销推广消息是否允许自动回复，默认关闭。 */
     private boolean marketingReplyE;
 
+    /** Editable guidance for promotion types the user does not want answered. */
+    private String promotionReplyPolicy;
+
     /**
      * 对话聊天轮数 Chat rounds （高意向邮件开关） 开关
      */

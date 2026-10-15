@@ -126,6 +126,8 @@ export type PreferenceConfig = {
     hiaE: boolean,
     /** 营销推广类消息自动回复，默认关闭。 */
     marketingReplyE?: boolean,
+    /** Editable guidance for promotion types the user does not want answered. */
+    promotionReplyPolicy?: string,
     /**
      * 投递间隔时间（秒）
      */
