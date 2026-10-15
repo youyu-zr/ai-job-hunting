@@ -90,3 +90,60 @@ authorization.
   a sender.
 - No live BOSS account acceptance, current platform authorization, remote CI,
   push, merge, or deployment was performed by Task 4.
+
+## Task 4 Review Fix: Body-Type Batch Partitioning (2026-10-15)
+
+### Finding and Fix
+
+Confirmed the review finding: the merge queue was keyed only by `jobKey`, so
+type 1 and type 14 messages in the same 3.5-second window formed one batch;
+`processMergedMessages` forwarded `allowedPlatformBodyTypeOf(firstItem.msgObj)`.
+Added an optional queue partition key and pass the message body type at the
+production enqueue call. Type 1 and type 14 now run in separate batches in
+either arrival order; messages of the same body type still coalesce. Existing
+callers that omit a partition key retain their previous behavior.
+
+### RED
+
+Command, from `frontend/`:
+
+```powershell
+node --experimental-strip-types --test tests/messageMerge.test.ts
+```
+
+Expected failure observed before the implementation: both mixed-type tests
+failed with actual batches `[1, 14]` and `[14, 1]` instead of two separate
+batches. Same-type coalescing passed (`1` passed, `2` failed).
+
+### GREEN and Build
+
+Focused command, from `frontend/`:
+
+```powershell
+node --experimental-strip-types --test tests/messageMerge.test.ts tests/messageBody.test.ts tests/packetMessage.test.ts tests/replyDisposition.test.ts tests/marketingGate.test.ts
+```
+
+Result: `25` tests passed, `0` failed, including both arrival orders,
+same-type coalescing, and same-type duplicate suppression.
+
+Existing merge smoke command, from `frontend/`:
+
+```powershell
+node --experimental-strip-types scripts/messageMerge.smoke.mjs
+```
+
+Result: `message merge smoke: PASS`.
+
+Build command, from `frontend/`:
+
+```powershell
+pnpm build
+```
+
+Result: exit code `0`; `vue-tsc --noEmit` and Vite production build passed.
+Existing Node deprecation and dependency/bundle `eval` warnings remain.
+
+`git diff --check` passed with no whitespace errors; Git emitted only its
+existing LF-to-CRLF working-copy warnings. No live BOSS account or platform
+protocol acceptance was performed. The fix prevents mixed-type batches but
+does not validate the live meaning or stability of body type 14.

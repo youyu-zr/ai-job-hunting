@@ -311,6 +311,7 @@ export class BossOption {
             text,
             {msgObj, bossUserInfo},
             (batch) => this.processMergedMessages(batch, jobKey),
+            String(bodyTypeOf(msgObj) ?? "unknown"),
         );
     }
 

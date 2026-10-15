@@ -27,8 +27,10 @@ export class MessageMergeQueue<T> {
         text: string,
         item: T,
         process: (batch: MessageMergeBatch<T>) => Promise<boolean> | boolean,
+        partitionKey?: string,
     ): Promise<boolean> {
-        const existing = this.pending.get(key);
+        const pendingKey = partitionKey === undefined ? key : `${key}\0${partitionKey}`;
+        const existing = this.pending.get(pendingKey);
         if (existing) {
             if (!existing.texts.includes(text)) {
                 existing.texts.push(text);
@@ -44,7 +46,7 @@ export class MessageMergeQueue<T> {
         };
         pending.promise = new Promise<boolean>((resolve) => {
             setTimeout(async () => {
-                this.pending.delete(key);
+                this.pending.delete(pendingKey);
                 try {
                     resolve(await process({
                         key,
@@ -56,7 +58,7 @@ export class MessageMergeQueue<T> {
                 }
             }, this.windowMs);
         });
-        this.pending.set(key, pending);
+        this.pending.set(pendingKey, pending);
         return pending.promise;
     }
 }
