@@ -189,31 +189,41 @@ public final class ConversationGateUtil {
                 || isConversationClosingMessage(question)) {
             return "";
         }
-        if (isContactExchangeQuestion(question)) {
-            return "CONTACT";
-        }
-        if (isLocationAcceptanceDecision(question)) {
-            return "LOCATION";
-        }
-        if (isInterviewDecision(question)) {
+        if (requiresExplicitCommitmentConfirmation(question)) {
+            String text = compact(question).toLowerCase();
+            if (isStartDateDecision(text) && hasConcreteDateOrTime(text)) {
+                return "START_DATE";
+            }
             return "INTERVIEW";
         }
+        return "";
+    }
+
+    public static boolean requiresExplicitCommitmentConfirmation(String question) {
+        if (StringUtils.isBlank(question)) {
+            return false;
+        }
         String text = compact(question).toLowerCase();
+        if (isInterviewDecision(text) && hasConcreteDateOrTime(text)) {
+            return true;
+        }
+        if (isStartDateDecision(text) && hasConcreteDateOrTime(text)) {
+            return true;
+        }
         if ((text.contains("合同") || text.contains("协议"))
                 && containsAny(text, "签", "接受", "同意", "确认", "承诺")) {
-            return "CONTRACT";
+            return true;
         }
-        if ((text.contains("offer") || text.contains("录用") || text.contains("入职通知"))
-                && containsAny(text, "接受", "同意", "确认", "答复")) {
-            return "OFFER";
-        }
-        if (isCompensationDecision(text)) {
-            return "COMPENSATION";
-        }
-        if (isStartDateDecision(text)) {
-            return "START_DATE";
-        }
-        return "";
+        return (text.contains("offer") || text.contains("录用") || text.contains("入职通知"))
+                && containsAny(text, "接受", "同意", "确认", "答复", "承诺");
+    }
+
+    public static boolean isKnownPlatformBodyType(Integer bodyType) {
+        return bodyType != null && List.of(4, 8, 12, 14).contains(bodyType);
+    }
+
+    public static boolean isConcreteInterviewOrCommitment(String question) {
+        return requiresExplicitCommitmentConfirmation(question);
     }
 
     private static boolean isLocationAcceptanceDecision(String question) {

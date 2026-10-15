@@ -110,13 +110,14 @@ class ConversationGateUtilTest {
     }
 
     @Test
-    void explicitPersonalDecisionsRequireHumanHandoffButOrdinaryDiscussionDoesNot() {
-        assertEquals("CONTACT", handoffCategory("方便交换微信吗？"));
+    void onlyConcreteInterviewsAndExplicitContractCommitmentsRequireHandoff() {
+        assertEquals("", handoffCategory("方便交换微信吗？"));
         assertEquals("INTERVIEW", handoffCategory("方便明天下午三点来公司面试吗？"));
-        assertEquals("LOCATION", handoffCategory("办公地点在上海浦东，能接受吗？"));
-        assertEquals("COMPENSATION", handoffCategory("这个薪资可以接受吗？"));
-        assertEquals("START_DATE", handoffCategory("你最快什么时候可以到岗？"));
-        assertEquals("OFFER", handoffCategory("确认一下是否接受这份录用通知？"));
+        assertEquals("", handoffCategory("办公地点在上海浦东，能接受吗？"));
+        assertEquals("", handoffCategory("这个薪资可以接受吗？"));
+        assertEquals("", handoffCategory("你最快什么时候可以到岗？"));
+        assertEquals("INTERVIEW", handoffCategory("请确认是否接受并签署这份合同。"));
+        assertEquals("", handoffCategory("合同期限是三年，可以先了解一下吗？"));
 
         assertEquals("", handoffCategory("方便电话沟通一下岗位职责吗？"));
         assertEquals("", handoffCategory("薪资结构是底薪加绩效，具体面试流程有三轮。"));

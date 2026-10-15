@@ -34,6 +34,9 @@ public class JobSeekerClonedResultVO {
     /** Stable machine-readable reason when answerTypeList contains STOP. */
     private String stopReason;
 
+    /** Whether this result represents a retryable processing failure. */
+    private boolean retryable;
+
     /**
      * 操作类型
      * @see BossOperationTypeEnum
