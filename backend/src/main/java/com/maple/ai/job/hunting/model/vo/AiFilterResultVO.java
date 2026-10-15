@@ -54,6 +54,11 @@ public class AiFilterResultVO {
      */
     private String recommendedAction;
 
+    /**
+     * 需要向 HR 确认的问题。
+     */
+    private List<String> clarificationQuestions;
+
     /** REMOTE / ONSITE / HYBRID / UNKNOWN. */
     private String workMode;
 
