@@ -29,6 +29,16 @@ export function bodyTypeOf(packet: any): number | undefined {
     return firstMessageOf(packet)?.body?.type;
 }
 
+const ALLOWED_PLATFORM_BODY_TYPES = new Set([1, 4, 8, 12, 14]);
+
+/** Return protocol metadata only when it is a known numeric body type. */
+export function allowedPlatformBodyTypeOf(packet: any): number | undefined {
+    const bodyType = bodyTypeOf(packet);
+    return typeof bodyType === "number" && ALLOWED_PLATFORM_BODY_TYPES.has(bodyType)
+        ? bodyType
+        : undefined;
+}
+
 /** 取包内某条消息的 body.image；读不到时返回 undefined。 */
 export function bodyImageOf(packet: any): any {
     return firstMessageOf(packet)?.body?.image;
@@ -50,6 +60,12 @@ export function senderOf(packet: any): { name: string; avatar: string } {
         name: String(from?.name ?? ""),
         avatar: String(from?.avatar ?? ""),
     };
+}
+
+/** Read sender identity only from structured packet metadata. */
+export function senderIdOf(packet: any): string {
+    const uid = firstMessageOf(packet)?.from?.uid;
+    return uid === undefined || uid === null ? "" : String(uid).trim();
 }
 
 /** 取包内第一条消息的 mid；读不到时返回 undefined（未读补偿构造的历史消息没有 mid）。 */

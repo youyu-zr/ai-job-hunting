@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {decodeMessageBatch, decodeMessageBody, getMsgBody, mapMessageBody} from '../src/webSocket/messageBody.ts';
+import {decodeMessageBatch, decodeMessageBody, getMsgBody, mapMessageBody, normalizedMessageBatch} from '../src/webSocket/messageBody.ts';
 
 test('decodes every message of a batch, not only the first one', () => {
     const messages = [
@@ -93,6 +93,16 @@ test('getMsgBody is null safe and never throws', () => {
     }
     assert.equal(mapMessageBody(undefined), '');
     assert.equal(mapMessageBody({}), '');
+});
+
+test('normalizes a complete merged batch without truncating content after the ceiling', () => {
+    const withinLimit = normalizedMessageBatch(['  first  ', 'second']);
+    const overLimit = normalizedMessageBatch(['a'.repeat(3000), 'b'.repeat(2001)]);
+
+    assert.equal(withinLimit.text, 'first second');
+    assert.equal(withinLimit.tooLong, false);
+    assert.equal(overLimit.text.length, 5002);
+    assert.equal(overLimit.tooLong, true);
 });
 
 console.log('message body batch smoke: PASS');

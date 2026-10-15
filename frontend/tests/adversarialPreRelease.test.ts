@@ -96,13 +96,28 @@ test('adversarial: the pause guard is actually wired into the reply send path', 
     assert.match(aiPower, /ConversationPauseRegistry\.resume\(jobKey\)/);
 });
 
-test('adversarial: marketing defaults are enforced before contacting an older server', () => {
+test('adversarial: free-text marketing decisions are deferred to the server', () => {
     const bossPlatform = ui('platform/bossPlatform.ts');
     const requestAt = bossPlatform.indexOf('return AiPower.ask(');
-    const localMarketingGateAt = bossPlatform.indexOf('shouldSilencePromotionalMessage(');
+    assert.ok(requestAt >= 0);
+    assert.doesNotMatch(bossPlatform, /shouldSilencePromotionalMessage/);
+    assert.match(bossPlatform, /allowedPlatformBodyTypeOf\(firstItem\.msgObj\)/);
+    assert.match(bossPlatform, /stopReason === 'PROMOTION_SILENT'/);
+    assert.match(bossPlatform, /stopReason === 'HIGH_RISK_JOB'/);
+    assert.match(bossPlatform, /stopReason === 'USER_CONFIRMATION_REQUIRED'/);
+    assert.match(bossPlatform, /stopReason === 'AI_PROCESSING_ERROR'/);
+});
 
-    assert.ok(localMarketingGateAt >= 0 && requestAt > localMarketingGateAt);
-    assert.match(bossPlatform, /markBatchMessagesAsCompleted\(batch\)/);
+test('adversarial: a packet sender mismatch cannot enter the HR message path', () => {
+    const bossPlatform = ui('platform/bossPlatform.ts');
+    const handlerStart = bossPlatform.indexOf('public async handlerBossMessage(');
+    const handlerEnd = bossPlatform.indexOf('private async processMergedMessages(', handlerStart);
+    const handler = bossPlatform.slice(handlerStart, handlerEnd);
+
+    assert.ok(handlerStart >= 0 && handlerEnd > handlerStart);
+    assert.match(handler, /senderIdOf\(msgObj\)/);
+    assert.match(handler, /senderId !== String\(bossId\)/);
+    assert.match(handler, /markMessageCompletedWithoutReply/);
 });
 
 test('adversarial: unread recovery confirms account-level seat status before reading contacts', async () => {

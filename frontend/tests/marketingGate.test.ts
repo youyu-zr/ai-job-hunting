@@ -1,33 +1,32 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {existsSync} from 'node:fs';
-import {fileURLToPath} from 'node:url';
+import {readFileSync} from 'node:fs';
+import {shouldDelegateConversationTextToAi} from '../src/platform/conversationInput.ts';
+import {allowedPlatformBodyTypeOf} from '../src/webSocket/packetMessage.ts';
 
-test('marketing messages are filtered locally before an older server can call AI', async () => {
-    const moduleUrl = new URL('../src/platform/marketingGate.ts', import.meta.url);
-    const gate = existsSync(fileURLToPath(moduleUrl))
-        ? await import('../src/platform/marketingGate.ts')
-        : {};
-    const shouldSilence = typeof gate.shouldSilencePromotionalMessage === 'function'
-        ? gate.shouldSilencePromotionalMessage
-        : () => false;
+test('browser no longer makes semantic promotion decisions from message words', () => {
+    const bossPlatform = readFileSync(new URL('../src/platform/bossPlatform.ts', import.meta.url), 'utf8');
+    const marketingGate = readFileSync(new URL('../src/platform/marketingGate.ts', import.meta.url), 'utf8');
 
-    assert.equal(shouldSilence('扫码进群获取资料', false), true);
-    assert.equal(shouldSilence('岗位职责：负责课程推广，指导用户注册后完成门店资料录入', false), false);
-    assert.equal(shouldSilence('岗位职责包括推广活动，扫码进群后每日签到和录入门店客户资料', false), false);
-    assert.equal(shouldSilence('课程顾问工作职责：添加微信维护学员日常沟通', false), false);
-    assert.equal(shouldSilence('岗位不涉及培训贷另有押金', true), true);
-    assert.equal(shouldSilence('岗位不涉及收费培训，不要求缴费', true), false);
-    assert.equal(shouldSilence('招聘平台工作人员负责核验并退还历史入会费', true), false);
-    assert.equal(
-        shouldSilence('岗位不要求求职者缴纳入会费，客服负责处理缴费和退款咨询', true),
-        false,
-    );
-    assert.equal(
-        shouldSilence('无需求职者缴纳入会费，客服负责处理用户缴费和退款咨询', true),
-        false,
-    );
-    assert.equal(shouldSilence('先交押金后安排培训', true), true);
-    assert.equal(shouldSilence('缴纳入会费后开始接单', true), true);
-    assert.equal(shouldSilence('课程顾问岗位，添加微信领取课程资料', true), false);
+    assert.equal(bossPlatform.includes('shouldSilencePromotionalMessage'), false);
+    assert.equal(/HARD_PROMOTIONAL_RISKS|PROMOTION_CONTEXT|FUNNEL_ACTIONS/.test(marketingGate), false);
+    assert.equal(bossPlatform.includes('return AiPower.ask('), true);
+    assert.equal(bossPlatform.includes('消息内容较长，未自动回复；请打开会话查看'), true);
+    assert.equal(bossPlatform.includes('allowedPlatformBodyTypeOf(firstItem.msgObj)'), true);
+    const oversizedStart = bossPlatform.indexOf('if (normalizedBatch.tooLong)');
+    const oversizedEnd = bossPlatform.indexOf('// 记录本轮的暂停代次', oversizedStart);
+    const oversizedBranch = bossPlatform.slice(oversizedStart, oversizedEnd);
+    assert.equal(oversizedStart >= 0 && oversizedEnd > oversizedStart, true);
+    assert.equal(oversizedBranch.includes('markBatchMessagesUnresolved(batch)'), true);
+    assert.equal(oversizedBranch.includes('markBatchRepliesAsSent'), false);
+});
+
+test('ordinary keyword-bearing HR text reaches server classification with structured type', () => {
+    const aiPower = readFileSync(new URL('../src/platform/aiPower.ts', import.meta.url), 'utf8');
+    const message = '系统通知：招聘抖音运营，负责账号内容，也会处理收费客户咨询';
+    const packet = {messages: [{from: {uid: '42'}, body: {type: 1, text: message}}]};
+
+    assert.equal(shouldDelegateConversationTextToAi(message), true);
+    assert.equal(allowedPlatformBodyTypeOf(packet), 1);
+    assert.equal(/platformBodyType:\s*\[1,\s*4,\s*8,\s*12,\s*14\]/.test(aiPower), true);
 });

@@ -4,3 +4,12 @@ export function isCompletedMessage(
 ): boolean {
     return entry?.completed === true && entry.expiration > now;
 }
+
+/** Terminal local dedupe marker for an item that was not automatically answered. */
+export function terminalWithoutReply(expiration: number): {
+    expiration: number;
+    completed: true;
+    replySent: false;
+} {
+    return {expiration, completed: true, replySent: false};
+}

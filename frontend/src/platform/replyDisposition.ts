@@ -1,5 +1,6 @@
 export type StopReplyData = {
     stopReason?: unknown;
+    retryable?: unknown;
     jobFilterDecision?: unknown;
 };
 
@@ -11,6 +12,9 @@ const TERMINAL_STOP_REASONS = new Set([
     'JOB_GATE',
     'SILENT_SYSTEM',
     'MARKETING_SILENT',
+    'PROMOTION_SILENT',
+    'HIGH_RISK_JOB',
+    'USER_CONFIRMATION_REQUIRED',
 ]);
 
 /**
@@ -20,6 +24,9 @@ const TERMINAL_STOP_REASONS = new Set([
  */
 export function shouldCompleteStoppedReply(data: StopReplyData | null | undefined): boolean {
     const reason = String(data?.stopReason || '').trim().toUpperCase();
+    if (reason === 'AI_PROCESSING_ERROR' || data?.retryable === true) {
+        return false;
+    }
     if (TERMINAL_STOP_REASONS.has(reason)) {
         return true;
     }

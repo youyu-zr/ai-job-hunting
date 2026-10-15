@@ -11,10 +11,17 @@ test('failure cleanup preserves terminal messages but not in-flight markers', as
     const isCompleted = typeof module.isCompletedMessage === 'function'
         ? module.isCompletedMessage
         : () => false;
+    const terminalWithoutReply = typeof module.terminalWithoutReply === 'function'
+        ? module.terminalWithoutReply
+        : () => ({});
 
     assert.equal(isCompleted({completed: true, expiration: 200}, 100), true);
     assert.equal(isCompleted({completed: false, expiration: 200}, 100), false);
     assert.equal(isCompleted({expiration: 200}, 100), false);
     assert.equal(isCompleted({completed: true, expiration: 50}, 100), false);
     assert.equal(isCompleted(undefined, 100), false);
+
+    const unresolved = terminalWithoutReply(200);
+    assert.equal(isCompleted(unresolved, 100), true);
+    assert.equal(unresolved.replySent, false);
 });

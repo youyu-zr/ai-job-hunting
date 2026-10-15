@@ -20,7 +20,13 @@ export class AiPower {
     private static readonly filterDecisionCache: Map<string, {time: number; result: AiFilterDecision}> = new Map();
     private static readonly FILTER_DECISION_TTL = 10 * 60 * 1000;
 
-    public static async ask(question: string, jobKey: string, bossUserInfo: any, prompt = ''): Promise<any> {
+    public static async ask(
+        question: string,
+        jobKey: string,
+        bossUserInfo: any,
+        prompt = '',
+        platformBodyType?: number,
+    ): Promise<any> {
         const jobContext = await this.getJobContextText(bossUserInfo);
         let filterDecision: AiFilterDecision | null = null;
         const hasJobContext = Boolean(String(bossUserInfo?.jobTitle || '').trim() || jobContext.trim());
@@ -65,6 +71,9 @@ export class AiPower {
         return axios.post("/api/job/seeker/cloned/ask", {
                 question,
                 jobKey,
+                platformBodyType: [1, 4, 8, 12, 14].includes(Number(platformBodyType))
+                    ? Number(platformBodyType)
+                    : undefined,
                 jobInfo: {
                     jobTitle: bossUserInfo.jobTitle,
                     jobContext,

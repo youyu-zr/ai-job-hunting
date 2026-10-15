@@ -23,8 +23,15 @@ import {
     isPendingConversationIdentityVerified,
     shouldTreatPendingConversationAsReplyable,
 } from "./pendingConversation";
-import {bodyTypeOf, messageIdOf, msgTypeOf, senderOf} from "../webSocket/packetMessage";
-import {shouldSilencePromotionalMessage} from "./marketingGate";
+import {
+    allowedPlatformBodyTypeOf,
+    bodyTypeOf,
+    messageIdOf,
+    msgTypeOf,
+    senderIdOf,
+    senderOf,
+} from "../webSocket/packetMessage";
+import {normalizedMessageBatch} from "../webSocket/messageBody";
 
 let userStore = null as any;
 const remotelyPausedJobs = new Set<string>();
@@ -245,6 +252,16 @@ export class BossOption {
             logger.info("AI坐席未开启，不处理消息");
             return false;
         }
+        const senderId = senderIdOf(msgObj);
+        if (senderId && senderId !== String(bossId)) {
+            logger.warn("消息发送者与当前联系人不匹配，停止处理");
+            BossOption.messageCache.markMessageCompletedWithoutReply(
+                bossId,
+                text,
+                BossOption.MESSAGE_COMPLETED_TTL,
+            );
+            return true;
+        }
         if (BossOption.messageCache.isMessageProcessed(bossId, text)) {
             logging.trace("【跳过重复消息】:", bossId, text);
             return true;
@@ -303,13 +320,21 @@ export class BossOption {
     ): Promise<boolean> {
         const firstItem = batch.items[0];
         const bossUserInfo = firstItem.bossUserInfo;
-        const mergedText = batch.texts.join("\n").slice(0, 5000);
+        const normalizedBatch = normalizedMessageBatch(batch.texts);
+        const mergedText = normalizedBatch.text;
         BossOption.logRecorder.info("【合并HR连续消息】bossId:", bossUserInfo.bossId,
-            "count:", batch.texts.length, "text:", mergedText.slice(0, 120));
-        const marketingReplyEnabled = Boolean(userStore?.user?.preference?.marketingReplyE);
-        if (shouldSilencePromotionalMessage(mergedText, marketingReplyEnabled)) {
-            BossOption.logRecorder.info("【营销/引流消息静默】本地规则已终止本轮自动回复");
-            this.markBatchMessagesAsCompleted(batch);
+            "count:", batch.texts.length, "textLength:", mergedText.length);
+        if (normalizedBatch.tooLong) {
+            BossOption.logRecorder.warn("消息超过自动处理长度上限，保留为未解决消息",
+                "count:", batch.texts.length, "textLength:", mergedText.length);
+            this.markBatchMessagesUnresolved(batch);
+            ElNotification({
+                type: 'warning',
+                title: '消息未自动处理',
+                message: '消息内容较长，未自动回复；请打开会话查看',
+                duration: 0,
+                showClose: true,
+            });
             return true;
         }
 
@@ -379,6 +404,7 @@ export class BossOption {
             jobKey,
             bossUserInfo,
             AiPower.SEMANTIC_SCREENING_PROMPT,
+            allowedPlatformBodyTypeOf(firstItem.msgObj),
         ).then(async resp => {
             const canDeliverTurn = canDeliverLocally;
             const canDeliverImmediatelyBeforeSend = canDeliverAtServer;
@@ -405,6 +431,45 @@ export class BossOption {
 
             // 停止交互
             if (answerTypeList.includes(JobSeekerClonedAnswerTypeEnum.STOP)) {
+                const stopReason = String(data?.stopReason || '').trim().toUpperCase();
+                if (stopReason === 'AI_PROCESSING_ERROR' || data?.retryable === true) {
+                    ElNotification({
+                        type: 'error',
+                        title: 'AI暂时无法处理这条消息',
+                        message: '本条消息没有自动回复，系统会在后续补扫时重试。',
+                        duration: 0,
+                        showClose: true,
+                    });
+                    this.removeBatchMessages(batch);
+                    return false;
+                }
+                if (stopReason === 'PROMOTION_SILENT') {
+                    BossOption.logRecorder.info("服务器判定本条为推广消息，已静默；AI坐席继续运行");
+                    this.markBatchMessagesAsCompleted(batch);
+                    return true;
+                }
+                if (stopReason === 'HIGH_RISK_JOB') {
+                    ElNotification({
+                        type: 'warning',
+                        title: '该岗位已暂停自动沟通',
+                        message: '服务器判定当前岗位存在风险；其他岗位和账号坐席不受影响。',
+                        duration: 0,
+                        showClose: true,
+                    });
+                    this.markBatchMessagesAsCompleted(batch);
+                    return true;
+                }
+                if (stopReason === 'USER_CONFIRMATION_REQUIRED') {
+                    ElNotification({
+                        type: 'warning',
+                        title: '这条消息需要你确认',
+                        message: '当前会话已暂停自动回复，请查看具体面试或承诺事项。',
+                        duration: 0,
+                        showClose: true,
+                    });
+                    this.markBatchMessagesAsCompleted(batch);
+                    return true;
+                }
                 if (data?.jobFilterDecision) {
                     this.showAiConversationDecision(bossUserInfo, data.jobFilterDecision);
                 }
@@ -620,6 +685,22 @@ export class BossOption {
         }
         for (const text of batch.texts) {
             BossOption.markMessageAsCompleted(bossId, text);
+        }
+    }
+
+    private markBatchMessagesUnresolved(
+        batch: MessageMergeBatch<{ msgObj: TechwolfChatProtocol; bossUserInfo: BossUserInfo }>,
+    ): void {
+        const bossId = batch.items[0]?.bossUserInfo?.bossId;
+        if (!bossId) {
+            return;
+        }
+        for (const text of batch.texts) {
+            BossOption.messageCache.markMessageCompletedWithoutReply(
+                bossId,
+                text,
+                BossOption.MESSAGE_COMPLETED_TTL,
+            );
         }
     }
 
