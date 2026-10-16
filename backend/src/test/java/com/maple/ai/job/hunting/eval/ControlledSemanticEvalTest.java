@@ -171,6 +171,37 @@ class ControlledSemanticEvalTest {
     }
 
     @Test
+    void semanticPromotionFixturesPreserveOptInAndPolicyAtTheParserBoundary() throws Exception {
+        for (String id : new String[]{"promotion_opt_in", "promotion_policy_silent", "funnel_course"}) {
+            ControlledSemanticEval.Fixture fixture = ControlledSemanticEval.fixtures().stream()
+                    .filter(f -> f.id.equals(id)).findFirst().orElseThrow();
+            ControlledSemanticEval.EvalApi synthetic = new ControlledSemanticEval.EvalApi() {
+                @Override
+                String askAndAnswer(String systemPrompt, String userPrompt, String model) {
+                    try {
+                        JsonNode preference = new ObjectMapper().readTree(userPrompt).path("preference");
+                        assertEquals(!id.equals("funnel_course"), preference.path("marketingReplyE").asBoolean());
+                        if (fixture.preference != null) {
+                            assertEquals(fixture.preference.path("promotionReplyPolicy").asText(),
+                                    preference.path("promotionReplyPolicy").asText());
+                        }
+                        String action = id.equals("promotion_policy_silent") ? "SILENT_CURRENT_MESSAGE" : "REPLY";
+                        return "{\"category\":\"PROMOTION\",\"action\":\"" + action
+                                + "\",\"reasonCode\":\"SYNTHETIC_ONLY\",\"plainLanguageReason\":\"Contract only.\","
+                                + "\"clarificationQuestions\":[],\"evidence\":[]}";
+                    } catch (java.io.IOException e) {
+                        throw new IllegalStateException("SYNTHETIC_PAYLOAD_INVALID");
+                    }
+                }
+            };
+            ControlledSemanticEval.Outcome outcome =
+                    ControlledSemanticEval.classify(fixture, synthetic, "OFFLINE_CONTRACT_ONLY");
+            assertEquals(fixture.expectedCategory.name(), outcome.category(), id);
+            assertEquals(fixture.expectedAction.name(), outcome.action(), id);
+        }
+    }
+
+    @Test
     void productionProtocolAndParserPathsMatchEveryOfflineFixtureWithoutNetwork() throws Exception {
         for (ControlledSemanticEval.Fixture fixture : ControlledSemanticEval.fixtures()) {
             if (fixture.kind.equals("SEMANTIC")) {
@@ -183,6 +214,36 @@ class ControlledSemanticEvalTest {
             assertEquals(fixture.expectedAction.name(), outcome.action(), fixture.id);
             assertEquals(fixture.kind.equals("PROTOCOL") || fixture.kind.equals("INPUT_GUARD") ? 0 : 1,
                     api.requests.get(), fixture.id);
+        }
+    }
+
+    @Test
+    void offlineReportContainsOnlyFixedDiagnosticCodesAndKeepsSemanticCasesUnevaluated() throws Exception {
+        Map<String, String> failures = Map.of(
+                "guard_empty", "INPUT_REJECTED",
+                "guard_oversized_risk_tail", "INPUT_REJECTED",
+                "parser_uncertain_confirmation", "ACTION_CONTRACT_REJECTED",
+                "parser_malformed", "RESPONSE_JSON_INVALID",
+                "parser_duplicate", "RESPONSE_JSON_INVALID",
+                "parser_unknown", "RESPONSE_CATEGORY_INVALID",
+                "parser_extra", "RESPONSE_FIELDS_INVALID",
+                "parser_oversized", "RESPONSE_TOO_LARGE",
+                "transport_failure", "MODEL_CALL_FAILED");
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        assertEquals(0, ControlledSemanticEval.run(new String[]{"--offline"}, new PrintStream(bytes)));
+        for (String line : bytes.toString(StandardCharsets.UTF_8).lines().toList()) {
+            JsonNode record = new ObjectMapper().readTree(line);
+            if (record.has("counts")) {
+                assertEquals(16, record.path("counts").path("offlineChecked").asInt());
+                assertEquals(31, record.path("counts").path("semanticSkipped").asInt());
+                assertEquals(0, record.path("counts").path("liveRequests").asInt());
+            } else {
+                assertEquals(failures.getOrDefault(record.path("caseId").asText(), "NONE"),
+                        record.path("diagnosticCode").asText(), record.path("caseId").asText());
+                assertFalse(record.has("response"));
+                assertFalse(record.has("reason"));
+                assertFalse(record.has("exception"));
+            }
         }
     }
 

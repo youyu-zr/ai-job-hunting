@@ -44,6 +44,29 @@ public class MessageTriageService {
     @Resource
     private AIServiceFacade aiServiceFacade;
 
+    public enum DiagnosticCode {
+        INPUT_REJECTED,
+        PAYLOAD_REJECTED,
+        MODEL_CALL_FAILED,
+        RESPONSE_EMPTY,
+        RESPONSE_TOO_LARGE,
+        RESPONSE_JSON_INVALID,
+        RESPONSE_FIELDS_INVALID,
+        RESPONSE_CATEGORY_INVALID,
+        RESPONSE_ACTION_INVALID,
+        RESPONSE_REASON_CODE_INVALID,
+        RESPONSE_REASON_INVALID,
+        RESPONSE_QUESTIONS_INVALID,
+        RESPONSE_EVIDENCE_INVALID,
+        MODEL_REPORTED_ERROR,
+        ACTION_CONTRACT_REJECTED,
+        RESULT_PROCESSING_FAILED
+    }
+
+    /** Optional fixed-code observer; no input, model content, or exception details. */
+    protected void onDiagnostic(DiagnosticCode code) {
+    }
+
     public MessageTriageResultVO classify(String question,
                                           String jobContext,
                                           String resumeContent,
@@ -56,10 +79,11 @@ public class MessageTriageService {
 
         String safeQuestion = normalize(question);
         if (safeQuestion.isEmpty() || safeQuestion.length() > MAX_MESSAGE_LENGTH) {
-            return processingError();
+            return processingError(DiagnosticCode.INPUT_REJECTED);
         }
 
         PreferenceEntity safePreference = preference == null ? new PreferenceEntity() : preference;
+        DiagnosticCode failureStage = DiagnosticCode.PAYLOAD_REJECTED;
         try {
             String userPayload = buildUserPayload(
                     safeQuestion,
@@ -67,23 +91,22 @@ public class MessageTriageService {
                     limit(resumeContent, MAX_RESUME_LENGTH),
                     limit(serializePreference(safePreference), MAX_PREFERENCE_LENGTH));
             if (StringUtils.isBlank(userPayload)) {
-                return processingError();
+                return processingError(DiagnosticCode.PAYLOAD_REJECTED);
             }
+            failureStage = DiagnosticCode.MODEL_CALL_FAILED;
             String modelResponse = aiServiceFacade.askAndAnswer(
                     AIPromptStrConstant.AI_MESSAGE_TRIAGE_PROMPT,
                     userPayload);
+            failureStage = DiagnosticCode.RESULT_PROCESSING_FAILED;
             ParsedDecision decision = parseResponse(modelResponse);
-            if (decision == null) {
-                return processingError();
-            }
             if (decision.category() == Category.PROCESSING_ERROR) {
-                return processingError();
+                return processingError(DiagnosticCode.MODEL_REPORTED_ERROR);
             }
 
             Action action = resolveAction(
                     decision.category(), decision.action(), safePreference.isMarketingReplyE());
             if (action == null) {
-                return processingError();
+                return processingError(DiagnosticCode.ACTION_CONTRACT_REJECTED);
             }
             return MessageTriageResultVO.builder()
                     .category(decision.category())
@@ -93,8 +116,10 @@ public class MessageTriageService {
                     .clarificationQuestions(sanitizeOutput(decision.questions()))
                     .evidence(sanitizeOutput(decision.evidence()))
                     .build();
+        } catch (InvalidModelResponse rejected) {
+            return processingError(rejected.code);
         } catch (Exception ignored) {
-            return processingError();
+            return processingError(failureStage);
         }
     }
 
@@ -142,13 +167,13 @@ public class MessageTriageService {
 
     private static ParsedDecision parseResponse(String response) {
         JsonNode json = firstJsonObject(response);
-        if (json == null || json.has("@type")) {
-            return null;
+        if (json.has("@type")) {
+            throw new InvalidModelResponse(DiagnosticCode.RESPONSE_FIELDS_INVALID);
         }
         var fields = json.fieldNames();
         while (fields.hasNext()) {
             if (!ALLOWED_RESPONSE_FIELDS.contains(fields.next())) {
-                return null;
+                throw new InvalidModelResponse(DiagnosticCode.RESPONSE_FIELDS_INVALID);
             }
         }
 
@@ -159,9 +184,23 @@ public class MessageTriageService {
         List<String> questions = stringList(json.get("clarificationQuestions"),
                 MAX_QUESTION_COUNT, MAX_QUESTION_LENGTH);
         List<String> evidence = stringList(json.get("evidence"), MAX_EVIDENCE_COUNT, MAX_EVIDENCE_LENGTH);
-        if (category == null || action == null || reasonCode == null || reason == null
-                || !REASON_CODE.matcher(reasonCode).matches() || questions == null || evidence == null) {
-            return null;
+        if (category == null) {
+            throw new InvalidModelResponse(DiagnosticCode.RESPONSE_CATEGORY_INVALID);
+        }
+        if (action == null) {
+            throw new InvalidModelResponse(DiagnosticCode.RESPONSE_ACTION_INVALID);
+        }
+        if (reasonCode == null || !REASON_CODE.matcher(reasonCode).matches()) {
+            throw new InvalidModelResponse(DiagnosticCode.RESPONSE_REASON_CODE_INVALID);
+        }
+        if (reason == null) {
+            throw new InvalidModelResponse(DiagnosticCode.RESPONSE_REASON_INVALID);
+        }
+        if (questions == null) {
+            throw new InvalidModelResponse(DiagnosticCode.RESPONSE_QUESTIONS_INVALID);
+        }
+        if (evidence == null) {
+            throw new InvalidModelResponse(DiagnosticCode.RESPONSE_EVIDENCE_INVALID);
         }
         return new ParsedDecision(category, action, reasonCode, reason, questions, evidence);
     }
@@ -232,13 +271,16 @@ public class MessageTriageService {
     }
 
     private static JsonNode firstJsonObject(String response) {
-        if (StringUtils.isBlank(response) || response.length() > MAX_MODEL_RESPONSE_LENGTH) {
-            return null;
+        if (StringUtils.isBlank(response)) {
+            throw new InvalidModelResponse(DiagnosticCode.RESPONSE_EMPTY);
+        }
+        if (response.length() > MAX_MODEL_RESPONSE_LENGTH) {
+            throw new InvalidModelResponse(DiagnosticCode.RESPONSE_TOO_LARGE);
         }
         String text = response.trim();
         int start = text.indexOf('{');
         if (start < 0) {
-            return null;
+            throw new InvalidModelResponse(DiagnosticCode.RESPONSE_JSON_INVALID);
         }
         boolean inString = false;
         boolean escaped = false;
@@ -265,15 +307,18 @@ public class MessageTriageService {
                     JsonNode root = SAFE_JSON.readTree(jsonObject);
                     String suffix = text.substring(i + 1).trim();
                     if (suffix.indexOf('{') >= 0 || suffix.indexOf('[') >= 0) {
-                        return null;
+                        throw new InvalidModelResponse(DiagnosticCode.RESPONSE_JSON_INVALID);
                     }
-                    return root != null && root.isObject() ? root : null;
+                    if (root == null || !root.isObject()) {
+                        throw new InvalidModelResponse(DiagnosticCode.RESPONSE_JSON_INVALID);
+                    }
+                    return root;
                 } catch (Exception ignored) {
-                    return null;
+                    throw new InvalidModelResponse(DiagnosticCode.RESPONSE_JSON_INVALID);
                 }
             }
         }
-        return null;
+        throw new InvalidModelResponse(DiagnosticCode.RESPONSE_JSON_INVALID);
     }
 
     private static String serializePreference(PreferenceEntity preference) {
@@ -318,9 +363,23 @@ public class MessageTriageService {
                 .trim();
     }
 
-    private static MessageTriageResultVO processingError() {
+    private MessageTriageResultVO processingError(DiagnosticCode code) {
+        try {
+            onDiagnostic(code);
+        } catch (RuntimeException ignored) {
+            // Observability must not change the fail-closed business result.
+        }
         return result(Category.PROCESSING_ERROR, Action.NO_ACTION_RETRY,
                 "AI_PROCESSING_ERROR", "消息暂时无法安全分析，请稍后重试。");
+    }
+
+    private static final class InvalidModelResponse extends RuntimeException {
+        private final DiagnosticCode code;
+
+        private InvalidModelResponse(DiagnosticCode code) {
+            super(code.name());
+            this.code = code;
+        }
     }
 
     private record ParsedDecision(Category category,

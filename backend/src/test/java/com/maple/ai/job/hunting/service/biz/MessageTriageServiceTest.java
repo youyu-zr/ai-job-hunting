@@ -288,7 +288,7 @@ class MessageTriageServiceTest {
         classify("具体工作方式可以再沟通", 1);
 
         assertTrue(ai.lastSystemPrompt.contains("不能仅凭单个词"));
-        assertTrue(ai.lastSystemPrompt.contains("信息缺失时应归为 UNCERTAIN"));
+        assertTrue(ai.lastSystemPrompt.contains("仅在无法判断消息意图或区分正常招聘与风险的关键事实缺失时"));
         assertTrue(ai.lastSystemPrompt.contains("建议向HR询问缺失事实"));
         assertTrue(ai.lastSystemPrompt.contains("不得仅因岗位事实缺失判为 HIGH_RISK"));
         assertTrue(ai.lastSystemPrompt.contains("未展示部分不能当作不存在"));
@@ -309,6 +309,42 @@ class MessageTriageServiceTest {
         assertTrue(ai.lastSystemPrompt.contains("具体面试日期或时间"));
         assertTrue(ai.lastSystemPrompt.contains("明确接受职位、报价、录用/合同等承诺"));
         assertTrue(ai.lastSystemPrompt.contains("必须使用NEEDS_USER_CONFIRMATION"));
+    }
+
+    @Test
+    void promptSeparatesMessageIntentFromMissingCandidateFacts() {
+        String prompt = AIPromptStrConstant.AI_MESSAGE_TRIAGE_PROMPT;
+
+        assertTrue(prompt.contains("仅在无法判断消息意图或区分正常招聘与风险的关键事实缺失时"));
+        assertTrue(prompt.contains("不能仅因resumeContent或jobContext为未提供"));
+        assertTrue(prompt.contains("薪资、城市、联系方式未说明"));
+        assertTrue(prompt.contains("明确的推广或高风险证据优先于信息缺失"));
+        assertTrue(prompt.contains("免费入职培训、企业账号维护、客户订单提成"));
+    }
+
+    @Test
+    void promptSpecifiesOptInAndOrdinaryCommitmentActionsWithoutWeakeningRiskRules() {
+        String prompt = AIPromptStrConstant.AI_MESSAGE_TRIAGE_PROMPT;
+
+        assertTrue(prompt.contains("marketingReplyE=true且没有命中明确拒回类型时，PROMOTION使用REPLY"));
+        assertTrue(prompt.contains("允许回复的描述不是拒回条件"));
+        assertTrue(prompt.contains("仅出现offer、劳动合同、签署、入职承诺不是HIGH_RISK依据"));
+        assertTrue(prompt.contains("NORMAL_JOB + NEEDS_USER_CONFIRMATION"));
+        assertTrue(prompt.contains("明确收费或发展下线证据仍优先判为HIGH_RISK"));
+    }
+
+    @Test
+    void promptPublishesStrictParserBoundsAndServerOnlyErrorCategories() {
+        String prompt = AIPromptStrConstant.AI_MESSAGE_TRIAGE_PROMPT;
+
+        for (String constraint : List.of(
+                "reasonCode最长64字符", "[A-Z][A-Z0-9_]{0,63}",
+                "plainLanguageReason最长240字符", "每个问题最长180字符",
+                "每条evidence最长240字符", "整个响应最长8000字符",
+                "无问题或证据时输出[]，不能省略或使用null",
+                "PLATFORM_EVENT和PROCESSING_ERROR仅由服务端产生")) {
+            assertTrue(prompt.contains(constraint), constraint);
+        }
     }
 
     @Test

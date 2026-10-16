@@ -144,11 +144,32 @@ java -Xmx192m \
 ## Reports and Exit Codes
 
 Evaluation emits JSON lines containing only case ID, expected/actual category
-and action, and response model/fingerprint identifiers, followed by counts.
+and action, response model/fingerprint identifiers, and a fixed `diagnosticCode`,
+followed by counts.
 If a response omits the version/fingerprint it is `UNREPORTED`, never invented.
 Identifiers are length/character constrained. Raw config, credentials,
 requests, responses, reasons, stack traces, and model error bodies are never
 printed. Library logging is disabled in the standalone main.
+
+Failure diagnostics come from the production classifier's optional enum-only
+observer. Business results still use `PROCESSING_ERROR`, `NO_ACTION_RETRY`, and
+`AI_PROCESSING_ERROR`; no parser rejection, size bound, or action guard is relaxed.
+`RESPONSE_EMPTY`, `RESPONSE_TOO_LARGE`, `RESPONSE_JSON_INVALID`,
+`RESPONSE_FIELDS_INVALID`, `RESPONSE_CATEGORY_INVALID`, `RESPONSE_ACTION_INVALID`,
+`RESPONSE_REASON_CODE_INVALID`, `RESPONSE_REASON_INVALID`,
+`RESPONSE_QUESTIONS_INVALID`, and `RESPONSE_EVIDENCE_INVALID` distinguish strict
+response validation failures. `MODEL_REPORTED_ERROR` means the model itself
+returned a structurally valid processing-error decision.
+`ACTION_CONTRACT_REJECTED` means a parsed category/action pair was disallowed.
+`MODEL_CALL_FAILED` covers failures before the role-separated service returned
+content, including transport, response-envelope, or chat-client failures; it
+does not identify a specific provider error. Other fixed codes are
+`INPUT_REJECTED`, `PAYLOAD_REJECTED`, and `RESULT_PROCESSING_FAILED`.
+No diagnostic includes model text, field values, exception names/messages,
+stack traces, URLs, headers, or credentials. Successful/skipped records use
+`NONE`; harness-only failures use `REQUEST_TIMEOUT` or `EVAL_EXECUTION_FAILED`.
+`DIAGNOSTIC_UNAVAILABLE` is not evidence of a particular failure cause.
+Capture these codes on synthetic live cases; do not enable raw provider logging.
 
 `semanticChecked`, `semanticSkipped`, `offlineChecked`, `liveRequests`, and
 `offlineRequests` distinguish actual model work from deterministic checks.
@@ -159,3 +180,30 @@ Exit 0 means the selected checks matched (offline can still skip all semantics).
 Exit 1 means a mismatch, request failure, timeout, or incomplete live run.
 Exit 2 means rejected configuration/arguments or an internal harness failure.
 Do not use offline exit 0 as a release gate for semantic accuracy.
+After any prompt change, a controller-run live evaluation against the updated
+candidate production JAR is mandatory before deployment. Local contract tests
+cannot prove the semantic failures from an older candidate are corrected.
+
+## Repair Verification: 2026-10-16
+
+The controller's `7dd1301` live baseline reported 18 failures among 47 total
+cases (16 offline, 31 semantic), including four processing errors and no wave
+timeouts. That baseline did not retain diagnostic codes, so the four exact
+rejection causes cannot be reconstructed from category/action records alone.
+
+The repair narrows uncertainty to missing intent-critical facts, distinguishes
+ordinary commitment confirmation from recruitment risk, makes promotion opt-in
+and refusal policy precedence explicit, and documents the existing strict
+response/action contract in the prompt. Fixture labels and parser acceptance
+guards are unchanged. The production observer is no-op unless explicitly
+overridden by the evaluator; business error results remain unchanged.
+
+Local TDD: 40 focused tests first produced seven assertion failures, then all
+40 passed. Broader caller verification and packaging passed with 71 tests,
+zero failures/errors/skips; `mvn -o test-compile` also passed. A standalone
+PropertiesLauncher `--offline` run against the rebuilt JAR exited 0 with
+`offlineChecked=16`, `passed=16`, `failed=0`, `semanticSkipped=31`, and
+`liveRequests=0`, without JUnit/Mockito runtime jars.
+
+The updated live run is pending controller execution. This is not semantic
+acceptance and is not permission to deploy.

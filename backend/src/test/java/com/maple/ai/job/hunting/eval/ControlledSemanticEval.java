@@ -13,6 +13,7 @@ import com.maple.ai.job.hunting.model.vo.MessageTriageResultVO.Category;
 import com.maple.ai.job.hunting.service.ai.AIServiceFacade;
 import com.maple.ai.job.hunting.service.ai.impl.OpenAIService;
 import com.maple.ai.job.hunting.service.biz.MessageTriageService;
+import com.maple.ai.job.hunting.service.biz.MessageTriageService.DiagnosticCode;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.openai.OpenAiChatClient;
 import org.springframework.ai.openai.OpenAiChatOptions;
@@ -40,6 +41,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static com.maple.ai.job.hunting.eval.EvalProviderConfig.JSON;
 import static com.maple.ai.job.hunting.eval.EvalProviderConfig.require;
@@ -162,7 +164,7 @@ public final class ControlledSemanticEval {
                     } catch (java.util.concurrent.TimeoutException ignored) {
                         future.cancel(true);
                         add(counts, "requestTimeouts", 1);
-                        outcome = Outcome.failure(config.model());
+                        outcome = Outcome.timeout(config.model());
                         // Never enqueue more calls while a timed-out transport might still be unwinding.
                         aborted = true;
                     } catch (java.util.concurrent.ExecutionException ignored) {
@@ -191,7 +193,13 @@ public final class ControlledSemanticEval {
                 throw new IllegalStateException("ROLE_SEPARATION_REQUIRED");
             }
         };
-        MessageTriageService triage = new MessageTriageService();
+        AtomicReference<DiagnosticCode> diagnostic = new AtomicReference<>();
+        MessageTriageService triage = new MessageTriageService() {
+            @Override
+            protected void onDiagnostic(DiagnosticCode code) {
+                diagnostic.set(code);
+            }
+        };
         Field field = MessageTriageService.class.getDeclaredField("aiServiceFacade");
         field.setAccessible(true);
         field.set(triage, routingOnly);
@@ -201,8 +209,12 @@ public final class ControlledSemanticEval {
                 fixture.message.repeat(fixture.messageRepeat) + fixture.messageSuffix, fixture.jobContext, "",
                 preference, fixture.bodyType);
         String[] metadata = api.metadata.get();
+        String diagnosticCode = diagnostic.get() == null
+                ? result.getCategory() == Category.PROCESSING_ERROR ? "DIAGNOSTIC_UNAVAILABLE" : "NONE"
+                : diagnostic.get().name();
         return new Outcome(result.getCategory().name(), result.getAction().name(),
-                metadata == null ? model : metadata[0], metadata == null ? UNREPORTED : metadata[1]);
+                metadata == null ? model : metadata[0], metadata == null ? UNREPORTED : metadata[1],
+                diagnosticCode);
     }
 
     private static void account(PrintStream report, Fixture fixture, Outcome result,
@@ -238,6 +250,7 @@ public final class ControlledSemanticEval {
         record.put("actualAction", result.action);
         record.put("model", result.model);
         record.put("version", result.version);
+        record.put("diagnosticCode", result.diagnosticCode);
         emit(report, record);
     }
 
@@ -294,13 +307,17 @@ public final class ControlledSemanticEval {
         public boolean transportFailure;
     }
 
-    record Outcome(String category, String action, String model, String version) {
+    record Outcome(String category, String action, String model, String version, String diagnosticCode) {
         static Outcome skipped(String model) {
-            return new Outcome("NOT_EVALUATED", "NOT_EVALUATED", model, UNREPORTED);
+            return new Outcome("NOT_EVALUATED", "NOT_EVALUATED", model, UNREPORTED, "NONE");
         }
 
         static Outcome failure(String model) {
-            return new Outcome("PROCESSING_ERROR", "NO_ACTION_RETRY", model, UNREPORTED);
+            return new Outcome("PROCESSING_ERROR", "NO_ACTION_RETRY", model, UNREPORTED, "EVAL_EXECUTION_FAILED");
+        }
+
+        static Outcome timeout(String model) {
+            return new Outcome("PROCESSING_ERROR", "NO_ACTION_RETRY", model, UNREPORTED, "REQUEST_TIMEOUT");
         }
     }
 
