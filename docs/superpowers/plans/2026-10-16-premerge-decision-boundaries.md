@@ -48,9 +48,9 @@
 
 ## Task 3: Review And Integration
 
-- [ ] Independently review the actual fixes and regression results; resolve blocker/high findings.
-- [ ] Run frontend tests, prelaunch checks, build/public-artifact checks, and the full backend suite.
-- [ ] Commit only scoped fixes, their tests, this plan and accurate verification notes; push without force.
+- [x] Independently review the actual fixes and regression results; resolve blocker/high findings. Final scoped source verdict: PASS WITH RISK; all previously reported blocker/high closed.
+- [x] Run frontend tests, prelaunch checks, build/public-artifact checks, and the full backend suite. Frontend 222 passed; backend 400, no failures/errors, 2 external skips.
+- [x] Commit only scoped fixes, their tests, this plan and accurate verification notes; push without force. Production source `d36e21b` passed all five GitHub checks.
 - [ ] Verify all GitHub checks correspond to the new head before merging PR #2 into its existing release base.
-- [ ] Explain the remaining `main` approval-policy blocker if no owner decision is available; do not weaken protection to hide it.
+- [x] Explain the remaining `main` approval-policy blocker if no owner decision is available; do not weaken protection to hide it. Owner decision requested; no protection change performed.
 - [ ] Report exact old/new behavior, the concrete cause, the complete action sequence, validation limits, and next responsibilities in plain Chinese.
