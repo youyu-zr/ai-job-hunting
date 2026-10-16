@@ -3,139 +3,200 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AI 工作猎手 · 安装使用</title>
+  <meta name="application-version" content="0.0.118-beta-decision-boundaries">
+  <meta name="description" content="AI 工作猎手安装与使用：在 BOSS 直聘网页里筛选岗位、按简历写开场白，协助回复 HR。查看安装步骤、首次设置和常见问题。">
+  <title>AI 工作猎手 · 下载安装与使用</title>
   <style>
     :root {
       color-scheme: light;
       --ink: #172033;
-      --muted: #657089;
+      --muted: #526074;
       --line: #dfe5ef;
-      --panel: #ffffff;
       --soft: #f5f7fb;
-      --primary: #2563eb;
+      --primary: #1d4ed8;
       --primary-dark: #1d4ed8;
-      --ok: #087f5b;
     }
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; letter-spacing: 0; }
     body {
       margin: 0;
       color: var(--ink);
-      background: var(--soft);
+      background: #fff;
       font: 16px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
     }
-    a { color: var(--primary); }
-    .wrap { width: min(960px, calc(100% - 32px)); margin: 0 auto; }
-    header { padding: 52px 0 28px; }
-    .eyebrow { color: var(--primary); font-size: 13px; font-weight: 700; letter-spacing: .08em; }
-    h1 { margin: 8px 0 12px; font-size: clamp(30px, 6vw, 48px); line-height: 1.15; }
-    h2 { margin: 0 0 16px; font-size: 24px; }
-    h3 { margin: 0 0 6px; font-size: 18px; }
+    a { color: var(--primary); text-underline-offset: 3px; overflow-wrap: anywhere; }
+    a:focus-visible, summary:focus-visible { outline: 3px solid var(--primary); outline-offset: 4px; }
+    .wrap { width: min(960px, calc(100% - 40px)); margin: 0 auto; }
+    header { padding: 40px 0 24px; }
+    .eyebrow { margin: 0; color: var(--muted); font-size: 14px; }
+    h1 { margin: 8px 0 12px; font-size: 36px; line-height: 1.25; }
+    h2 { margin: 0 0 16px; font-size: 24px; line-height: 1.4; }
+    h3 { margin: 0 0 8px; font-size: 18px; line-height: 1.5; }
+    p { margin: 0 0 12px; }
     .lead { max-width: 700px; margin: 0; color: var(--muted); font-size: 18px; }
-    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
     .button {
       display: inline-flex; align-items: center; justify-content: center;
-      min-height: 44px; padding: 8px 18px; border: 1px solid var(--primary);
-      border-radius: 6px; text-decoration: none; font-weight: 700;
+      min-height: 46px; padding: 10px 14px; border: 1px solid var(--primary);
+      border-radius: 6px; text-align: center; text-decoration: none; font-weight: 700;
     }
     .button.primary { color: #fff; background: var(--primary); }
     .button.primary:hover { background: var(--primary-dark); }
-    .button.secondary { color: var(--primary); background: #fff; }
-    .button.disabled { color: #657089; background: #eef2f7; border-color: #dfe5ef; cursor: not-allowed; }
-    .notice { padding: 18px 20px; border: 1px solid #e7b34b; border-left: 5px solid #c27a00; border-radius: 6px; background: #fff8e8; }
-    .notice h2 { margin-bottom: 8px; color: #744900; }
+    .button:hover { background: #eef2ff; }
+    .button.primary:hover { background: #1e40af; }
+    .notice { margin-top: 20px; padding: 16px 18px; border-left: 4px solid #9a6700; background: #fff8e8; }
     .notice p { margin: 0; color: #604b28; }
-    .section { padding: 24px 0; }
-    .panel { padding: 24px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
-    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-    .step { min-height: 150px; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
-    .num { display: inline-grid; place-items: center; width: 28px; height: 28px; margin-bottom: 10px; border-radius: 50%; color: #fff; background: var(--primary); font-weight: 700; }
-    .step p, .panel p { margin: 0; color: var(--muted); }
-    .check { color: var(--ok); font-weight: 700; }
-    ul, ol { margin: 8px 0 0; padding-left: 24px; }
-    li + li { margin-top: 6px; }
-    .version { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
-    .version div { padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--soft); }
-    code { padding: 2px 5px; border-radius: 4px; background: #eef2f7; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
-    footer { padding: 28px 0 48px; color: var(--muted); font-size: 14px; }
+    .section { padding: 28px 0; border-top: 1px solid var(--line); }
+    .intro { margin: -4px 0 18px; color: var(--muted); }
+    .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 0; padding: 0; list-style: none; }
+    .step { display: flex; flex-direction: column; padding: 20px; border: 1px solid var(--line); border-radius: 8px; }
+    .step p { flex: 1; color: var(--muted); }
+    .num { margin-bottom: 12px; color: var(--primary); font-size: 14px; font-weight: 700; }
+    .checklist { margin: 0; padding-left: 24px; }
+    .checklist li { padding-left: 4px; }
+    .checklist li + li { margin-top: 18px; }
+    .checklist p { margin: 4px 0 0; color: var(--muted); }
+    .rules { margin: 0; }
+    .rules dt { margin-top: 16px; font-weight: 700; }
+    .rules dt:first-child { margin-top: 0; }
+    .rules dd { margin: 4px 0 0; color: var(--muted); }
+    details { padding: 14px 0; border-bottom: 1px solid var(--line); }
+    summary { min-height: 44px; padding: 8px 0; cursor: pointer; font-weight: 700; }
+    details p { margin: 8px 0 0; color: var(--muted); }
+    .links { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 16px; }
+    .links a { display: inline-flex; align-items: center; min-height: 44px; }
+    footer { padding: 24px 0 36px; border-top: 1px solid var(--line); background: var(--soft); color: var(--muted); font-size: 14px; }
+    footer p { margin: 0; }
     @media (max-width: 700px) {
-      .wrap { width: min(100% - 24px, 600px); }
-      header { padding-top: 32px; }
-      .grid, .version { grid-template-columns: 1fr; }
-      .panel { padding: 18px; }
-      .button { width: 100%; }
+      .wrap { width: calc(100% - 32px); }
+      header { padding-top: 28px; }
+      h1 { font-size: 30px; }
+      h2 { font-size: 22px; }
+      .lead { font-size: 16px; }
+      .steps { grid-template-columns: 1fr; }
+      .step { padding: 18px; }
+      .section { padding: 24px 0; }
     }
   </style>
 </head>
 <body>
   <main class="wrap">
     <header>
-      <div class="eyebrow">小范围联调 · 2026-10-16</div>
+      <p class="eyebrow">BOSS 直聘网页求职助手 · 电脑端</p>
       <h1>AI 工作猎手</h1>
-      <p class="lead">在 BOSS 直聘里帮你筛岗位、生成岗位化第一句话，并辅助处理普通 HR 消息。普通用户不需要填写 API Key。</p>
-      <div class="actions">
-        <a class="button secondary" href="https://scriptcat.org/" target="_blank" rel="noreferrer">第一步：安装脚本猫</a>
-        <a class="button primary" href="./ai-job-hunting.user.js">第二步：安装 AI 工作猎手</a>
-        <a class="button secondary" href="https://www.zhipin.com/" target="_blank" rel="noreferrer">第三步：打开 BOSS 直聘</a>
-      </div>
-      <div class="version">
-        <div><strong>当前联调版本</strong><br><code>0.0.118-beta-decision-boundaries</code></div>
-        <div><strong>首次使用</strong><br>先用本人账号测试一个岗位</div>
-      </div>
+      <p class="lead">帮你筛选岗位、结合简历写开场白，并协助回复 HR 消息。你来决定找什么工作，也可以随时接手聊天。</p>
     </header>
 
-    <section class="section">
-      <div class="notice" role="alert">
-        <h2>先小范围试用</h2>
-        <p>先用自己的账号测试登录、导入简历和一个岗位，不要一开始连续投递很多岗位。遇到问题，先关闭 AI 坐席并记录卡在哪一步；不要分享 Cookie、验证码或简历原件。</p>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="grid">
-        <div class="step">
-          <span class="num">1</span>
-          <h3>安装脚本管理器</h3>
-          <p>推荐使用脚本猫（ScriptCat）。如果已经安装 Tampermonkey，就不用重复安装；两者选一个。</p>
-        </div>
-        <div class="step">
-          <span class="num">2</span>
+    <section class="section" aria-labelledby="install-title">
+      <h2 id="install-title">先安装，再打开 BOSS</h2>
+      <p class="intro">请用电脑上的 Chrome 或 Edge 浏览器操作。不用写代码，也不用自己配置 AI 服务。</p>
+      <ol class="steps">
+        <li class="step">
+          <span class="num" aria-hidden="true">第一步</span>
+          <h3>安装脚本猫</h3>
+          <p>这是让浏览器运行本工具的小扩展。已经安装 Tampermonkey（篡改猴）的，可以跳过这一步，两者选一个就好。</p>
+          <a class="button" href="https://scriptcat.org/" target="_blank" rel="noreferrer">安装脚本猫</a>
+        </li>
+        <li class="step">
+          <span class="num" aria-hidden="true">第二步</span>
           <h3>安装 AI 工作猎手</h3>
-          <p>点击上面的安装按钮，弹出脚本管理器提示后，点击确认安装。</p>
-        </div>
-        <div class="step">
-          <span class="num">3</span>
-          <h3>登录 BOSS 并刷新</h3>
-          <p>登录自己的 BOSS 账号，打开职位页或消息页，刷新后看到 AI 工作猎手面板。</p>
-        </div>
+          <p>点击下方按钮，在弹出的安装页面确认安装。同一份脚本只保留一个启用版本。</p>
+          <a class="button primary" href="./ai-job-hunting.user.js">安装 AI 工作猎手</a>
+        </li>
+        <li class="step">
+          <span class="num" aria-hidden="true">第三步</span>
+          <h3>登录 BOSS 直聘</h3>
+          <p>登录自己的 BOSS 账号，进入职位页或消息页并刷新。看到“AI 工作猎手”面板，就可以继续设置。</p>
+          <a class="button" href="https://www.zhipin.com/" target="_blank" rel="noreferrer">打开 BOSS 直聘</a>
+        </li>
+      </ol>
+      <div class="notice">
+        <p><strong>目前是测试版。</strong>真实 BOSS 账号的完整使用流程还没有全部验证。首次请先试一个岗位，确认页面上的实际结果后，再继续使用。</p>
       </div>
     </section>
 
-    <section class="section">
-      <div class="panel">
-        <h2>第一次使用</h2>
-        <ul>
-          <li>登录后账号会自动创建并自动开通内测，不需要激活码，也不需要填写 API Key；</li>
-          <li>开始投递或开启 AI 坐席前，先在 BOSS 上传自己的附件简历，再点击“导入简历”；</li>
-          <li>BOSS 自带的固定招呼语会关闭，关闭失败时本次投递不会继续；</li>
-          <li>AI 坐席关闭时不会自动回复，也不会自动处理积压消息；</li>
-          <li>重新登录后，如果最后一条确实是 HR 发来的且你没有回复，AI 可以继续处理；</li>
-          <li>你手动回复某个 HR 后，只暂停这个 HR 的会话，不影响其他会话；</li>
-          <li>岗位资料缺少薪资或地点，但没有明确风险或与你填写的硬性条件冲突时，会继续投递，并把缺少的信息留到后续沟通；AI 调用失败时不会自动投递或回复；</li>
-          <li>普通岗位职责里的抖音、推广、销售或账号不会只因关键词被过滤；面向求职者的课程、加群、返佣等推广默认静默，明确高风险始终拦截；</li>
-          <li>薪资、地点和联系方式按你保存的偏好判断；具体面试日期或时间需要你本人确认；</li>
-          <li>BOSS 的结构化系统通知或卡片可能出现在聊天界面，但不是 HR 消息，脚本按协议类型等元数据识别，不按普通文字关键词识别。</li>
-        </ul>
-      </div>
+    <section class="section" aria-labelledby="start-title">
+      <h2 id="start-title">第一次用，完成这四件事</h2>
+      <ol class="checklist">
+        <li>
+          <strong>确认已经连接，账号会自动开通</strong>
+          <p>登录 BOSS 后，工具会自动创建账号并开通内测。不需要另行注册、输入激活码或填写模型密钥。</p>
+        </li>
+        <li>
+          <strong>导入自己的简历</strong>
+          <p>先在 BOSS 上传自己的 PDF 或 Word（DOCX）附件简历，再在工具面板点击“导入简历”。导入完成后，才能开始投递或开启自动回复。</p>
+        </li>
+        <li>
+          <strong>告诉 AI，你想找什么工作</strong>
+          <p>打开“偏好设置”，查看已有内容，按自己的情况修改目标城市、岗位方向和薪资要求。通用要求可以保留，再补上自己的特殊要求，例如“只考虑上海的 Java 实习，电话和微信由我自己提供”。填好后记得保存。</p>
+        </li>
+        <li>
+          <strong>先投递一个岗位，确认效果</strong>
+          <p>打开一个岗位，把本次投递数量设为 1，再点击“开始投递”。AI 会结合岗位和简历写开场白，不使用 BOSS 自带的固定招呼语；如果固定招呼语关闭失败或开场白生成失败，本次不会继续投递。请到 BOSS 聊天里确认实际发送结果。</p>
+        </li>
+      </ol>
     </section>
 
-    <section class="section">
-      <div class="panel">
-        <h2>AI 怎么分工</h2>
-        <p>浏览器脚本负责读取 BOSS 页面、把消息和必要的结构化信息交给服务器，并执行最终的页面操作；服务器上的 AI 结合岗位、简历和你保存的偏好判断“这是什么消息、应该怎么处理”。浏览器端不放模型 API Key，也不靠“抖音”“收费”“账号”等单个词直接做语义结论。</p>
-        <p>本页对应 <code>0.0.118</code> 联调版，不代表真实账号全流程已经验收通过。请保留本人确认和随时停止自动处理的习惯。</p>
+    <section class="section" aria-labelledby="reply-title">
+      <h2 id="reply-title">想让 AI 帮你回复 HR？</h2>
+      <p class="intro">导入简历、保存偏好后，打开面板里的“AI 坐席”开关。它就是自动回复的总开关。</p>
+      <dl class="rules">
+        <dt>开着才回复，关掉就停止</dt>
+        <dd>关闭后，新消息和之前没回复的消息都不会自动处理。使用时请保持 BOSS 消息页打开、账号已登录，电脑不要休眠。</dd>
+        <dt>你手动回复谁，就先接管谁</dt>
+        <dd>你手动回复某个 HR 后，AI 会暂停这个聊天，其他聊天不受影响。想交回给 AI 时，在该聊天里点击“恢复本会话自动回复”。</dd>
+        <dt>断线后，未回复的消息也会检查</dt>
+        <dd>重新登录并刷新后，如果总开关仍然开着，AI 会检查 HR 最后一条尚未得到你回复的消息。你已经回复的聊天，不会只因为还显示未读就重复回复。</dd>
+        <dt>面试和重要承诺，由你确认</dt>
+        <dd>确定面试日期或时间、接受录用、答应签约时，会暂停当前聊天，请你本人处理。薪资、城市、电话和微信能否提供，请在偏好里写清楚；没有写明的信息，AI 不应自行编造。</dd>
+        <dt>营销引流消息，默认不回复</dt>
+        <dd>例如借招聘让你买课、进群领资料或拉人返佣。AI 会结合上下文判断，不会只因岗位名称里有“推广”或“销售”就跳过。判断仍可能出错，可疑消息请自己核实。</dd>
+      </dl>
+    </section>
+
+    <section class="section" aria-labelledby="faq-title">
+      <h2 id="faq-title">安装或使用卡住了？</h2>
+      <details>
+        <summary>安装后，为什么看不到工具面板？</summary>
+        <p>先确认脚本猫或篡改猴已经启用，“AI 工作猎手”也已启用，而且没有同时开着两个版本。然后登录 BOSS，进入职位页或消息页并刷新。安装页面本身不会显示工具面板。</p>
+      </details>
+      <details>
+        <summary>点击安装，只看到一大段代码怎么办？</summary>
+        <p>先确认第一步的脚本管理器已经装好并启用，再回到本页点击“安装 AI 工作猎手”。如果仍没有出现安装提示，请反馈浏览器名称和页面截图，截图先遮住私人信息。</p>
+      </details>
+      <details>
+        <summary>下载很慢，或者没有下载完整怎么办？</summary>
+        <p>目前部分网络下确实可能下载慢或中断。请确认安装提示完整出现、安装成功后，再回 BOSS 使用。反复失败时，请把浏览器、网络情况和错误提示反馈给发布者；下载问题仍在改进中。</p>
+      </details>
+      <details>
+        <summary>简历导入失败，或者一直在等待？</summary>
+        <p>确认自己的附件简历已经上传到 BOSS，并且当前账号仍然登录。刷新 BOSS 页面，确认工具已连接后，再点击“导入简历”。注册和开通不需要简历，不要为了修复登录问题到处上传简历。</p>
+      </details>
+      <details>
+        <summary>AI 为什么没有回复？</summary>
+        <p>先看“AI 坐席”总开关是否开启，再看这个聊天是否因你手动回复或需要本人确认而暂停。登录过期就重新登录并刷新；聊天被暂停就先处理原因，再决定是否恢复。若记录显示发送失败，先查看 BOSS 里是否已有回复，不要反复点击重试。</p>
+      </details>
+      <details>
+        <summary>怎样反馈问题？</summary>
+        <p>告诉发布者“卡在哪一步、页面提示什么、用的什么浏览器”，并附上遮住私人信息的截图。也可以在下方 GitHub 问题反馈页留言。不要发送验证码、账号登录凭证（Cookie）或完整简历。</p>
+      </details>
+    </section>
+
+    <section class="section" aria-labelledby="privacy-title">
+      <h2 id="privacy-title">使用前，也请了解这些</h2>
+      <p>本工具不是完全在你的电脑里运行。点击“导入简历”后，简历会上传到服务器；使用相关功能时，解析后的简历文字、岗位、求职偏好和必要的聊天内容可能交给 AI 服务处理。目前没有一键删除全部账号数据的入口，删除方式和时限还未确定，请在提供个人资料前了解这一点。</p>
+      <p>AI 的判断和回复可能出错，不能保证获得面试或工作，也不能保证账号不受平台限制。遇到异常，请先关闭自动回复；是否发送成功，以 BOSS 页面实际显示为准。</p>
+      <div class="links">
+        <a href="https://github.com/youyu-zr/ai-job-hunting/blob/main/docs/USER_GUIDE.md" target="_blank" rel="noreferrer">完整使用说明</a>
+        <a href="https://github.com/youyu-zr/ai-job-hunting/blob/main/docs/DATA_FLOW_AND_RETENTION.md" target="_blank" rel="noreferrer">个人资料如何处理</a>
+        <a href="https://github.com/youyu-zr/ai-job-hunting/issues" target="_blank" rel="noreferrer">反馈问题</a>
+        <a href="https://github.com/youyu-zr/ai-job-hunting" target="_blank" rel="noreferrer">GitHub 项目</a>
       </div>
     </section>
   </main>
-  <footer class="wrap">联调版本：0.0.118-beta-decision-boundaries。内测权限统一有效至 2026 年 12 月 30 日 23:59:59（中国标准时间）。真实账号流程仍需本人验收，不保证平台授权、账号安全或求职结果。</footer>
+  <footer>
+    <div class="wrap">
+      <p>当前版本 0.0.118 · 测试版</p>
+      <p>本次内测权限有效至 2026 年 12 月 30 日 23:59:59（北京时间）。</p>
+    </div>
+  </footer>
 </body>
 </html>
