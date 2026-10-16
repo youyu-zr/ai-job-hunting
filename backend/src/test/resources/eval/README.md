@@ -28,7 +28,7 @@ mvn -o -Dtest=ControlledSemanticEvalTest,OpenAIServicePromptRolesTest -DargLine=
 
 No credentials or configuration files are needed for `--offline`. Its 16
 protocol, input-limit, real-parser, and technical-failure checks use an
-in-memory transport with no HTTP client construction. Its 31 semantic cases
+in-memory transport with no HTTP client construction. Its 35 semantic cases
 print `NOT_EVALUATED`.
 Offline results are deterministic contract checks, not transport or semantic
 proof. Offline records identify the synthetic model as `OFFLINE_CONTRACT_ONLY`;
@@ -222,3 +222,32 @@ PropertiesLauncher `--offline` run against the rebuilt JAR exited 0 with
 
 The updated live run is pending controller execution. This is not semantic
 acceptance and is not permission to deploy.
+
+## Reliability Candidate: 2026-10-16
+
+The controller's `234578a` live baseline remains 46/47, not acceptance:
+31 semantic cases made 32 live requests; one JSON-invalid response was repaired
+to the expected high-risk result, but `concrete_interview` returned
+`UNCERTAIN/REPLY` instead of `NORMAL_JOB/NEEDS_USER_CONFIRMATION`.
+The first format failure and recovered repair remain visible in that baseline.
+
+The two-role structured request previously supplied no temperature override.
+It now sets request-local temperature zero for triage and job filtering;
+single-role calls, sessions, and shared client defaults are unchanged.
+This reduces sampling variability but does not guarantee deterministic semantics.
+The classifier prompt explicitly gives concrete interview, offer, and contract
+confirmation priority over missing candidate facts, below explicit high risk.
+Valid semantic decisions are never retried; strict parsing and the existing
+one-format-repair limit are unchanged.
+
+All original 31 semantic inputs and labels are preserved. Four held-out cases
+cover a relative-date invitation, interview-process explanation, paid interview
+invitation, and ordinary contract inquiry. The candidate has 35 semantic plus
+16 offline cases (51 total). Offline exit zero still proves contract checks
+only; the controller must run the updated candidate live before deployment.
+
+Local test-first verification observed the inherited synthetic temperature
+`0.75` before the override and zero afterward through the real chat client's
+serialized request. The focused package run passed 144 tests with no failures,
+errors, or skips. The packaged JAR's standalone offline run passed all 16
+contract cases, skipped 35 semantic cases, and made zero live requests.

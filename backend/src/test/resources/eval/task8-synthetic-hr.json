@@ -283,6 +283,38 @@
     "expectedAction": "REPLY"
   },
   {
+    "id": "heldout_relative_interview",
+    "name": "相对日期具体面试邀请交由本人确认",
+    "kind": "SEMANTIC",
+    "message": "明天上午方便来公司面试吗？",
+    "expectedCategory": "NORMAL_JOB",
+    "expectedAction": "NEEDS_USER_CONFIRMATION"
+  },
+  {
+    "id": "heldout_interview_process",
+    "name": "介绍面试流程不等于预约",
+    "kind": "SEMANTIC",
+    "message": "我们的面试流程是先和招聘专员交流，再与业务负责人讨论作品，最后反馈结果。你对流程或准备材料有什么问题吗？现在还没有安排面试时间。",
+    "expectedCategory": "NORMAL_JOB",
+    "expectedAction": "REPLY"
+  },
+  {
+    "id": "heldout_paid_interview",
+    "name": "具体面试邀请附带强制收费仍须屏蔽",
+    "kind": "SEMANTIC",
+    "message": "邀请你下周三上午十点到公司面试，请确认能否参加。但必须先支付报名培训费，付款后才保留面试资格。",
+    "expectedCategory": "HIGH_RISK",
+    "expectedAction": "BLOCK_CURRENT_JOB"
+  },
+  {
+    "id": "heldout_contract_terms",
+    "name": "普通合同条款询问不是接受合同",
+    "kind": "SEMANTIC",
+    "message": "这个岗位的劳动合同约定试用期三个月。关于合同期限、试用期待遇和续签条款，你还想了解哪些内容？这里只是沟通条款，不要求现在同意或签署。",
+    "expectedCategory": "NORMAL_JOB",
+    "expectedAction": "REPLY"
+  },
+  {
     "id": "protocol_4",
     "name": "协议四平台事件",
     "kind": "PROTOCOL",

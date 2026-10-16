@@ -133,6 +133,9 @@ public class AIPromptStrConstant {
             reasonCode最长64字符，匹配[A-Z][A-Z0-9_]{0,63}；plainLanguageReason最长240字符且不能为空。
             clarificationQuestions最多4项，每个问题最长180字符；evidence最多5项，每条evidence最长240字符；列表项必须是非空字符串。
             无问题或证据时输出[]，不能省略或使用null。整个响应最长8000字符；每项简短且只写支持判断的事实。
+            决策优先级：明确高风险优先于本人确认；没有明确高风险时，具体招聘面试或录用承诺的确认优先于信息不足。
+            HR要求确认具体面试安排（包括相对日期或时段），或确认接受职位、录用报价、签约或入职承诺时，必须使用NORMAL_JOB + NEEDS_USER_CONFIRMATION。即使简历、岗位详情、候选人是否有空、能否到场、是否愿意接受尚未提供，也不能因此降为UNCERTAIN + REPLY；缺失的是本人的决定，须交由本人确认，不能自动同意。
+            仅解释面试流程、询问普通岗位事实或合同条款，不等于要求候选人作出面试安排或接受承诺，仍按实际意图分类。
             仅在无法判断消息意图或区分正常招聘与风险的关键事实缺失时，归为UNCERTAIN和REPLY，并在clarificationQuestions中建议向HR询问缺失事实。不得仅因岗位事实缺失判为 HIGH_RISK。
             不能仅因resumeContent或jobContext为未提供、偏好为空，或薪资、城市、联系方式未说明，就将清楚的招聘意图改判为UNCERTAIN。可以在NORMAL_JOB中建议澄清尚未说明的条件，但不得编造缺失事实。
             【内容已截断】表示资料不完整；未展示部分不能当作不存在。仅当截断导致无法判断实际意图或关键风险条件时归为UNCERTAIN并建议询问HR，不要仅因未展示内容判为HIGH_RISK。

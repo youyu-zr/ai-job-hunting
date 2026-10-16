@@ -23,6 +23,7 @@ import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.openai.OpenAiChatClient;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
@@ -166,7 +167,8 @@ public class OpenAIService extends AbstractAIService {
     static Prompt createRoleSeparatedPrompt(String systemPrompt, String userPrompt) {
         return new Prompt(List.of(
                 new SystemMessage(systemPrompt),
-                new UserMessage(userPrompt)));
+                new UserMessage(userPrompt)),
+                OpenAiChatOptions.builder().withTemperature(0.0f).build());
     }
 
     @Override

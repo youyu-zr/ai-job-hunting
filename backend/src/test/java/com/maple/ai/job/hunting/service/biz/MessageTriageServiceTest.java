@@ -323,6 +323,18 @@ class MessageTriageServiceTest {
     }
 
     @Test
+    void promptPrioritizesRecruitmentConfirmationBeforeUncertaintyWithoutOverridingRisk() {
+        String prompt = AIPromptStrConstant.AI_MESSAGE_TRIAGE_PROMPT;
+        String priority = "具体招聘面试或录用承诺的确认优先于信息不足";
+
+        assertTrue(prompt.contains(priority));
+        assertTrue(prompt.indexOf(priority) < prompt.indexOf("仅在无法判断消息意图"));
+        assertTrue(prompt.contains("是否有空、能否到场、是否愿意接受尚未提供"));
+        assertTrue(prompt.contains("不能因此降为UNCERTAIN + REPLY"));
+        assertTrue(prompt.contains("明确高风险优先于本人确认"));
+    }
+
+    @Test
     void promptSpecifiesOptInAndOrdinaryCommitmentActionsWithoutWeakeningRiskRules() {
         String prompt = AIPromptStrConstant.AI_MESSAGE_TRIAGE_PROMPT;
 

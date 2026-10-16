@@ -108,7 +108,7 @@ class ControlledSemanticEvalTest {
 
     @Test
     void offlineExercisesProductionParserAndGuardsWithoutClaimingSemanticResults() throws Exception {
-        assertEquals(47, ControlledSemanticEval.fixtures().size());
+        assertEquals(51, ControlledSemanticEval.fixtures().size());
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         int exit = ControlledSemanticEval.run(new String[]{"--offline"},
                 new PrintStream(bytes, true, StandardCharsets.UTF_8));
@@ -143,6 +143,31 @@ class ControlledSemanticEvalTest {
                 "OFFLINE_CONTRACT_ONLY");
         assertEquals("NORMAL_JOB", new ObjectMapper().readTree(response).path("category").asText());
         assertEquals(1, api.requests.get());
+    }
+
+    @Test
+    void preservesAllOriginalSemanticInputsAndLabelsWhileAddingFourHeldOutCases() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        var originals = mapper.createArrayNode();
+        var heldOut = new java.util.HashSet<String>();
+        try (var input = ControlledSemanticEval.class.getResourceAsStream("/eval/task8-synthetic-hr.json")) {
+            for (JsonNode fixture : mapper.readTree(input)) {
+                if (!fixture.path("kind").asText().equals("SEMANTIC")) {
+                    continue;
+                }
+                if (fixture.path("id").asText().startsWith("heldout_")) {
+                    heldOut.add(fixture.path("id").asText());
+                } else {
+                    originals.add(fixture);
+                }
+            }
+        }
+        assertEquals(31, originals.size());
+        String digest = java.util.HexFormat.of().withUpperCase().formatHex(
+                java.security.MessageDigest.getInstance("SHA-256").digest(mapper.writeValueAsBytes(originals)));
+        assertEquals("4020168A1E659BD4AC74CB7E9845669B23E90542C4BEAE407B0C6619FC42E2C6", digest);
+        assertEquals(java.util.Set.of("heldout_relative_interview", "heldout_interview_process",
+                "heldout_paid_interview", "heldout_contract_terms"), heldOut);
     }
 
     @Test
@@ -279,7 +304,7 @@ class ControlledSemanticEvalTest {
             JsonNode record = new ObjectMapper().readTree(line);
             if (record.has("counts")) {
                 assertEquals(16, record.path("counts").path("offlineChecked").asInt());
-                assertEquals(31, record.path("counts").path("semanticSkipped").asInt());
+                assertEquals(35, record.path("counts").path("semanticSkipped").asInt());
                 assertEquals(0, record.path("counts").path("liveRequests").asInt());
                 assertEquals(12, record.path("counts").path("offlineRequests").asInt());
                 assertEquals(0, record.path("counts").path("semanticRepairAttempts").asInt());
