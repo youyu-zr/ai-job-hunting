@@ -115,13 +115,20 @@ class JobSeekerClonedServiceReplyGuardTest {
     }
 
     @Test
-    void chatFirstIsAllowedToStartConversationOnlyWhenLowOrMediumRisk() {
-        assertTrue(JobSeekerClonedService.isSafeAiJobAction(false, "CHAT_FIRST", "LOW"));
-        assertTrue(JobSeekerClonedService.isSafeAiJobAction(false, "CHAT_FIRST", "MEDIUM"));
+    void humanReviewActionCannotPassTheServerJobGate() {
+        assertFalse(JobSeekerClonedService.isSafeAiJobAction(false, "HUMAN_REVIEW", "LOW"));
+        assertFalse(JobSeekerClonedService.isSafeAiJobAction(false, "HUMAN_REVIEW", "MEDIUM"));
+    }
+
+    @Test
+    void onlyNormalizedDeliverActionCanPassTheServerJobGate() {
         assertTrue(JobSeekerClonedService.isSafeAiJobAction(false, "DELIVER", "LOW"));
-        assertTrue(JobSeekerClonedService.isSafeAiJobAction(false, "HUMAN_REVIEW", "MEDIUM"));
-        assertFalse(JobSeekerClonedService.isSafeAiJobAction(false, "CHAT_FIRST", "HIGH"));
-        assertFalse(JobSeekerClonedService.isSafeAiJobAction(true, "CHAT_FIRST", "LOW"));
+        assertFalse(JobSeekerClonedService.isSafeAiJobAction(false, "CHAT_FIRST", "LOW"));
+        assertFalse(JobSeekerClonedService.isSafeAiJobAction(false, "CHAT_FIRST", "MEDIUM"));
+        assertFalse(JobSeekerClonedService.isSafeAiJobAction(false, "HUMAN_REVIEW", "MEDIUM"));
+        assertFalse(JobSeekerClonedService.isSafeAiJobAction(false, "DELIVER", "HIGH"));
+        assertFalse(JobSeekerClonedService.isSafeAiJobAction(true, "DELIVER", "LOW"));
+        assertFalse(JobSeekerClonedService.isSafeAiJobAction(false, "PROCESSING_ERROR", "MEDIUM"));
     }
 
     @Test

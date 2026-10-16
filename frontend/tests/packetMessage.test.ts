@@ -3,10 +3,12 @@ import test from 'node:test';
 import {
     bodyImageOf,
     bodyTypeOf,
+    allowedPlatformBodyTypeOf,
     firstMessageOf,
     lastMessageOf,
     messageIdOf,
     msgTypeOf,
+    senderIdOf,
     senderOf,
 } from '../src/webSocket/packetMessage.ts';
 
@@ -56,6 +58,7 @@ test('every accessor returns undefined instead of throwing on malformed packets'
         assert.equal(bodyImageOf(packet as any), undefined);
         assert.equal(msgTypeOf(packet as any), undefined);
         assert.equal(messageIdOf(packet as any), undefined);
+        assert.equal(senderIdOf(packet as any), '');
         assert.deepEqual(senderOf(packet as any), {name: '', avatar: ''});
     }
 });
@@ -68,6 +71,16 @@ test('accessors read the head message fields of a single-message packet', () => 
     assert.deepEqual(bodyImageOf(packet as any), {tinyImage: {url: 'x'}});
     assert.equal(senderOf(packet as any).name, '张经理');
     assert.equal(senderOf(packet as any).avatar, 'https://a/1.png');
+    assert.equal(senderIdOf(packet as any), '101');
+});
+
+test('only allow-listed structured body types are forwarded as platform metadata', () => {
+    for (const bodyType of [1, 4, 8, 12, 14]) {
+        assert.equal(allowedPlatformBodyTypeOf({messages: [{body: {type: bodyType}}]}), bodyType);
+    }
+    for (const bodyType of [undefined, 7, 15, '1', '14', '系统通知']) {
+        assert.equal(allowedPlatformBodyTypeOf({messages: [{body: {type: bodyType}}]}), undefined);
+    }
 });
 
 test('accessors read the head message, not the tail, after a split packet', () => {
@@ -82,6 +95,7 @@ test('senderOf never throws when from is missing or not an object', () => {
     assert.deepEqual(senderOf({messages: [{mid: 'm'}]} as any), {name: '', avatar: ''});
     assert.deepEqual(senderOf({messages: [{from: null}]} as any), {name: '', avatar: ''});
     assert.deepEqual(senderOf({messages: [{from: 'uid-1'}]} as any), {name: '', avatar: ''});
+    assert.equal(senderIdOf({messages: [{from: 'uid-1'}]} as any), '');
 });
 
 test('bodyImageOf exposes the truthy image object used to filter image sends', () => {

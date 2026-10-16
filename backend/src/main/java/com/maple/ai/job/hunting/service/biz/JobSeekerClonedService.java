@@ -27,6 +27,9 @@ import com.maple.ai.job.hunting.model.param.AIFilterParam;
 import com.maple.ai.job.hunting.model.param.JobSeekerClonedParam;
 import com.maple.ai.job.hunting.model.vo.AiFilterResultVO;
 import com.maple.ai.job.hunting.model.vo.JobSeekerClonedResultVO;
+import com.maple.ai.job.hunting.model.vo.MessageTriageResultVO;
+import com.maple.ai.job.hunting.model.vo.MessageTriageResultVO.Action;
+import com.maple.ai.job.hunting.model.vo.MessageTriageResultVO.Category;
 import com.maple.ai.job.hunting.service.ai.AIServiceFacade;
 import com.maple.ai.job.hunting.utils.ConversationGateUtil;
 import com.maple.ai.job.hunting.utils.HighInterestReview;
@@ -36,7 +39,6 @@ import com.maple.ai.job.hunting.utils.LogValueSanitizer;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -74,6 +76,8 @@ public class JobSeekerClonedService {
     @Resource
     private AIServiceFacade aiServiceFacade;
     @Resource
+    private MessageTriageService messageTriageService;
+    @Resource
     private UserAIConfigMapper userAIConfigMapper;
     @Resource
     private UserInfoMapper userInfoMapper;
@@ -102,30 +106,92 @@ public class JobSeekerClonedService {
         if (msgSessionService.msgSessionStop(jobKey) && !msgSessionService.isAiJobGateStopOnly(jobKey)) {
             return new JobSeekerClonedResultVO(JobSeekerClonedAnswerTypeEnum.STOP, "", "SESSION_PAUSED");
         }
+        if (Integer.valueOf(14).equals(jobSeekerClonedParam.getPlatformBodyType())) {
+            return pauseForUserConfirmation(jobKey);
+        }
         // 重复问题过滤
         if (askDuplication(jobSeekerClonedParam)) {
             return new JobSeekerClonedResultVO(JobSeekerClonedAnswerTypeEnum.STOP, "", "DUPLICATE_MESSAGE");
         }
+        try {
+            JobSeekerClonedResultVO result = askReserved(jobSeekerClonedParam, jobKey, userId);
+            if (result.isRetryable()
+                    || (result.getAnswerTypeList() != null
+                    && result.getAnswerTypeList().contains(JobSeekerClonedAnswerTypeEnum.AI_SERVICE_EXCEPTION.getCode()))) {
+                forgetAskDuplication(jobSeekerClonedParam);
+            }
+            return result;
+        } catch (RuntimeException e) {
+            forgetAskDuplication(jobSeekerClonedParam);
+            throw e;
+        }
+    }
+
+    private JobSeekerClonedResultVO askReserved(JobSeekerClonedParam jobSeekerClonedParam,
+                                               String jobKey, Long userId) {
         Optional<PreferenceEntity> preferenceEntityOpt = userInfoMapper.selectPreferenceOptByUserId(userId);
         JobContextCompleteness.Result contextCompleteness = JobContextCompleteness.evaluate(
                 jobSeekerClonedParam.getJobInfo(), jobSeekerClonedParam.getQuestion());
         log.info("jobContextCompleteness jobKey:{} userId:{} score:{} missing:{} present:{}",
                 safeLogValue(jobKey), userId, contextCompleteness.score(), contextCompleteness.missingFieldsText(),
                 contextCompleteness.presentFields());
-        // HR 明确拒绝/不合适时，按确定性收口处理：不交给模型、不发简历、不触发高意向/面试/联系方式动作。
-        // 撤回、附件已发送、文件名、表情/低价值短消息等 BOSS 系统事件先静默，避免被岗位排除逻辑或模型当作正文发送。
+        Pair<Boolean, JobSeekerClonedResultVO> protocolPair = preAskProtocolFilter(jobSeekerClonedParam);
+        if (protocolPair.getKey()) {
+            return protocolPair.getValue();
+        }
+
+        String resumeContent = Optional.ofNullable(userResumeMapper.selectByUserId(userId))
+                .map(resume -> resume.getResumeContent()).orElse("");
+        MessageTriageResultVO triage = messageTriageService.classify(
+                jobSeekerClonedParam.getQuestion(),
+                getJobContextText(jobSeekerClonedParam),
+                resumeContent,
+                preferenceEntityOpt.orElse(null),
+                jobSeekerClonedParam.getPlatformBodyType());
+        if (triage == null || triage.getCategory() == null || triage.getAction() == null) {
+            return retryableProcessingFailure();
+        }
+        if (triage.getCategory() == Category.PROCESSING_ERROR
+                || triage.getAction() == Action.NO_ACTION_RETRY) {
+            return retryableProcessingFailure();
+        }
+        if (triage.getCategory() == Category.HIGH_RISK
+                || triage.getAction() == Action.BLOCK_CURRENT_JOB) {
+            msgSessionService.trySetAiJobGateStop(jobKey, true);
+            return new JobSeekerClonedResultVO(
+                    JobSeekerClonedAnswerTypeEnum.STOP, "", "HIGH_RISK_JOB");
+        }
+        if (triage.getAction() == Action.NEEDS_USER_CONFIRMATION) {
+            return pauseForUserConfirmation(jobKey);
+        }
+        if (triage.getCategory() == Category.PROMOTION
+                && (triage.getAction() != Action.REPLY
+                || preferenceEntityOpt.filter(PreferenceEntity::isMarketingReplyE).isEmpty())) {
+            return new JobSeekerClonedResultVO(
+                    JobSeekerClonedAnswerTypeEnum.STOP, "", "PROMOTION_SILENT");
+        }
+        if (triage.getCategory() == Category.PLATFORM_EVENT) {
+            if (isConcreteCurrentCommitment(jobSeekerClonedParam.getQuestion())) {
+                return pauseForUserConfirmation(jobKey);
+            }
+            return new JobSeekerClonedResultVO(
+                    JobSeekerClonedAnswerTypeEnum.STOP, "", "SILENT_SYSTEM");
+        }
+        if (isConcreteCurrentCommitment(jobSeekerClonedParam.getQuestion())) {
+            return pauseForUserConfirmation(jobKey);
+        }
+        if (ConversationGateUtil.isExplicitHrRejection(jobSeekerClonedParam.getQuestion())) {
+            return new JobSeekerClonedResultVO(
+                    JobSeekerClonedAnswerTypeEnum.STOP, "", "SILENT_SYSTEM");
+        }
+
+        // Rejections and closing messages remain deterministic, but only after
+        // server triage has had a chance to block high-risk/failing messages.
         Pair<Boolean, JobSeekerClonedResultVO> silentPair = preAskSilentFilter(jobSeekerClonedParam, jobKey);
         if (silentPair.getKey()) {
             log.info("静默预过滤 jobKey:{} userId:{} questionLength:{} resultType:{}", safeLogValue(jobSeekerClonedParam.getJobKey()),
                     HeaderContext.getHeader().getUserId(), textLength(jobSeekerClonedParam.getQuestion()), silentPair.getValue().getClass().getSimpleName());
             return silentPair.getValue();
-        }
-        String humanHandoffCategory = ConversationGateUtil.humanHandoffCategory(jobSeekerClonedParam.getQuestion());
-        if (StringUtils.isNotBlank(humanHandoffCategory)) {
-            msgSessionService.trySetMsgSessionStop(jobKey, true);
-            log.info("关键事项需要本人确认，暂停当前岗位AI坐席 jobKey:{} userId:{} category:{}",
-                    safeLogValue(jobKey), userId, humanHandoffCategory);
-            return new JobSeekerClonedResultVO(JobSeekerClonedAnswerTypeEnum.STOP, "", "HUMAN_HANDOFF");
         }
         // The browser performs the shared per-job AI assessment before this
         // request. Keep the server boundary authoritative so an old or
@@ -133,6 +199,9 @@ public class JobSeekerClonedService {
         Pair<Boolean, JobSeekerClonedResultVO> aiJobGatePair = preAskAiJobGate(jobSeekerClonedParam, jobKey);
         if (aiJobGatePair.getKey()) {
             return aiJobGatePair.getValue();
+        }
+        if (msgSessionService.msgSessionStop(jobKey)) {
+            return new JobSeekerClonedResultVO(JobSeekerClonedAnswerTypeEnum.STOP, "", "SESSION_PAUSED");
         }
         // 前置过滤处理
         Pair<Boolean, JobSeekerClonedResultVO> pair = preAskFilter(jobSeekerClonedParam);
@@ -144,6 +213,9 @@ public class JobSeekerClonedService {
 
         // 获取或初始化会话
         String sessionId = getOrInitSession(jobKey, userId);
+        if (sessionId == null) {
+            return new JobSeekerClonedResultVO(JobSeekerClonedAnswerTypeEnum.STOP, "", "SESSION_PAUSED");
+        }
 
         // 获取ai回复。把岗位/联系人信息一并交给模型，避免 HR 话术很泛时脱离岗位上下文回复“有兴趣”。
         ChatSessionResult sessionChat = aiServiceFacade.sessionChat(sessionId, buildAskWithJobInfo(jobSeekerClonedParam, contextCompleteness));
@@ -207,6 +279,42 @@ public class JobSeekerClonedService {
         sendInformEmail(jobSeekerClonedParam, preferenceEntityOpt, answer, jobKey, highInterest, contextCompleteness);
         return new JobSeekerClonedResultVO(answerTypeList,
                 Optional.ofNullable(answer).map(String::trim).orElse(answer), operationTypeList);
+    }
+
+    private boolean isConcreteCurrentCommitment(String question) {
+        return ConversationGateUtil.isConcreteInterviewOrCommitment(question);
+    }
+
+    private JobSeekerClonedResultVO pauseForUserConfirmation(String jobKey) {
+        if (!msgSessionService.trySetMsgSessionStop(jobKey, true)) {
+            return retryableProcessingFailure();
+        }
+        return new JobSeekerClonedResultVO(
+                JobSeekerClonedAnswerTypeEnum.STOP, "", "USER_CONFIRMATION_REQUIRED");
+    }
+
+    private JobSeekerClonedResultVO retryableProcessingFailure() {
+        JobSeekerClonedResultVO result = new JobSeekerClonedResultVO(
+                JobSeekerClonedAnswerTypeEnum.STOP, "", "AI_PROCESSING_ERROR");
+        result.setRetryable(true);
+        return result;
+    }
+
+    private Pair<Boolean, JobSeekerClonedResultVO> preAskProtocolFilter(JobSeekerClonedParam param) {
+        Integer bodyType = param.getPlatformBodyType();
+        if (bodyType != null && List.of(4, 8, 12).contains(bodyType)) {
+            return Pair.of(true, new JobSeekerClonedResultVO(
+                    JobSeekerClonedAnswerTypeEnum.STOP, "", "SILENT_SYSTEM"));
+        }
+        String question = param.getQuestion();
+        if (StringUtils.isBlank(question)
+                || ConversationGateUtil.isNoisyProtocolPayload(question)
+                || isSilentSystemQuestion(question)
+                || isLowValueOrStickerQuestion(question)) {
+            return Pair.of(true, new JobSeekerClonedResultVO(
+                    JobSeekerClonedAnswerTypeEnum.STOP, "", "SILENT_SYSTEM"));
+        }
+        return Pair.of(false, null);
     }
 
     private boolean isRepeatedAnswer(String jobKey, String answer) {
@@ -326,36 +434,23 @@ public class JobSeekerClonedService {
                     safeLogValue(jobKey), HeaderContext.getHeader().getUserId());
             return Pair.of(false, null);
         }
-        if (jobInfo.containsKey("aiFilterDecision") && jobInfo.get("aiFilterDecision") != null) {
-            Object rawDecision = jobInfo.get("aiFilterDecision");
-            decision = parseAiFilterDecision(rawDecision);
-            if (decision == null) {
-                log.warn("岗位AI决策格式异常，暂停自动回复 jobKey:{} userId:{}", safeLogValue(jobKey),
-                        HeaderContext.getHeader().getUserId());
-                return Pair.of(true, stopForAiJobGate(
-                        jobKey, "岗位AI分析结果格式异常，暂停自动回复", "HUMAN_REVIEW", "MEDIUM"));
-            }
-        } else {
-            String jobTitle = StringUtils.defaultString(jobInfo.getString("jobTitle"));
-            String jobContext = StringUtils.defaultString(jobInfo.getString("jobContext"));
-            if (StringUtils.isBlank(jobContext)) {
-                jobContext = StringUtils.defaultString(jobInfo.getString("visibleJobCard"));
-            }
-            decision = jobFilterService.filter(new AIFilterParam(
-                    "逐个读取完整岗位信息后做语义判断；DELIVER表示可直接投递，CHAT_FIRST表示低/中风险、可先投递进入沟通并确认细节，HUMAN_REVIEW表示交给真人，FILTER表示过滤。",
-                    JSON.toJSONString(Collections.singletonMap("jobName", jobTitle)),
-                    JSON.toJSONString(Collections.singletonMap("postDescription", jobContext))));
+        String jobTitle = StringUtils.defaultString(jobInfo.getString("jobTitle"));
+        String jobContext = StringUtils.defaultString(jobInfo.getString("jobContext"));
+        if (StringUtils.isBlank(jobContext)) {
+            jobContext = StringUtils.defaultString(jobInfo.getString("visibleJobCard"));
         }
+        decision = jobFilterService.filter(new AIFilterParam(
+                "结合岗位、简历和已保存的求职条件判断是否继续投递。岗位资料不完整且没有明确风险或硬条件冲突时继续投递，并列出需要后续确认的问题。",
+                JSON.toJSONString(Collections.singletonMap("jobName", jobTitle)),
+                JSON.toJSONString(Collections.singletonMap("postDescription", jobContext))));
         String action = decision == null ? "" : StringUtils.upperCase(StringUtils.trimToEmpty(decision.getRecommendedAction()));
         String risk = decision == null ? "" : StringUtils.upperCase(StringUtils.trimToEmpty(decision.getRiskLevel()));
         boolean filtered = decision != null && Boolean.TRUE.equals(decision.getFilter());
+        if ("PROCESSING_ERROR".equals(action)) {
+            throw new com.maple.ai.job.hunting.frame.exp.ApplicationException("岗位分析暂时不可用，请稍后重试");
+        }
         if (isSafeAiJobAction(filtered, action, risk)) {
             msgSessionService.trySetAiJobGateStop(jobKey, false);
-            if ("CHAT_FIRST".equals(action)) {
-                log.info("岗位AI闸门允许先投递进入沟通 jobKey:{} userId:{} action:{} risk:{} reason:{}",
-                        safeLogValue(jobKey), HeaderContext.getHeader().getUserId(), action, risk,
-                        safeLogValue(StringUtils.defaultIfBlank(decision.getReason(), "先沟通确认岗位细节")));
-            }
             return Pair.of(false, null);
         }
         String reason = decision == null ? "没有拿到岗位AI分析结果" : StringUtils.defaultIfBlank(decision.getReason(), "岗位需要人工确认");
@@ -365,9 +460,7 @@ public class JobSeekerClonedService {
     static boolean isSafeAiJobAction(boolean filtered, String action, String risk) {
         return !filtered
                 && !"HIGH".equals(risk)
-                && ("DELIVER".equals(action)
-                || "CHAT_FIRST".equals(action)
-                || "HUMAN_REVIEW".equals(action));
+                && "DELIVER".equals(action);
     }
 
     /**
@@ -477,9 +570,6 @@ public class JobSeekerClonedService {
         question = question.trim();
         boolean closingMessage = !isResumeRequestQuestion(question)
                 && ConversationGateUtil.isConversationClosingMessage(question);
-        if (closingMessage) {
-            msgSessionService.trySetMsgSessionStop(jobKey, true);
-        }
         if (!ConversationGateUtil.shouldDelegateToAi(question)
                 || isSilentSystemQuestion(question)
                 || isLowValueOrStickerQuestion(question)
@@ -1108,21 +1198,12 @@ public class JobSeekerClonedService {
 
     }
 
-    protected @NotNull String getOrInitSession(String jobKey, Long userId) {
-        LambdaQueryWrapper<MsgSessionDO> condition = new LambdaQueryWrapper<>();
-        condition.eq(MsgSessionDO::getSessionKey, jobKey);
-        condition.eq(MsgSessionDO::getUserId, userId);
-        condition.eq(MsgSessionDO::getStatus, MsgSessionStatusEnum.IN_USE.getCode());
-        MsgSessionDO msgSessionDO = msgSessionMapper.selectOne(condition);
-        String sessionId;
-        if (msgSessionDO == null) {
-            MsgSessionDO sessionDO = new MsgSessionDO(null, null, MsgSessionStatusEnum.IN_USE.getCode(), userId, jobKey);
-            msgSessionMapper.insert(sessionDO);
-            sessionId = sessionDO.getId().toString();
-            log.info("initSession sessionId:{} jobKey:{} userId:{}", sessionId, safeLogValue(jobKey), userId);
-        } else {
-            sessionId = msgSessionDO.getId().toString();
+    protected String getOrInitSession(String jobKey, Long userId) {
+        MsgSessionDO session = msgSessionService.getOrCreateSession(userId, jobKey);
+        if (session == null) {
+            return null;
         }
+        String sessionId = session.getId().toString();
         sessionKeyIdCache.set(jobKey, sessionId);
         return sessionId;
     }
@@ -1134,15 +1215,21 @@ public class JobSeekerClonedService {
      * @return boolean
      */
     private boolean askDuplication(JobSeekerClonedParam jobSeekerClonedParam) {
-        String jobKey = jobSeekerClonedParam.getJobKey();
-        String question = Optional.ofNullable(jobSeekerClonedParam.getQuestion()).orElse("").hashCode() + "";
-
-        String key = jobKey + "-" + question;
+        String key = askDuplicationKey(jobSeekerClonedParam);
 
         if (questionCache.contains(key)) {
             return true;
         }
         questionCache.set(key, "");
         return false;
+    }
+
+    private void forgetAskDuplication(JobSeekerClonedParam jobSeekerClonedParam) {
+        questionCache.delete(askDuplicationKey(jobSeekerClonedParam));
+    }
+
+    private String askDuplicationKey(JobSeekerClonedParam jobSeekerClonedParam) {
+        String question = Optional.ofNullable(jobSeekerClonedParam.getQuestion()).orElse("").hashCode() + "";
+        return jobSeekerClonedParam.getJobKey() + "-" + question;
     }
 }

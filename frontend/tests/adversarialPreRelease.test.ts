@@ -87,9 +87,98 @@ test('adversarial: the pause guard is actually wired into the reply send path', 
 
     // 生成前取代次，发送前校验；两者缺一都等于没有防护。
     assert.match(bossPlatform, /const turnGeneration = ConversationPauseRegistry\.beginTurn\(jobKey\)/);
-    assert.match(bossPlatform, /if \(!ConversationPauseRegistry\.canDeliver\(jobKey, turnGeneration\)\)/);
+    assert.match(bossPlatform, /const turnSeatRevision = getAiSeatStatusRevision\(\)/);
+    assert.match(bossPlatform, /const canDeliverLocally = \(\) => canDeliverAiSeatTurn/);
+    assert.match(bossPlatform, /const canDeliverAtServer = async \(\) =>/);
+    assert.match(bossPlatform, /loadAiSeatRuntimeStatus\(jobKey\)/);
+    assert.match(bossPlatform, /if \(canSend && !\(await canSend\(\)\)\)/);
     assert.match(aiPower, /ConversationPauseRegistry\.pause\(jobKey\)/);
     assert.match(aiPower, /ConversationPauseRegistry\.resume\(jobKey\)/);
+});
+
+test('adversarial: free-text marketing decisions are deferred to the server', () => {
+    const bossPlatform = ui('platform/bossPlatform.ts');
+    const requestAt = bossPlatform.indexOf('return AiPower.ask(');
+    assert.ok(requestAt >= 0);
+    assert.doesNotMatch(bossPlatform, /shouldSilencePromotionalMessage/);
+    assert.match(bossPlatform, /batchPlatformBodyTypeOf\(batch\.items\)/);
+    assert.match(bossPlatform, /stopReason === 'PROMOTION_SILENT'/);
+    assert.match(bossPlatform, /stopReason === 'HIGH_RISK_JOB'/);
+    assert.match(bossPlatform, /stopReason === 'USER_CONFIRMATION_REQUIRED'/);
+    assert.match(bossPlatform, /stopReason === 'AI_PROCESSING_ERROR'/);
+});
+
+test('adversarial: a packet sender mismatch cannot enter the HR message path', () => {
+    const bossPlatform = ui('platform/bossPlatform.ts');
+    const handlerStart = bossPlatform.indexOf('public async handlerBossMessage(');
+    const handlerEnd = bossPlatform.indexOf('private async processMergedMessages(', handlerStart);
+    const handler = bossPlatform.slice(handlerStart, handlerEnd);
+
+    assert.ok(handlerStart >= 0 && handlerEnd > handlerStart);
+    assert.match(handler, /senderIdOf\(msgObj\)/);
+    assert.match(handler, /senderId !== String\(bossId\)/);
+    assert.match(handler, /markMessageCompletedWithoutReply/);
+});
+
+test('adversarial: unread recovery confirms account-level seat status before reading contacts', async () => {
+    const source = readFileSync(new URL('../src/platform/bossPlatform.ts', import.meta.url), 'utf8');
+    const scanStart = source.indexOf('private static async scanUnreadConversationOnce');
+    const scanEnd = source.indexOf('private static hasUnreadMarker', scanStart);
+    assert.ok(scanStart >= 0 && scanEnd > scanStart);
+    const scan = source.slice(scanStart, scanEnd);
+    const statusRead = scan.indexOf('AiPower.getGlobalAiSeatStatus()');
+    const contactRead = scan.indexOf("document.querySelectorAll('.friend-content");
+    assert.ok(statusRead >= 0, 'the scanner must read the authoritative global seat status');
+    assert.ok(contactRead > statusRead, 'the scanner must not inspect contacts before confirming the seat is open');
+    assert.match(scan, /canScanUnreadConversations\(/);
+});
+
+test('adversarial: an uncertain resume exchange is never automatically retried', () => {
+    const bossPlatform = ui('platform/bossPlatform.ts');
+    const retryStart = bossPlatform.indexOf("hasPendingOperation(bossId, cacheText, 'SEND_RESUME')");
+    const retryEnd = bossPlatform.indexOf('logger.debug("接收消息解码内容：", text)', retryStart);
+    assert.ok(retryStart >= 0 && retryEnd > retryStart);
+    const retryBranch = bossPlatform.slice(retryStart, retryEnd);
+
+    assert.match(retryBranch, /markMessageAsCompleted/);
+    assert.doesNotMatch(retryBranch, /sendResumeFile/);
+
+    assert.doesNotMatch(bossPlatform, /markBatchPendingOperation\(batch, 'SEND_RESUME'\)/);
+    assert.match(bossPlatform, /为避免重复发送，请人工检查 BOSS 会话后再决定是否发送/);
+});
+
+test('adversarial: unread recovery does not guess when the selected conversation sender is unknown', () => {
+    const pendingConversation = ui('platform/pendingConversation.ts');
+    assert.match(pendingConversation, /if \(input\.selected\) \{\s*return input\.latestSender === 'boss';\s*\}/);
+});
+
+test('adversarial: unread recovery verifies the target contact before using global chat text', () => {
+    const bossPlatform = ui('platform/bossPlatform.ts');
+    const scanStart = bossPlatform.indexOf('private static async scanUnreadConversationOnce');
+    const scanEnd = bossPlatform.indexOf('private static getFriendSource', scanStart);
+    const unreadScanner = bossPlatform.slice(scanStart, scanEnd);
+    const runtimeStatusCheckAt = unreadScanner.indexOf('loadAiSeatRuntimeStatus');
+    const handlerAt = unreadScanner.indexOf('handlerBossMessage(msgObj, bossId, text)');
+
+    assert.ok(scanStart >= 0 && scanEnd > scanStart);
+    const statusReadAt = unreadScanner.indexOf('AiPower.getGlobalAiSeatStatus()');
+    const contactReadAt = unreadScanner.indexOf("document.querySelectorAll('.friend-content");
+    assert.ok(statusReadAt >= 0 && contactReadAt > statusReadAt);
+    assert.match(unreadScanner, /canScanUnreadConversations\(/);
+    assert.ok(runtimeStatusCheckAt >= 0 && handlerAt > runtimeStatusCheckAt);
+    assert.doesNotMatch(unreadScanner, /friendEle\.click\(|clickFriendElement|waitForActiveConversation/);
+    assert.match(bossPlatform, /expectedSenderId:\s*BossOption\.getBossIdFromSource\(source\)/);
+});
+
+test('adversarial: confirmed resume exchange remains terminal if read cleanup fails', () => {
+    const bossPlatform = ui('platform/bossPlatform.ts');
+    const resumeStart = bossPlatform.indexOf('const sent = await this.sendResumeFile');
+    const readReceipt = bossPlatform.indexOf('new MessageRead({', resumeStart);
+    const resumeBranch = bossPlatform.slice(resumeStart, readReceipt);
+
+    assert.ok(resumeStart >= 0 && readReceipt > resumeStart);
+    assert.match(resumeBranch, /\}\s*this\.markBatchMessagesAsCompleted\(batch\)/);
+    assert.match(bossPlatform, /preserveSentReply && \([\s\S]*BossOption\.messageCache\.isMessageCompleted\(bossId, text\)/);
 });
 
 test('adversarial: no code path can read a cross-account config mirror', () => {

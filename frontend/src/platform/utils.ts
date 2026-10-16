@@ -1,5 +1,6 @@
 import {GM_getValue, GM_setValue, GM_notification, GM_addValueChangeListener, GM_xmlhttpRequest, unsafeWindow} from "$";
 import {messageFingerprint} from "./messageFingerprint";
+import {isCompletedMessage, terminalWithoutReply} from "./messageCompletion";
 
 export class Tools {
 
@@ -311,6 +312,17 @@ export class MessageCache {
             replySent: true,
         };
         this.saveCache(cache);
+    }
+
+    public markMessageCompletedWithoutReply(bossId: number, text: string, expiration?: number): void {
+        const key = this.generateKey(bossId, text);
+        const cache = this.getCache();
+        cache[key] = terminalWithoutReply(Date.now() + (expiration || MessageCache.DEFAULT_EXPIRATION));
+        this.saveCache(cache);
+    }
+
+    public isMessageCompleted(bossId: number, text: string): boolean {
+        return isCompletedMessage(this.getCache()[this.generateKey(bossId, text)]);
     }
 
     public markReplySent(bossId: number, text: string, expiration?: number): void {

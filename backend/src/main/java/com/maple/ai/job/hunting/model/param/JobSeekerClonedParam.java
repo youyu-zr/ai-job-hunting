@@ -33,4 +33,18 @@ public class JobSeekerClonedParam {
      */
     private JSONObject jobInfo;
 
+    /** Known BOSS message body type supplied by the browser; never inferred from text. */
+    private Integer platformBodyType;
+
+    public void setPlatformBodyType(Integer platformBodyType) {
+        this.platformBodyType = platformBodyType != null
+                && java.util.Set.of(1, 4, 8, 12, 14).contains(platformBodyType)
+                ? platformBodyType : null;
+    }
+
+    public JobSeekerClonedParam(String question, String jobKey, JSONObject jobInfo) {
+        this.question = question;
+        this.jobKey = jobKey;
+        this.jobInfo = jobInfo;
+    }
 }

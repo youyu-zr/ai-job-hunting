@@ -21,6 +21,11 @@ public class OpenaiMessage implements Message {
     }
 
     @Override
+    public String getContent() {
+        return content;
+    }
+
+    @Override
     public List<Media> getMedia() {
         return List.of();
     }

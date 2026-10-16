@@ -106,3 +106,17 @@ export function getMsgBody(data: any): string {
     }
     return "";
 }
+
+const MAX_NORMALIZED_MESSAGE_LENGTH = 5000;
+
+/** Keep the full normalized text so an oversized batch cannot be classified by prefix. */
+export function normalizedMessageBatch(texts: unknown[]): {
+    text: string;
+    tooLong: boolean;
+} {
+    const text = (Array.isArray(texts) ? texts : [])
+        .map(value => String(value ?? "").replace(/\s+/g, " ").trim())
+        .filter(Boolean)
+        .join(" ");
+    return {text, tooLong: text.length > MAX_NORMALIZED_MESSAGE_LENGTH};
+}

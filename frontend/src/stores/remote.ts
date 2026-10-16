@@ -10,6 +10,7 @@ import {LogRecorder} from "../logging/record";
 import {
     getAiSeatStatusRevision,
     markAiSeatStatusMutation,
+    didAiSeatStatusChange,
     normalizeAiSeatStatus,
     resolveRemoteAiSeatStatus
 } from "./seatState";
@@ -91,6 +92,7 @@ function applyPreferenceDefaults(preference: PreferenceConfig): void {
         : [];
     preference.locationMismatchThreshold = preference.locationMismatchThreshold || 2;
     preference.communicationStyle = preference.communicationStyle || 'NATURAL';
+    preference.marketingReplyE = preference.marketingReplyE ?? false;
     preference.afE = preference.afE ?? true;
     preference.jceE = preference.jceE ?? false;
     preference.jce = Array.isArray(preference.jce) ? preference.jce : [];
@@ -135,6 +137,11 @@ function applyUserConfig(
         requestStartedAt,
         options.preserveLocalAiSeatStatus !== false
     );
+    if (didAiSeatStatusChange(nextAiSeatStatus, userStore.user.aiSeatStatus)) {
+        // A second device may change the account-level seat while an older
+        // browser is still generating a reply. Invalidate that older turn.
+        markAiSeatStatusMutation();
+    }
 
     Object.assign(
         userStore.user,

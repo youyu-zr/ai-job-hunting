@@ -40,6 +40,7 @@ class JobRiskKeywordUtilTest {
 
         assertEquals("收费", JobRiskKeywordUtil.findExcludeKeyword("岗位不涉及销售，但需要收费", keywords).orElseThrow());
         assertEquals("收费", JobRiskKeywordUtil.findExcludeKeyword("岗位不是销售。入职前需要收费", keywords).orElseThrow());
+        assertEquals("押金", JobRiskKeywordUtil.findExcludeKeyword("岗位不涉及培训贷另有押金", List.of("培训贷", "押金")).orElseThrow());
     }
 
     @Test

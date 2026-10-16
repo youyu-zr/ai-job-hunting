@@ -110,13 +110,14 @@ class ConversationGateUtilTest {
     }
 
     @Test
-    void explicitPersonalDecisionsRequireHumanHandoffButOrdinaryDiscussionDoesNot() {
-        assertEquals("CONTACT", handoffCategory("方便交换微信吗？"));
+    void onlyConcreteInterviewsAndExplicitContractCommitmentsRequireHandoff() {
+        assertEquals("", handoffCategory("方便交换微信吗？"));
         assertEquals("INTERVIEW", handoffCategory("方便明天下午三点来公司面试吗？"));
-        assertEquals("LOCATION", handoffCategory("办公地点在上海浦东，能接受吗？"));
-        assertEquals("COMPENSATION", handoffCategory("这个薪资可以接受吗？"));
-        assertEquals("START_DATE", handoffCategory("你最快什么时候可以到岗？"));
-        assertEquals("OFFER", handoffCategory("确认一下是否接受这份录用通知？"));
+        assertEquals("", handoffCategory("办公地点在上海浦东，能接受吗？"));
+        assertEquals("", handoffCategory("这个薪资可以接受吗？"));
+        assertEquals("", handoffCategory("你最快什么时候可以到岗？"));
+        assertEquals("INTERVIEW", handoffCategory("请确认是否接受并签署这份合同。"));
+        assertEquals("", handoffCategory("合同期限是三年，可以先了解一下吗？"));
 
         assertEquals("", handoffCategory("方便电话沟通一下岗位职责吗？"));
         assertEquals("", handoffCategory("薪资结构是底薪加绩效，具体面试流程有三轮。"));
@@ -142,6 +143,46 @@ class ConversationGateUtilTest {
     void onlyEmptyAndProtocolNoiseAreSilentlySuppressedBeforeAi() {
         assertFalse(ConversationGateUtil.shouldDelegateToAi("   "));
         assertFalse(ConversationGateUtil.shouldDelegateToAi("\b\u0001\u0012\u00031.3\u001ahttps://img.bosszhipin.com/beijin/upload/avatar/a.webp\u0000\u0001\u0002\u0003\u0004"));
+    }
+
+    @Test
+    void promotionalCtasAreSilentButOrdinaryPromotionJobsRemainConversational() {
+        assertTrue(ConversationGateUtil.isPromotionalMessage("扫码进群领取资料，注册后安排推广任务"));
+        assertTrue(ConversationGateUtil.isPromotionalMessage("扫码进群获取资料"));
+        assertTrue(ConversationGateUtil.isPromotionalMessage("先交费培训后上岗，邀请好友返佣"));
+        assertTrue(ConversationGateUtil.isPromotionalMessage("课程顾问岗位，添加微信领取课程资料"));
+        assertFalse(ConversationGateUtil.isPromotionalMessage("我们招聘市场推广专员，负责品牌内容和活动执行"));
+        assertFalse(ConversationGateUtil.isPromotionalMessage("岗位负责推广公司产品，正常底薪加绩效，不要求付费"));
+        assertFalse(ConversationGateUtil.isPromotionalMessage("课程顾问工作职责：添加微信维护学员日常沟通"));
+        assertFalse(ConversationGateUtil.isPromotionalMessage("岗位不涉及推广和扫码引流，正常底薪加绩效"));
+    }
+
+    @Test
+    void hardPromotionalRisksRemainSilentEvenIfOptionalMarketingRepliesAreEnabled() {
+        assertTrue(ConversationGateUtil.isHardPromotionalRisk("先充值成为代理，邀请好友返佣"));
+        assertTrue(ConversationGateUtil.isHardPromotionalRisk("培训贷、押金和刷单任务"));
+        assertTrue(ConversationGateUtil.isHardPromotionalRisk("缴纳入会费后开始接单"));
+        assertTrue(ConversationGateUtil.isHardPromotionalRisk("加入传销团队，扫码了解"));
+        assertTrue(ConversationGateUtil.isHardPromotionalRisk("需要购买账号后开始工作"));
+        assertTrue(ConversationGateUtil.isHardPromotionalRisk("先交培训费和设备费"));
+        assertTrue(ConversationGateUtil.isHardPromotionalRisk("岗位不涉及培训贷另有押金"));
+        assertFalse(ConversationGateUtil.isHardPromotionalRisk("我们招聘市场推广专员，负责品牌内容和活动执行"));
+        assertFalse(ConversationGateUtil.isHardPromotionalRisk("招聘售后客服，主要处理用户充值不到账和退款咨询"));
+        assertFalse(ConversationGateUtil.isHardPromotionalRisk("岗位不涉及收费培训，不要求缴费"));
+        assertFalse(ConversationGateUtil.isHardPromotionalRisk("招聘平台工作人员负责核验并退还历史入会费"));
+        assertFalse(ConversationGateUtil.isHardPromotionalRisk(
+                "岗位不要求求职者缴纳入会费，客服负责处理缴费和退款咨询"));
+        assertFalse(ConversationGateUtil.isHardPromotionalRisk(
+                "无需求职者缴纳入会费，客服负责处理用户缴费和退款咨询"));
+        assertFalse(ConversationGateUtil.isHardPromotionalRisk("岗位不涉及传销，也不需要购买账号"));
+        assertFalse(ConversationGateUtil.isPromotionalMessage(
+                "我们招聘市场推广专员，日常工作要扫码签到、注册门店客户资料"));
+        assertFalse(ConversationGateUtil.isPromotionalMessage(
+                "岗位职责包括推广活动，扫码进群后每日签到和录入门店客户资料"));
+        assertFalse(ConversationGateUtil.isPromotionalMessage(
+                "岗位职责：负责课程推广，指导用户注册后完成门店资料录入"));
+        assertTrue(ConversationGateUtil.isPromotionalMessage(
+                "岗位职责：推广课程，请扫码进群领取资料"));
     }
 
     private String handoffCategory(String question) {

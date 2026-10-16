@@ -30,11 +30,25 @@ public interface MsgSessionMapper extends BaseMapper<MsgSessionDO> {
      */
     default List<MsgSessionDO> selectUseListByType(AITypeEnum aiTypeEnum) {
         LambdaQueryWrapper<MsgSessionDO> condition = new LambdaQueryWrapper<>();
-        condition.eq(MsgSessionDO::getStatus, MsgSessionStatusEnum.IN_USE.getCode());
+        condition.apply("MOD(status, 4) = {0}", MsgSessionStatusEnum.IN_USE.getCode());
         condition.eq(MsgSessionDO::getAiType, aiTypeEnum.getCode());
         // 创建时间为最近3天
         condition.gt(MsgSessionDO::getCreatedDate, DateUtil.offsetDay(new Date(), -3));
         return this.selectList(condition);
+    }
+
+    /** Returns the most recently updated running or manually paused session row. */
+    default MsgSessionDO selectLatestByUserAndSessionKey(Long userId, String sessionKey) {
+        LambdaQueryWrapper<MsgSessionDO> condition = new LambdaQueryWrapper<>();
+        condition.eq(MsgSessionDO::getUserId, userId);
+        condition.eq(MsgSessionDO::getSessionKey, sessionKey);
+        condition.apply("MOD(status, 4) IN ({0}, {1})",
+                MsgSessionStatusEnum.IN_USE.getCode(),
+                MsgSessionStatusEnum.MANUALLY_PAUSED.getCode());
+        condition.orderByDesc(MsgSessionDO::getStatus);
+        condition.orderByDesc(MsgSessionDO::getId);
+        condition.last("LIMIT 1");
+        return this.selectOne(condition);
     }
 
     default MsgSessionDO selectBySessionKey(String sessionKey) {
@@ -49,8 +63,41 @@ public interface MsgSessionMapper extends BaseMapper<MsgSessionDO> {
         LambdaQueryWrapper<MsgSessionDO> condition = new LambdaQueryWrapper<>();
         condition.eq(MsgSessionDO::getUserId, userId);
         condition.eq(MsgSessionDO::getSessionKey, sessionKey);
-        condition.eq(MsgSessionDO::getStatus, MsgSessionStatusEnum.IN_USE.getCode());
+        condition.apply("MOD(status, 4) = {0}", MsgSessionStatusEnum.IN_USE.getCode());
         return this.selectOne(condition);
+    }
+
+    default int updateSessionStatus(Long sessionId,
+                                    Long userId,
+                                    MsgSessionStatusEnum expectedStatus,
+                                    MsgSessionStatusEnum targetStatus) {
+        LambdaUpdateWrapper<MsgSessionDO> condition = new LambdaUpdateWrapper<>();
+        condition.eq(MsgSessionDO::getId, sessionId);
+        condition.eq(MsgSessionDO::getUserId, userId);
+        condition.apply("MOD(status, 4) = {0}", expectedStatus.getCode());
+        condition.setSql("status = (FLOOR(status / 4) + 1) * 4 + " + targetStatus.getCode());
+        return this.update(new MsgSessionDO(), condition);
+    }
+
+    default int updateUserSessionStatuses(Long userId,
+                                         MsgSessionStatusEnum expectedStatus,
+                                         MsgSessionStatusEnum targetStatus) {
+        LambdaUpdateWrapper<MsgSessionDO> condition = new LambdaUpdateWrapper<>();
+        condition.eq(MsgSessionDO::getUserId, userId);
+        condition.apply("MOD(status, 4) = {0}", expectedStatus.getCode());
+        condition.setSql("status = (FLOOR(status / 4) + 1) * 4 + " + targetStatus.getCode());
+        return this.update(new MsgSessionDO(), condition);
+    }
+
+    default int expireOtherSessions(Long userId, String sessionKey, Long retainedSessionId) {
+        LambdaUpdateWrapper<MsgSessionDO> condition = new LambdaUpdateWrapper<>();
+        condition.eq(MsgSessionDO::getUserId, userId);
+        condition.eq(MsgSessionDO::getSessionKey, sessionKey);
+        condition.ne(MsgSessionDO::getId, retainedSessionId);
+        condition.apply("MOD(status, 4) IN ({0}, {1})",
+                MsgSessionStatusEnum.IN_USE.getCode(), MsgSessionStatusEnum.MANUALLY_PAUSED.getCode());
+        condition.setSql("status = (FLOOR(status / 4) + 1) * 4 + " + MsgSessionStatusEnum.EXPIRED.getCode());
+        return this.update(new MsgSessionDO(), condition);
     }
 
 

@@ -35,6 +35,14 @@ export function normalizeAiSeatStatus(value: unknown): boolean | undefined {
     return Boolean(value)
 }
 
+export function didAiSeatStatusChange(nextValue: unknown, currentValue: unknown): boolean {
+    const nextStatus = normalizeAiSeatStatus(nextValue);
+    const currentStatus = normalizeAiSeatStatus(currentValue);
+    return nextStatus !== undefined
+        && currentStatus !== undefined
+        && nextStatus !== currentStatus;
+}
+
 export function serializeAiSeatStatus(value: unknown): 1 | 0 {
     return normalizeAiSeatStatus(value) ? 1 : 0
 }

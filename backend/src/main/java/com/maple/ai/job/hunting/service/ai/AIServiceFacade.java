@@ -139,6 +139,30 @@ public class AIServiceFacade {
         return reuslt;
     }
 
+    public String askAndAnswer(String systemPrompt, String userPrompt) {
+        AIService aiService = aiServiceMap.get(appBizConfig.getSceneUseAiMap().get("ask"));
+        String result = null;
+        try {
+            if (productService.hasProductAbilityAll(HeaderContext.getHeader().getUserId(),
+                    ProductTypeEnum.AI_SEAT, ProductTypeEnum.AI_FILTER)) {
+                result = aiService.askAndAnswer(systemPrompt, userPrompt);
+            } else {
+                throw new ApplicationException("AI产品能力已过期");
+            }
+        } catch (Exception e) {
+            if ((e.getMessage() != null && e.getMessage().contains("AI产品能力已过期"))
+                    || (e instanceof ApplicationException
+                    && "当前 AI 服务不支持分离系统规则与用户内容".equals(e.getMessage()))) {
+                throw e;
+            }
+            aiPowerExpAlarm(e);
+            log.error("askAndAnswer error userId:{} errorType:{} error:{}",
+                    HeaderContext.getHeader().getUserId(), e.getClass().getSimpleName(),
+                    LogValueSanitizer.sanitize(e.getMessage(), 200));
+        }
+        return result;
+    }
+
 
     public AiFileResolveResult readFile(InputStream inputStream, String ask) {
         AIService aiService = aiServiceMap.get(appBizConfig.getSceneUseAiMap().getOrDefault("file", "silicon-flow-file"));
@@ -172,7 +196,8 @@ public class AIServiceFacade {
                         .subject("AI服务异常通知")
                         .templateName("ai-error-email.html")
                         .toSendUserSet(new HashSet<>(appBizConfig.getAdminUserIdList()))
-                        .paramMap(Map.of("count", currentCountInWindow, "msg", e.getMessage(), "name", key))
+                        .paramMap(Map.of("count", currentCountInWindow, "msg",
+                                LogValueSanitizer.sanitize(e.getMessage(), 200), "name", key))
                         .build());
             }
 
@@ -182,7 +207,8 @@ public class AIServiceFacade {
                         .subject("AI工作猎手")
                         .templateName("custom-ai-error-email.html")
                         .toSendUserSet(Set.of(userId))
-                        .paramMap(Map.of("count", currentCountInWindow, "msg", e.getMessage(), "name", key))
+                        .paramMap(Map.of("count", currentCountInWindow, "msg",
+                                LogValueSanitizer.sanitize(e.getMessage(), 200), "name", key))
                         .build());
             }
         }

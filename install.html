@@ -69,45 +69,73 @@
 <body>
   <main class="wrap">
     <header>
-      <div class="eyebrow">项目状态 · 2026-10-13</div>
+      <div class="eyebrow">小范围联调 · 2026-10-16</div>
       <h1>AI 工作猎手</h1>
-      <p class="lead">一个正在整理为开源项目的 BOSS 求职副驾。0.0.116 已部署到联调服务，先由维护者完成真实账号验收，再逐步扩大使用范围。</p>
+      <p class="lead">在 BOSS 直聘里帮你筛岗位、生成岗位化第一句话，并辅助处理普通 HR 消息。普通用户不需要填写 API Key。</p>
       <div class="actions">
-        <a class="button primary" href="./ai-job-hunting.user.js">安装联调脚本</a>
+        <a class="button secondary" href="https://scriptcat.org/" target="_blank" rel="noreferrer">第一步：安装脚本猫</a>
+        <a class="button primary" href="./ai-job-hunting.user.js">第二步：安装 AI 工作猎手</a>
+        <a class="button secondary" href="https://www.zhipin.com/" target="_blank" rel="noreferrer">第三步：打开 BOSS 直聘</a>
       </div>
       <div class="version">
-        <div><strong>线上联调版（真实账号验收中）</strong><br><code>0.0.116-beta-identity-ready</code></div>
-        <div><strong>源码与线上候选</strong><br><code>release/open-source-20261011</code></div>
+        <div><strong>当前联调版本</strong><br><code>0.0.118-beta-decision-boundaries</code></div>
+        <div><strong>首次使用</strong><br>先用本人账号测试一个岗位</div>
       </div>
     </header>
 
     <section class="section">
       <div class="notice" role="alert">
-        <h2>当前联调说明</h2>
-        <p>线上服务已切换到 0.0.116。当前版本会先验证 BOSS 身份，再自动创建空账号并开通内测；首次登录不会读取或上传简历。真实 BOSS 首次登录、无简历建档和后续投递流程仍需账号本人验收，建议先小范围使用，不要直接大规模导流。</p>
+        <h2>先小范围试用</h2>
+        <p>先用自己的账号测试登录、导入简历和一个岗位，不要一开始连续投递很多岗位。遇到问题，先关闭 AI 坐席并记录卡在哪一步；不要分享 Cookie、验证码或简历原件。</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="grid">
+        <div class="step">
+          <span class="num">1</span>
+          <h3>安装脚本管理器</h3>
+          <p>推荐使用脚本猫（ScriptCat）。如果已经安装 Tampermonkey，就不用重复安装；两者选一个。</p>
+        </div>
+        <div class="step">
+          <span class="num">2</span>
+          <h3>安装 AI 工作猎手</h3>
+          <p>点击上面的安装按钮，弹出脚本管理器提示后，点击确认安装。</p>
+        </div>
+        <div class="step">
+          <span class="num">3</span>
+          <h3>登录 BOSS 并刷新</h3>
+          <p>登录自己的 BOSS 账号，打开职位页或消息页，刷新后看到 AI 工作猎手面板。</p>
+        </div>
       </div>
     </section>
 
     <section class="section">
       <div class="panel">
-        <h2>候选流程</h2>
-        <p>不需要激活码。BOSS 身份核验通过后，服务端自动创建空账号并开通内测权限至 2026 年 12 月 30 日。导入简历是用户主动选择的独立操作，不是注册或激活的前置条件。</p>
-        <p style="margin-top:12px">自动授权有效至 2026 年 12 月 30 日 23:59:59（中国标准时间）。导入简历是用户主动选择的独立操作；开始投递或开启 AI 坐席前，仍必须主动导入自己的附件简历。</p>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="panel">
-        <h2>正式开放前</h2>
+        <h2>第一次使用</h2>
         <ul>
-          <li>确认上游代码来源、版权声明和可再分发许可；</li>
-          <li>落实简历、会话数据的留存与删除流程；</li>
-          <li>完成模型 API 出网限制、限流和用量上限；</li>
-          <li>完成干净环境构建和本人 BOSS 账号端到端验收。</li>
+          <li>登录后账号会自动创建并自动开通内测，不需要激活码，也不需要填写 API Key；</li>
+          <li>开始投递或开启 AI 坐席前，先在 BOSS 上传自己的附件简历，再点击“导入简历”；</li>
+          <li>BOSS 自带的固定招呼语会关闭，关闭失败时本次投递不会继续；</li>
+          <li>AI 坐席关闭时不会自动回复，也不会自动处理积压消息；</li>
+          <li>重新登录后，如果最后一条确实是 HR 发来的且你没有回复，AI 可以继续处理；</li>
+          <li>你手动回复某个 HR 后，只暂停这个 HR 的会话，不影响其他会话；</li>
+          <li>岗位资料缺少薪资或地点，但没有明确风险或与你填写的硬性条件冲突时，会继续投递，并把缺少的信息留到后续沟通；AI 调用失败时不会自动投递或回复；</li>
+          <li>普通岗位职责里的抖音、推广、销售或账号不会只因关键词被过滤；面向求职者的课程、加群、返佣等推广默认静默，明确高风险始终拦截；</li>
+          <li>薪资、地点和联系方式按你保存的偏好判断；具体面试日期或时间需要你本人确认；</li>
+          <li>BOSS 的结构化系统通知或卡片可能出现在聊天界面，但不是 HR 消息，脚本按协议类型等元数据识别，不按普通文字关键词识别。</li>
         </ul>
       </div>
     </section>
+
+    <section class="section">
+      <div class="panel">
+        <h2>AI 怎么分工</h2>
+        <p>浏览器脚本负责读取 BOSS 页面、把消息和必要的结构化信息交给服务器，并执行最终的页面操作；服务器上的 AI 结合岗位、简历和你保存的偏好判断“这是什么消息、应该怎么处理”。浏览器端不放模型 API Key，也不靠“抖音”“收费”“账号”等单个词直接做语义结论。</p>
+        <p>本页对应 <code>0.0.118</code> 联调版，不代表真实账号全流程已经验收通过。请保留本人确认和随时停止自动处理的习惯。</p>
+      </div>
+    </section>
   </main>
-  <footer class="wrap">线上联调版：0.0.116-beta-identity-ready。当前为小范围联调，不代表真实账号流程已经完成验收。</footer>
+  <footer class="wrap">联调版本：0.0.118-beta-decision-boundaries。内测权限统一有效至 2026 年 12 月 30 日 23:59:59（中国标准时间）。真实账号流程仍需本人验收，不保证平台授权、账号安全或求职结果。</footer>
 </body>
 </html>

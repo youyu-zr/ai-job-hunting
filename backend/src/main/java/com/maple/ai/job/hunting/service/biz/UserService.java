@@ -34,6 +34,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StopWatch;
 
@@ -234,13 +235,11 @@ public class UserService {
         return userInfoVO;
     }
 
+    @Transactional
     public void savePreference(UserInfoVO userInfoVO) {
         Long userId = HeaderContext.getHeader().getUserId();
         LambdaUpdateWrapper<UserInfoDO> condition = new LambdaUpdateWrapper<>();
         condition.eq(UserInfoDO::getId, userId);
-        if (Objects.nonNull(userInfoVO.getPreference())) {
-            condition.set(UserInfoDO::getPreference, JSONUtil.toJsonStr(resolvePreference(userInfoVO.getPreference())));
-        }
         if (userInfoVO.getEmail() != null) {
             condition.set(UserInfoDO::getEmail, StringUtils.trimToEmpty(userInfoVO.getEmail()));
         }
@@ -275,7 +274,32 @@ public class UserService {
             }
         }
         if (Objects.nonNull(userInfoVO.getAiSeatStatus())) {
-            condition.set(UserInfoDO::getAiSeatStatus, userInfoVO.getAiSeatStatus());
+            condition.set(UserInfoDO::getAiSeatStatus,
+                    Boolean.TRUE.equals(userInfoVO.getAiSeatStatus())
+                            ? AiSeatStatusEnum.OPEN.getCode()
+                            : AiSeatStatusEnum.NOT_OPEN.getCode());
+        }
+        if (userInfoVO.getPreference() != null || userInfoVO.getAiSeatStatus() != null) {
+            UserInfoDO currentUser = userInfoMapper.selectByIdForUpdate(userId);
+            PreferenceEntity storedPreference = resolvePreference(
+                    currentUser == null ? null : currentUser.getPreference());
+            PreferenceEntity preferenceToSave = userInfoVO.getPreference() == null
+                    ? storedPreference
+                    : resolvePreference(userInfoVO.getPreference());
+            long revision = storedPreference.getAiSeatRevision() == null
+                    ? 0L
+                    : storedPreference.getAiSeatRevision();
+            boolean aiSeatStatusChanged = userInfoVO.getAiSeatStatus() != null
+                    && (currentUser == null
+                    || !Objects.equals(currentUser.getAiSeatStatus(),
+                    Boolean.TRUE.equals(userInfoVO.getAiSeatStatus())
+                            ? AiSeatStatusEnum.OPEN.getCode()
+                            : AiSeatStatusEnum.NOT_OPEN.getCode()));
+            if (aiSeatStatusChanged) {
+                revision = Math.addExact(revision, 1L);
+            }
+            preferenceToSave.setAiSeatRevision(revision);
+            condition.set(UserInfoDO::getPreference, JSONUtil.toJsonStr(preferenceToSave));
         }
         // 必须要填入实体对象，mybatisPlus才能自动填充（set的字段还是按照condition中set的字段来更新，不用担心实体对象为空更新进去）
         userInfoMapper.update(new UserInfoDO(), condition);

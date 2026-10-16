@@ -50,9 +50,14 @@ public class AiFilterResultVO {
     private String riskLevel;
 
     /**
-     * 建议动作：DELIVER / CHAT_FIRST / FILTER / HUMAN_REVIEW。
+     * 建议动作：DELIVER / FILTER；技术异常通过服务/API 错误路径处理。
      */
     private String recommendedAction;
+
+    /**
+     * 需要向 HR 确认的问题。
+     */
+    private List<String> clarificationQuestions;
 
     /** REMOTE / ONSITE / HYBRID / UNKNOWN. */
     private String workMode;

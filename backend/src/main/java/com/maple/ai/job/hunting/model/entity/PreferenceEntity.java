@@ -168,6 +168,12 @@ public class PreferenceEntity {
      */
     private boolean hiaE;
 
+    /** 普通营销推广消息是否允许自动回复，默认关闭。 */
+    private boolean marketingReplyE;
+
+    /** Editable guidance for promotion types the user does not want answered. */
+    private String promotionReplyPolicy;
+
     /**
      * 对话聊天轮数 Chat rounds （高意向邮件开关） 开关
      */
@@ -193,6 +199,9 @@ public class PreferenceEntity {
 
     /** One-time initialization marker for editable personal preference defaults. */
     private String pdpV;
+
+    /** Server-owned monotonic revision for account-level AI-seat changes. */
+    private Long aiSeatRevision;
 
     /** Personal resume/current city used only for consistency hints. */
     private boolean locationGuardE;

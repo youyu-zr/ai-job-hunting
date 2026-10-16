@@ -16,12 +16,18 @@ import {pushResultCount, UserStore} from "../stores";
 import {userRemoteLoad} from "../stores/remote";
 import {AiPower} from "./aiPower";
 import {SendStateTracker, SendTraceContext} from "./sendState";
-import {AiFilterDecision, aiFilterAction, aiFilterBlockReason, compactAiFilterReason, formatAiFilterReasonForDelivery, shouldBlockAfterAiFilter} from "./filterGate";
+import {AiFilterDecision, aiFilterAction, aiFilterBlockReason, compactAiFilterReason, formatAiFilterReasonForDelivery, shouldBlockAfterAiFilter, shouldRetryAfterAiFilter} from "./filterGate";
 import {evaluateLocationConsistency, readSearchCity} from "./locationGuard";
 import {ElMessage} from "../utils/tools";
 import {ElNotification} from "element-plus";
 import {formatAiFilterSummary, formatDeliverySuccessLog} from "../logging/presentation";
 import {extractGreetingText, isUsableJobGreeting} from "./greetingGuard";
+import {
+    AiFilterProcessingError,
+    aiFilterNonRetryableMessage,
+    handleAiFilterProcessingError,
+    normalizeAiFilterFailure,
+} from "./jobFilterFailure";
 
 let pushResultCounter: any;
 let userStore: any;
@@ -131,7 +137,17 @@ export abstract class AbsPlatform implements Platform {
                             return;
 
                         default:
-                            logger.error("未捕获异常--->", error)
+                            const nonRetryableMessage = aiFilterNonRetryableMessage(error);
+                            if (nonRetryableMessage) {
+                                this.logRecorder.warn(nonRetryableMessage);
+                                return;
+                            }
+                            if (!handleAiFilterProcessingError(error, () => this.getJobKey(jobDetail), {
+                                warn: message => this.logRecorder.warn(message),
+                                notify: notification => ElMessage(notification),
+                            })) {
+                                logger.error("未捕获异常--->", error)
+                            }
                     }
                 }
             }
@@ -465,12 +481,22 @@ class BossPlatform extends AbsPlatform {
         // only used when this optional AI gate is explicitly disabled.
         if (userStore.user.preference.afE && userStore.user.preference.af) {
             const screeningPrompt = this.buildSemanticScreeningPrompt();
-            const filterResp = await AiPower.filter(
-                screeningPrompt,
-                JSON.stringify(this.unpackBaseInfo(jobDetail)),
-                JSON.stringify(this.unpackExtInfo(jobDetailExt)),
-            );
+            let filterResp;
+            try {
+                filterResp = await AiPower.filter(
+                    screeningPrompt,
+                    JSON.stringify(this.unpackBaseInfo(jobDetail)),
+                    JSON.stringify(this.unpackExtInfo(jobDetailExt)),
+                );
+            } catch (error) {
+                jobDetail.processed = false;
+                throw normalizeAiFilterFailure(error);
+            }
             filterResult = filterResp ? filterResp?.data?.data : null;
+            if (shouldRetryAfterAiFilter(filterResult)) {
+                jobDetail.processed = false;
+                throw new AiFilterProcessingError();
+            }
             AiPower.rememberFilterDecision(jobDetail, filterResult);
             this.showAiJobDecision(jobDetail, jobDetailExt, filterResult);
             if (shouldBlockAfterAiFilter(filterResult)) {

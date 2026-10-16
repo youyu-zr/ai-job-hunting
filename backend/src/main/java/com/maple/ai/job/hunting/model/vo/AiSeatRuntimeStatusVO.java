@@ -12,16 +12,29 @@ public class AiSeatRuntimeStatusVO {
     private boolean sessionExists;
     private boolean manuallyPaused;
     private boolean gatePaused;
+    private long globalRevision;
+    private long sessionRevision;
 
     public static AiSeatRuntimeStatusVO resolve(boolean globalEnabled,
                                                 boolean sessionExists,
                                                 boolean manuallyPaused,
                                                 boolean gatePaused) {
+        return resolve(globalEnabled, sessionExists, manuallyPaused, gatePaused, 0L, 0L);
+    }
+
+    public static AiSeatRuntimeStatusVO resolve(boolean globalEnabled,
+                                                boolean sessionExists,
+                                                boolean manuallyPaused,
+                                                boolean gatePaused,
+                                                long globalRevision,
+                                                long sessionRevision) {
         AiSeatRuntimeStatusVO result = new AiSeatRuntimeStatusVO();
         result.globalEnabled = globalEnabled;
         result.sessionExists = sessionExists;
         result.manuallyPaused = manuallyPaused;
         result.gatePaused = gatePaused;
+        result.globalRevision = globalRevision;
+        result.sessionRevision = sessionRevision;
         if (!globalEnabled) {
             result.status = "CLOSED";
             result.label = "AI坐席已关闭";

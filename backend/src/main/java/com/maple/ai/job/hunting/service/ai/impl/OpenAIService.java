@@ -19,14 +19,18 @@ import org.springframework.ai.chat.ChatResponse;
 import org.springframework.ai.chat.Generation;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
+import org.springframework.ai.chat.messages.SystemMessage;
+import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.openai.OpenAiChatClient;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -54,8 +58,27 @@ public class OpenAIService extends AbstractAIService {
     public void init() {
         log.info("OpenAIService init");
         List<MsgSessionDO> msgSessionDOList = msgSessionMapper.selectUseListByType(AITypeEnum.OPENAI);
-        msgSessionDOList.forEach(msgSessionDO -> getMsgSessionMap().put(msgSessionDO.getId().toString(),
-                new CopyOnWriteArrayList<>(JSONUtil.parseArray(msgSessionDO.getMsgContext()).toList(OpenaiMessage.class))));
+        msgSessionDOList.forEach(this::restoreSession);
+    }
+
+    /** Restore persisted context when a paused conversation is explicitly resumed. */
+    public void restoreSession(MsgSessionDO session) {
+        if (session == null || session.getId() == null
+                || !Objects.equals(AITypeEnum.OPENAI.getCode(), session.getAiType())
+                || session.getMsgContext() == null || session.getMsgContext().isBlank()) {
+            return;
+        }
+        try {
+            List<OpenaiMessage> messages = JSONUtil.parseArray(session.getMsgContext())
+                    .toList(OpenaiMessage.class);
+            if (messages != null) {
+                getMsgSessionMap().putIfAbsent(session.getId().toString(),
+                        new CopyOnWriteArrayList<>(messages));
+            }
+        } catch (RuntimeException e) {
+            log.warn("会话上下文恢复失败 sessionId:{} errorType:{}",
+                    session.getId(), e.getClass().getSimpleName());
+        }
     }
 
     @Override
@@ -122,6 +145,30 @@ public class OpenAIService extends AbstractAIService {
             throw new AIPowerException("unknown", e.getMessage());
         }
         return answer;
+    }
+
+    @Override
+    public String askAndAnswer(String systemPrompt, String userPrompt) {
+        OpenAiChatClient client = getClient();
+        try {
+            ChatResponse response = client.call(createRoleSeparatedPrompt(systemPrompt, userPrompt));
+            Generation generation = response == null ? null : response.getResult();
+            return generation == null || generation.getOutput() == null
+                    ? ""
+                    : generation.getOutput().getContent();
+        } catch (Exception e) {
+            if (client instanceof OpenAIPoolConfig.OpenAIPoolClient openAIPoolClient) {
+                throw new AIPowerException(openAIPoolClient.getName(), e.getMessage());
+            }
+            throw new AIPowerException("unknown", e.getMessage());
+        }
+    }
+
+    static Prompt createRoleSeparatedPrompt(String systemPrompt, String userPrompt) {
+        return new Prompt(List.of(
+                new SystemMessage(systemPrompt),
+                new UserMessage(userPrompt)),
+                OpenAiChatOptions.builder().withTemperature(0.0f).build());
     }
 
     @Override
