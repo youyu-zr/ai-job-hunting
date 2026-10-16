@@ -26,7 +26,7 @@
 !function(t){function e(t){t.registerRegistry=Object.create(null),t.namedRegisterAliases=Object.create(null)}var r=t.System;e(r);var i,s,n=r.constructor.prototype,l=r.constructor,a=function(){l.call(this),e(this)};a.prototype=n,r.constructor=a;var o=n.register;n.register=function(t,e,r,n){if("string"!=typeof t)return o.apply(this,arguments);var l=[e,r,n];return this.registerRegistry[t]=l,i||(i=l,s=t),Promise.resolve().then((function(){i=null,s=null})),o.apply(this,[e,r,n])};var u=n.resolve;n.resolve=function(t,e){try{return u.call(this,t,e)}catch(r){if(t in this.registerRegistry)return this.namedRegisterAliases[t]||t;throw r}};var c=n.instantiate;n.instantiate=function(t,e,r){var i=this.registerRegistry[t];return i?(this.registerRegistry[t]=null,i):c.call(this,t,e,r)};var g=n.getRegister;n.getRegister=function(t){var e=g.call(this,t);s&&t&&(this.namedRegisterAliases[s]=t);var r=i||e;return i=null,s=null,r}}("undefined"!=typeof self?self:global);
 ;(typeof System!='undefined')&&(System=new System.constructor());
 
-System.register("./__entry.js", ['./__monkey.entry-cq4zUGb-.js'], (function (exports, module) {
+System.register("./__entry.js", ['./__monkey.entry-BW5Bbmv4.js'], (function (exports, module) {
 	'use strict';
 	return {
 		setters: [null],
@@ -38,7 +38,7 @@ System.register("./__entry.js", ['./__monkey.entry-cq4zUGb-.js'], (function (exp
 	};
 }));
 
-System.register("./__monkey.entry-cq4zUGb-.js", [], (function (exports, module) {
+System.register("./__monkey.entry-BW5Bbmv4.js", [], (function (exports, module) {
   'use strict';
   return {
     execute: (function () {
@@ -78648,11 +78648,11 @@ System.register("./__monkey.entry-cq4zUGb-.js", [], (function (exports, module) 
         }
         async getRenderComponent() {
           if (this.curUrl.includes("www.zhipin.com/web/geek/chat")) {
-            let promise = __vitePreload(() => module.import('./BossMessage-DLFKlEDP-BQCIUkAa.js'), void 0 );
+            let promise = __vitePreload(() => module.import('./BossMessage-DYNdIt29-CZpgF1jL.js'), void 0 );
             return promise.then((item) => item.default);
           }
           if (this.curUrl.includes("www.zhipin.com/web/geek/job") || this.curUrl.includes("overseas")) {
-            let promise = __vitePreload(() => module.import('./BossJobList-MU_n9_dH-CY4C7DMD.js'), void 0 );
+            let promise = __vitePreload(() => module.import('./BossJobList-D-EsL-Vh-CohbW_ik.js'), void 0 );
             return promise.then((item) => item.default);
           }
         }
@@ -81587,7 +81587,7 @@ System.register("./__monkey.entry-cq4zUGb-.js", [], (function (exports, module) 
   };
 }));
 
-System.register("./BossMessage-DLFKlEDP-BQCIUkAa.js", ['./__monkey.entry-cq4zUGb-.js'], (function (exports, module) {
+System.register("./BossMessage-DYNdIt29-CZpgF1jL.js", ['./__monkey.entry-BW5Bbmv4.js'], (function (exports, module) {
   'use strict';
   var _export_sfc, defineComponent, UserStore, ref, computed, onMounted, onUnmounted, openBlock, createElementBlock, createBaseVNode, createVNode, withCtx, normalizeClass, createTextVNode, toDisplayString, createBlock, createCommentVNode, Fragment, ConversationPauseRegistry, AiPower, parseAiSeatRuntimeStatus, getAiSeatStatusRevision, rememberAiSeatStatus, ElMessage, ElTag, ElButton, pushScopeId, popScopeId, BossOption;
   return {
@@ -81764,7 +81764,7 @@ System.register("./BossMessage-DLFKlEDP-BQCIUkAa.js", ['./__monkey.entry-cq4zUGb
   };
 }));
 
-System.register("./BossJobList-MU_n9_dH-CY4C7DMD.js", ['./__monkey.entry-cq4zUGb-.js'], (function (exports, module) {
+System.register("./BossJobList-D-EsL-Vh-CohbW_ik.js", ['./__monkey.entry-BW5Bbmv4.js'], (function (exports, module) {
   'use strict';
   var defineComponent, openBlock, createBlock, _export_sfc, shallowRef, createElementBlock, createVNode, withCtx, Fragment, renderList, unref, createTextVNode, toDisplayString, createBaseVNode, resolveDynamicComponent, ElMenuItem, ElMenu, inject, ServerStore, ref, PushStatus, LogRecorder, LoginStore, pushResultCount, UserStore, watch, onUnmounted, isProdEnv, createCommentVNode, withDirectives, vShow, CircleCloseFilled, normalizeClass, reactive, Tools, onMounted, logger$1, isRef, userRemoteLoad, ElNotification, ElMessage, loginInterceptor, userSessionScope, axios, fetchWithGM_request, storeScopedAuthorization, serializeAiSeatStatus, rememberAiSeatStatus, shouldApplyAiSeatRollback, ElText, ElBadge, ElTag, ElButton, ElIcon, ElTooltip, ElButtonGroup$1, ElInput, ElCard, ElInputNumber, ElSwitch, applyPersonalPreferenceDefaults, ElFormItem, ElCheckbox, ElOption, ElSelect, ElUpload, ElRadioButton, ElRadioGroup, ElForm, ElCol, ElTimePicker, ElRow, ElTableColumn, ElEmpty, ElTable, ElPagination, pushScopeId, popScopeId, userSnapshotStorageKey, TampermonkeyApi, createStaticVNode;
   return {
@@ -84001,7 +84001,7 @@ System.register("./BossJobList-MU_n9_dH-CY4C7DMD.js", ['./__monkey.entry-cq4zUGb
       });
       const RunRecord = /* @__PURE__ */ _export_sfc(_sfc_main$5, [["__scopeId", "data-v-96e72c6f"]]);
       const _hoisted_1$3 = { class: "markdown-body" };
-      const _hoisted_2$2 = /* @__PURE__ */ createStaticVNode('<h2>开始使用</h2><blockquote><p>版本说明：线上安装页当前仍是 <code class="">0.0.116-beta-identity-ready</code>。<code class="">0.0.117-beta-ai-seat-recovery</code> 是尚未推送或部署的本地候选；下方新增的判断规则描述候选设计，不代表线上已经生效。</p></blockquote><ol><li>登录 BOSS 后刷新职位或消息页面，确认 AI 工作猎手面板出现；服务端会验证身份并自动创建账号。</li><li>在 AI 助手页点击连接测试，确认服务器状态为在线；开放期内内测权限会自动开通。</li><li>在偏好设置中填写目标城市、通知邮箱、薪资范围和求职方向，并保存。</li><li>在 BOSS 上传本人附件简历并主动点击导入简历；账号创建和内测开通不需要简历，但开始投递或开启 AI 坐席前必须完成。</li><li>第一次投递将单次投递数量设为 1（默认上限为 5），确认岗位分析、投递记录和发送状态正常后再增加数量。</li></ol><h2>AI 偏好</h2><p>用白话说明你想找什么工作、可以接受的经验要求、薪资范围和不考虑的方向即可。AI 会结合已导入的简历、职位详情、地点、薪资和公司信息逐岗位分析，不需要填写复杂提示词。</p><p>浏览器脚本读取 BOSS 页面信息并执行页面动作；服务器 AI 结合岗位上下文、简历和已保存偏好判断职位及 HR 消息。岗位缺少薪资或地点等普通信息、且没有明确风险或偏好冲突时，候选行为是继续投递并把待确认事项留给后续沟通；AI 调用或结果格式失败时不投递、不发送。</p><p>薪资、城市和联系方式按你自己保存的偏好处理。没有填写时表示“未知”，AI 可以继续向 HR 询问，但不会替你编造条件、透露联系方式或自动暂停。具体面试日期/时间、平台面试卡片、接受 offer 或签约承诺需要本人确认，只暂停当前会话。普通推广消息默认静默；正常抖音运营、市场、销售和推广岗位不会仅凭关键词被过滤。偏好可以自行编辑，明确高风险保护不能被用户偏好覆盖。更换 BOSS 附件简历后，请重新导入。</p><p>BOSS 系统通知和卡片可能出现在聊天界面，但它们不是 HR 消息。脚本按结构化协议类型识别已知事件，不因普通消息中出现“系统通知”等词而丢弃。</p><h2>AI 坐席</h2><p>打开 AI 坐席总开关后，普通 HR 消息会进入 AI 回复流程。登录过期或浏览器断开后重新连接时，系统会接续最后一条确实来自 HR、且用户尚未回复的消息；如果用户已经在其他设备回复，则不会因为未读标记重复发送。人工接管后，只暂停当前会话；需要继续自动回复时，在消息页点击“恢复本会话自动回复”。</p><p>具体面试时间、接受 offer/签约等明确承诺以及任何要求付款的事项，请由本人确认。单纯询问薪资、城市或合同期限，不会只因话题本身暂停；按已填写偏好处理，未填写时先向 HR 了解。</p><h2>遇到问题</h2><ul><li>面板不显示：确认只有一个 AI 工作猎手脚本处于启用状态，然后刷新 BOSS 页面。</li><li>连接失败：点击连接测试；仍失败时刷新页面后重试。</li><li>简历导入失败：确认 BOSS 中已有附件简历且账号仍处于登录状态。</li><li>没有自动回复：确认 AI 坐席开关开启，并查看运行记录中的暂停或人工确认原因。</li></ul>', 13);
+      const _hoisted_2$2 = /* @__PURE__ */ createStaticVNode('<h2>开始使用</h2><blockquote><p>本说明适用于 <code class="">0.0.117-beta-ai-seat-recovery</code> 联调版。请先用本人账号和一个岗位验证；安装页显示的版本应与脚本管理器一致。真实账号全流程验收仍需本人完成。</p></blockquote><ol><li>登录 BOSS 后刷新职位或消息页面，确认 AI 工作猎手面板出现；服务端会验证身份并自动创建账号。</li><li>在 AI 助手页点击连接测试，确认服务器状态为在线；开放期内内测权限会自动开通。</li><li>在偏好设置中填写目标城市、通知邮箱、薪资范围和求职方向，并保存。</li><li>在 BOSS 上传本人附件简历并主动点击导入简历；账号创建和内测开通不需要简历，但开始投递或开启 AI 坐席前必须完成。</li><li>第一次投递将单次投递数量设为 1（默认上限为 5），确认岗位分析、投递记录和发送状态正常后再增加数量。</li></ol><h2>AI 偏好</h2><p>用白话说明你想找什么工作、可以接受的经验要求、薪资范围和不考虑的方向即可。AI 会结合已导入的简历、职位详情、地点、薪资和公司信息逐岗位分析，不需要填写复杂提示词。</p><p>浏览器脚本读取 BOSS 页面信息并执行页面动作；服务器 AI 结合岗位上下文、简历和已保存偏好判断职位及 HR 消息。岗位缺少薪资或地点等普通信息、且没有明确风险或偏好冲突时，继续投递并把待确认事项留给后续沟通；AI 调用或结果格式失败时不投递、不发送。</p><p>薪资、城市和联系方式按你自己保存的偏好处理。没有填写时表示“未知”，AI 可以继续向 HR 询问，但不会替你编造条件、透露联系方式或自动暂停。具体面试日期/时间、平台面试卡片、接受 offer 或签约承诺需要本人确认，只暂停当前会话。普通推广消息默认静默；正常抖音运营、市场、销售和推广岗位不会仅凭关键词被过滤。偏好可以自行编辑，明确高风险保护不能被用户偏好覆盖。更换 BOSS 附件简历后，请重新导入。</p><p>BOSS 系统通知和卡片可能出现在聊天界面，但它们不是 HR 消息。脚本按结构化协议类型识别已知事件，不因普通消息中出现“系统通知”等词而丢弃。</p><h2>AI 坐席</h2><p>打开 AI 坐席总开关后，普通 HR 消息会进入 AI 回复流程。登录过期或浏览器断开后重新连接时，系统会接续最后一条确实来自 HR、且用户尚未回复的消息；如果用户已经在其他设备回复，则不会因为未读标记重复发送。人工接管后，只暂停当前会话；需要继续自动回复时，在消息页点击“恢复本会话自动回复”。</p><p>具体面试时间、接受 offer/签约等明确承诺以及任何要求付款的事项，请由本人确认。单纯询问薪资、城市或合同期限，不会只因话题本身暂停；按已填写偏好处理，未填写时先向 HR 了解。</p><h2>遇到问题</h2><ul><li>面板不显示：确认只有一个 AI 工作猎手脚本处于启用状态，然后刷新 BOSS 页面。</li><li>连接失败：点击连接测试；仍失败时刷新页面后重试。</li><li>简历导入失败：确认 BOSS 中已有附件简历且账号仍处于登录状态。</li><li>没有自动回复：确认 AI 坐席开关开启，并查看运行记录中的暂停或人工确认原因。</li></ul>', 13);
       const _hoisted_15 = [
         _hoisted_2$2
       ];

@@ -26,7 +26,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -149,9 +149,8 @@ class JobSeekerClonedServiceMarketingTest {
         com.maple.ai.job.hunting.entity.MsgSessionDO existingSession =
                 new com.maple.ai.job.hunting.entity.MsgSessionDO();
         existingSession.setId(1L);
-        when(msgSessionMapper.selectOne(any())).thenReturn(existingSession);
-        when(msgSessionMapper.selectInUseByUserAndSessionKey(42L, "job-42")).thenReturn(existingSession);
-        ReflectionTestUtils.setField(service, "messageTriageService", new RecordingTriageService());
+        when(msgSessionMapper.selectLatestByUserAndSessionKey(42L, "job-42")).thenReturn(existingSession);
+        ReflectionTestUtils.setField(service, "messageTriageService", triage(Category.PROMOTION, Action.REPLY));
         ReflectionTestUtils.setField(service, "msgSessionService",
                 new RecordingMsgSessionService(msgSessionMapper, userInfoMapper));
         ReflectionTestUtils.setField(service, "msgSessionMapper", msgSessionMapper);
@@ -162,16 +161,11 @@ class JobSeekerClonedServiceMarketingTest {
         ReflectionTestUtils.setField(service, "questionCache", new QuestionCache());
         ReflectionTestUtils.setField(service, "aiServiceFacade", ai);
 
-        var feeResult = service.ask(new JobSeekerClonedParam(
-                "缴纳入会费后开始接单", "job-42", null));
-
-        assertEquals("PROMOTION_SILENT", feeResult.getStopReason());
-        assertEquals(0, ai.sessionChatCalls.get());
-
-        service.ask(new JobSeekerClonedParam(
+        var result = service.ask(new JobSeekerClonedParam(
                 "这是岗位推广活动，扫码了解品牌活动安排", "job-42", null));
 
-        assertEquals(0, ai.sessionChatCalls.get());
+        assertNull(result.getStopReason());
+        assertEquals(1, ai.sessionChatCalls.get());
     }
 
     private static MessageTriageService triage(Category category, Action action) {
@@ -208,7 +202,9 @@ class JobSeekerClonedServiceMarketingTest {
         @Override
         public ChatSessionResult sessionChat(String sessionId, String ask) {
             sessionChatCalls.incrementAndGet();
-            return new ChatSessionResult();
+            ChatSessionResult result = new ChatSessionResult();
+            result.setAnswer("Please share the duties and working arrangements.");
+            return result;
         }
     }
 

@@ -39,7 +39,6 @@ import com.maple.ai.job.hunting.utils.LogValueSanitizer;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -111,6 +110,22 @@ public class JobSeekerClonedService {
         if (askDuplication(jobSeekerClonedParam)) {
             return new JobSeekerClonedResultVO(JobSeekerClonedAnswerTypeEnum.STOP, "", "DUPLICATE_MESSAGE");
         }
+        try {
+            JobSeekerClonedResultVO result = askReserved(jobSeekerClonedParam, jobKey, userId);
+            if (result.isRetryable()
+                    || (result.getAnswerTypeList() != null
+                    && result.getAnswerTypeList().contains(JobSeekerClonedAnswerTypeEnum.AI_SERVICE_EXCEPTION.getCode()))) {
+                forgetAskDuplication(jobSeekerClonedParam);
+            }
+            return result;
+        } catch (RuntimeException e) {
+            forgetAskDuplication(jobSeekerClonedParam);
+            throw e;
+        }
+    }
+
+    private JobSeekerClonedResultVO askReserved(JobSeekerClonedParam jobSeekerClonedParam,
+                                               String jobKey, Long userId) {
         Optional<PreferenceEntity> preferenceEntityOpt = userInfoMapper.selectPreferenceOptByUserId(userId);
         JobContextCompleteness.Result contextCompleteness = JobContextCompleteness.evaluate(
                 jobSeekerClonedParam.getJobInfo(), jobSeekerClonedParam.getQuestion());
@@ -131,13 +146,11 @@ public class JobSeekerClonedService {
                 preferenceEntityOpt.orElse(null),
                 jobSeekerClonedParam.getPlatformBodyType());
         if (triage == null || triage.getCategory() == null || triage.getAction() == null) {
-            forgetAskDuplication(jobSeekerClonedParam);
-            return retryableTriageFailure();
+            return retryableProcessingFailure();
         }
         if (triage.getCategory() == Category.PROCESSING_ERROR
                 || triage.getAction() == Action.NO_ACTION_RETRY) {
-            forgetAskDuplication(jobSeekerClonedParam);
-            return retryableTriageFailure();
+            return retryableProcessingFailure();
         }
         if (triage.getCategory() == Category.HIGH_RISK
                 || triage.getAction() == Action.BLOCK_CURRENT_JOB) {
@@ -145,24 +158,24 @@ public class JobSeekerClonedService {
             return new JobSeekerClonedResultVO(
                     JobSeekerClonedAnswerTypeEnum.STOP, "", "HIGH_RISK_JOB");
         }
-        if (triage.getCategory() == Category.PROMOTION) {
+        if (triage.getAction() == Action.NEEDS_USER_CONFIRMATION) {
+            return pauseForUserConfirmation(jobKey);
+        }
+        if (triage.getCategory() == Category.PROMOTION
+                && (triage.getAction() != Action.REPLY
+                || preferenceEntityOpt.filter(PreferenceEntity::isMarketingReplyE).isEmpty())) {
             return new JobSeekerClonedResultVO(
                     JobSeekerClonedAnswerTypeEnum.STOP, "", "PROMOTION_SILENT");
         }
         if (triage.getCategory() == Category.PLATFORM_EVENT) {
-            if (triage.getAction() == Action.NEEDS_USER_CONFIRMATION
-                    || isConcreteCurrentCommitment(jobSeekerClonedParam.getQuestion())) {
-                msgSessionService.trySetMsgSessionStop(jobKey, true);
-                return new JobSeekerClonedResultVO(
-                        JobSeekerClonedAnswerTypeEnum.STOP, "", "USER_CONFIRMATION_REQUIRED");
+            if (isConcreteCurrentCommitment(jobSeekerClonedParam.getQuestion())) {
+                return pauseForUserConfirmation(jobKey);
             }
             return new JobSeekerClonedResultVO(
                     JobSeekerClonedAnswerTypeEnum.STOP, "", "SILENT_SYSTEM");
         }
         if (isConcreteCurrentCommitment(jobSeekerClonedParam.getQuestion())) {
-            msgSessionService.trySetMsgSessionStop(jobKey, true);
-            return new JobSeekerClonedResultVO(
-                    JobSeekerClonedAnswerTypeEnum.STOP, "", "USER_CONFIRMATION_REQUIRED");
+            return pauseForUserConfirmation(jobKey);
         }
         if (ConversationGateUtil.isExplicitHrRejection(jobSeekerClonedParam.getQuestion())) {
             return new JobSeekerClonedResultVO(
@@ -184,6 +197,9 @@ public class JobSeekerClonedService {
         if (aiJobGatePair.getKey()) {
             return aiJobGatePair.getValue();
         }
+        if (msgSessionService.msgSessionStop(jobKey)) {
+            return new JobSeekerClonedResultVO(JobSeekerClonedAnswerTypeEnum.STOP, "", "SESSION_PAUSED");
+        }
         // 前置过滤处理
         Pair<Boolean, JobSeekerClonedResultVO> pair = preAskFilter(jobSeekerClonedParam);
         if (pair.getKey()) {
@@ -194,6 +210,9 @@ public class JobSeekerClonedService {
 
         // 获取或初始化会话
         String sessionId = getOrInitSession(jobKey, userId);
+        if (sessionId == null) {
+            return new JobSeekerClonedResultVO(JobSeekerClonedAnswerTypeEnum.STOP, "", "SESSION_PAUSED");
+        }
 
         // 获取ai回复。把岗位/联系人信息一并交给模型，避免 HR 话术很泛时脱离岗位上下文回复“有兴趣”。
         ChatSessionResult sessionChat = aiServiceFacade.sessionChat(sessionId, buildAskWithJobInfo(jobSeekerClonedParam, contextCompleteness));
@@ -263,7 +282,15 @@ public class JobSeekerClonedService {
         return ConversationGateUtil.isConcreteInterviewOrCommitment(question);
     }
 
-    private JobSeekerClonedResultVO retryableTriageFailure() {
+    private JobSeekerClonedResultVO pauseForUserConfirmation(String jobKey) {
+        if (!msgSessionService.trySetMsgSessionStop(jobKey, true)) {
+            return retryableProcessingFailure();
+        }
+        return new JobSeekerClonedResultVO(
+                JobSeekerClonedAnswerTypeEnum.STOP, "", "USER_CONFIRMATION_REQUIRED");
+    }
+
+    private JobSeekerClonedResultVO retryableProcessingFailure() {
         JobSeekerClonedResultVO result = new JobSeekerClonedResultVO(
                 JobSeekerClonedAnswerTypeEnum.STOP, "", "AI_PROCESSING_ERROR");
         result.setRetryable(true);
@@ -1168,17 +1195,12 @@ public class JobSeekerClonedService {
 
     }
 
-    protected @NotNull String getOrInitSession(String jobKey, Long userId) {
-        MsgSessionDO msgSessionDO = msgSessionMapper.selectInUseByUserAndSessionKey(userId, jobKey);
-        String sessionId;
-        if (msgSessionDO == null) {
-            MsgSessionDO sessionDO = new MsgSessionDO(null, null, MsgSessionStatusEnum.IN_USE.getCode(), userId, jobKey);
-            msgSessionMapper.insert(sessionDO);
-            sessionId = sessionDO.getId().toString();
-            log.info("initSession sessionId:{} jobKey:{} userId:{}", sessionId, safeLogValue(jobKey), userId);
-        } else {
-            sessionId = msgSessionDO.getId().toString();
+    protected String getOrInitSession(String jobKey, Long userId) {
+        MsgSessionDO session = msgSessionService.getOrCreateSession(userId, jobKey);
+        if (session == null) {
+            return null;
         }
+        String sessionId = session.getId().toString();
         sessionKeyIdCache.set(jobKey, sessionId);
         return sessionId;
     }

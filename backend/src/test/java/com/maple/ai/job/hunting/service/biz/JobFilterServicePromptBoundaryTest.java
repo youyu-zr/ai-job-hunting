@@ -1,5 +1,9 @@
 package com.maple.ai.job.hunting.service.biz;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.alibaba.fastjson.JSON;
 import com.maple.ai.job.hunting.common.Header;
 import com.maple.ai.job.hunting.common.HeaderContext;
@@ -14,6 +18,9 @@ import com.maple.ai.job.hunting.service.ai.AIServiceFacade;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.List;
@@ -29,6 +36,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 class JobFilterServicePromptBoundaryTest {
+
+    private static final String DELIVER_DECISION = """
+            {"filter":false,"reason":"Ordinary job duties","riskLevel":"LOW","recommendedAction":"DELIVER","riskSignals":[],"clarificationQuestions":[]}
+            """;
+    private static final String FILTER_DECISION = """
+            {"filter":true,"reason":"Upfront fee required","riskLevel":"HIGH","recommendedAction":"FILTER","riskSignals":["Upfront fee"],"clarificationQuestions":[]}
+            """;
 
     @AfterEach
     void clearHeader() {
@@ -363,6 +377,124 @@ class JobFilterServicePromptBoundaryTest {
     }
 
     @Test
+    void multipleModelDecisionObjectsAreRetryableInsteadOfUsingTheFirstDecision() {
+        assertRetryableFailure(DELIVER_DECISION + FILTER_DECISION);
+        assertRetryableFailure(FILTER_DECISION + DELIVER_DECISION);
+    }
+
+    @Test
+    void trailingInvalidTextAfterModelDecisionIsRetryable() {
+        assertRetryableFailure(DELIVER_DECISION + " INVALID");
+    }
+
+    @Test
+    void trailingJsonValuesAfterModelDecisionAreRetryable() {
+        for (String suffix : List.of("null", "true", "1", "\"ignored\"", "[]")) {
+            assertRetryableFailure(DELIVER_DECISION + suffix);
+        }
+    }
+
+    @Test
+    void arrayWrappedModelDecisionsAreRetryableInsteadOfUsingTheFirstObject() {
+        assertRetryableFailure("[" + DELIVER_DECISION + "," + FILTER_DECISION + "]");
+    }
+
+    @Test
+    void nonJsonPrefixBeforeModelDecisionIsRetryable() {
+        assertRetryableFailure("Here is the decision:\n" + DELIVER_DECISION);
+    }
+
+    @Test
+    void fencedModelDecisionsAreRetryableUnderThePureJsonContract() {
+        assertRetryableFailure("```json\n" + DELIVER_DECISION + "```");
+        assertRetryableFailure("```\n" + DELIVER_DECISION + "```");
+    }
+
+    @Test
+    void duplicateFilterFieldsAreRetryableInsteadOfOverwritingARejection() {
+        assertRetryableFailure("""
+                {"filter":true,"filter":false,"reason":"Conflicting filter flags","riskLevel":"LOW","recommendedAction":"DELIVER","riskSignals":[],"clarificationQuestions":[]}
+                """);
+    }
+
+    @Test
+    void duplicateActionFieldsAreRetryableInsteadOfOverwritingARejection() {
+        assertRetryableFailure("""
+                {"filter":false,"reason":"Conflicting actions","riskLevel":"LOW","recommendedAction":"FILTER","recommendedAction":"DELIVER","riskSignals":[],"clarificationQuestions":[]}
+                """);
+    }
+
+    @Test
+    void duplicateRiskFieldsAreRetryableInsteadOfOverwritingHighRisk() {
+        assertRetryableFailure("""
+                {"filter":false,"reason":"Conflicting risks","riskLevel":"HIGH","riskLevel":"LOW","recommendedAction":"DELIVER","riskSignals":[],"clarificationQuestions":[]}
+                """);
+    }
+
+    @Test
+    void duplicateDecisionFieldsAreRetryableEvenWhenTheirValuesAgree() {
+        assertRetryableFailure("""
+                {"filter":false,"reason":"Same reason","reason":"Same reason","riskLevel":"LOW","recommendedAction":"DELIVER","riskSignals":[],"clarificationQuestions":[]}
+                """);
+    }
+
+    @Test
+    void singleModelDecisionAllowsSurroundingJsonWhitespace() {
+        AiFilterResultVO result = filterResponse(" \t\r\n" + DELIVER_DECISION + "\r\n\t ");
+
+        assertFalse(result.getFilter());
+        assertEquals("DELIVER", result.getRecommendedAction());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"reason", "clarificationQuestions", "workMode", "workModeEvidence",
+            "goodSignals", "riskSignals", "prepSkills"})
+    void structuredResultLogsMetadataWithoutModelQuotesOrContactDetails(String field) {
+        String privateText = "SYNTHETIC_PRIVATE_HR_QUOTE contact=synthetic_wechat_42 "
+                + "resume=SYNTHETIC_PRIVATE_RESUME_FACT email=sample@example.invalid";
+        var decision = JSON.parseObject(DELIVER_DECISION);
+        decision.put(field, List.of("reason", "workMode").contains(field)
+                ? privateText : List.of(privateText));
+        JobFilterService service = new JobFilterService();
+        ReflectionTestUtils.setField(service, "aiServiceFacade",
+                new StaticResponseAiServiceFacade(JSON.toJSONString(decision)));
+        Logger logger = (Logger) LoggerFactory.getLogger(JobFilterService.class);
+        Level previousLevel = logger.getLevel();
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.setLevel(Level.INFO);
+        logger.addAppender(appender);
+        try {
+            AiFilterResultVO result = service.filter(filterParam("Ordinary duties"));
+
+            assertEquals("DELIVER", result.getRecommendedAction());
+            assertFalse(appender.list.isEmpty(), "Screening decision metadata must still be logged");
+            String loggedText = appender.list.stream()
+                    .map(ILoggingEvent::getFormattedMessage)
+                    .reduce("", (left, right) -> left + "\n" + right);
+            assertTrue(loggedText.contains("DELIVER"));
+            assertFalse(loggedText.contains("SYNTHETIC_PRIVATE_HR_QUOTE"));
+            assertFalse(loggedText.contains("synthetic_wechat_42"));
+            assertFalse(loggedText.contains("SYNTHETIC_PRIVATE_RESUME_FACT"));
+            assertFalse(loggedText.contains("sample@example.invalid"));
+        } finally {
+            logger.detachAppender(appender);
+            logger.setLevel(previousLevel);
+            appender.stop();
+        }
+    }
+
+    @Test
+    void singleModelDecisionPreservesBracesAndEscapedQuotesInStrings() {
+        AiFilterResultVO result = filterResponse("""
+                {"filter":false,"reason":"Handles {records} and \\"quotes\\"","riskLevel":"LOW","recommendedAction":"DELIVER","riskSignals":[],"clarificationQuestions":[]}
+                """);
+
+        assertFalse(result.getFilter());
+        assertEquals("Handles {records} and \"quotes\"", result.getReason());
+    }
+
+    @Test
     void missingRequiredDecisionFieldsAreRetryableInsteadOfBecomingAContentDecision() {
         assertRetryableFailure("{\"filter\":false,\"reason\":\"信息不足\"}");
     }
@@ -433,6 +565,28 @@ class JobFilterServicePromptBoundaryTest {
 
         assertEquals("DELIVER", result.getRecommendedAction());
         assertTrue(result.getClarificationQuestions() != null && !result.getClarificationQuestions().isEmpty());
+    }
+
+    @Test
+    void highRiskLegacyChatFirstRemainsFilter() {
+        AiFilterResultVO result = filterResponse("""
+                {"filter":false,"reason":"Upfront fee required","riskLevel":"HIGH","recommendedAction":"CHAT_FIRST"}
+                """);
+
+        assertTrue(result.getFilter());
+        assertEquals("HIGH", result.getRiskLevel());
+        assertEquals("FILTER", result.getRecommendedAction());
+    }
+
+    @Test
+    void explicitFilterLegacyChatFirstRemainsFilter() {
+        AiFilterResultVO result = filterResponse("""
+                {"filter":true,"reason":"Explicit hard-condition conflict","riskLevel":"LOW","recommendedAction":"CHAT_FIRST"}
+                """);
+
+        assertTrue(result.getFilter());
+        assertEquals("HIGH", result.getRiskLevel());
+        assertEquals("FILTER", result.getRecommendedAction());
     }
 
     @Test
@@ -511,6 +665,12 @@ class JobFilterServicePromptBoundaryTest {
                 () -> service.filter(filterParam("任意岗位描述")));
 
         assertEquals("岗位分析暂时不可用，请稍后重试", error.getMessage());
+    }
+
+    private AiFilterResultVO filterResponse(String response) {
+        JobFilterService service = new JobFilterService();
+        ReflectionTestUtils.setField(service, "aiServiceFacade", new StaticResponseAiServiceFacade(response));
+        return service.filter(filterParam("Ordinary job duties"));
     }
 
     private JobFilterService serviceWithFailure(RuntimeException failure) {

@@ -1,8 +1,10 @@
 package com.maple.ai.job.hunting.service.biz;
 
 import com.alibaba.fastjson.JSON;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.maple.ai.job.hunting.common.HeaderContext;
@@ -14,7 +16,6 @@ import com.maple.ai.job.hunting.mapper.UserResumeMapper;
 import com.maple.ai.job.hunting.model.param.AIFilterParam;
 import com.maple.ai.job.hunting.model.vo.AiFilterResultVO;
 import com.maple.ai.job.hunting.service.ai.AIServiceFacade;
-import com.maple.ai.job.hunting.utils.LogValueSanitizer;
 import com.maple.ai.job.hunting.utils.PromptDataSanitizer;
 import jakarta.annotation.Resource;
 import org.apache.commons.lang3.StringUtils;
@@ -36,6 +37,9 @@ public class JobFilterService {
 
     private static final Logger log = LoggerFactory.getLogger(JobFilterService.class);
     private static final ObjectMapper SAFE_JSON = new ObjectMapper();
+    private static final ObjectReader DECISION_JSON = SAFE_JSON.reader()
+            .with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+            .with(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY);
     private static final String TEMPORARY_FAILURE_MESSAGE = "岗位分析暂时不可用，请稍后重试";
     @Resource
     private AIServiceFacade aiServiceFacade;
@@ -75,17 +79,13 @@ public class JobFilterService {
         }
 
         try {
-            String json = extractFirstJsonObject(answer);
-            if (json == null) {
-                throw temporaryFailure();
-            }
-            JsonNode rawResult = SAFE_JSON.readTree(json);
+            JsonNode rawResult = DECISION_JSON.readTree(answer);
             if (!hasCompleteDecisionFields(rawResult)) {
                 throw temporaryFailure();
             }
             AiFilterResultVO result = normalizeStructuredResult(
                     SAFE_JSON.treeToValue(rawResult, AiFilterResultVO.class));
-            logStructuredResult(result, param);
+            logStructuredResult(result);
             return result;
         } catch (ApplicationException e) {
             throw e;
@@ -95,48 +95,8 @@ public class JobFilterService {
         }
     }
 
-    static String extractFirstJsonObject(String text) {
-        if (StringUtils.isBlank(text)) {
-            return null;
-        }
-        int objectStart = -1;
-        int depth = 0;
-        boolean inString = false;
-        boolean escaped = false;
-        for (int i = 0; i < text.length(); i++) {
-            char ch = text.charAt(i);
-            if (objectStart < 0) {
-                if (ch == '{') {
-                    objectStart = i;
-                    depth = 1;
-                    inString = false;
-                    escaped = false;
-                }
-                continue;
-            }
-            if (inString) {
-                if (escaped) {
-                    escaped = false;
-                } else if (ch == '\\') {
-                    escaped = true;
-                } else if (ch == '"') {
-                    inString = false;
-                }
-                continue;
-            }
-            if (ch == '"') {
-                inString = true;
-            } else if (ch == '{') {
-                depth++;
-            } else if (ch == '}' && --depth == 0) {
-                return text.substring(objectStart, i + 1);
-            }
-        }
-        return null;
-    }
-
     private boolean hasCompleteDecisionFields(JsonNode result) {
-        if (result == null || !result.path("filter").isBoolean()) {
+        if (result == null || !result.isObject() || !result.path("filter").isBoolean()) {
             return false;
         }
         String action = StringUtils.upperCase(StringUtils.trimToEmpty(result.path("recommendedAction").asText()));
@@ -209,7 +169,6 @@ public class JobFilterService {
             result.setClarificationQuestions(Collections.emptyList());
         }
         if ("CHAT_FIRST".equals(requestedAction)) {
-            result.setRecommendedAction("DELIVER");
             if (result.getClarificationQuestions().isEmpty()) {
                 result.setClarificationQuestions(List.of("岗位信息尚未明确，建议向 HR 确认具体安排。"));
             }
@@ -266,24 +225,11 @@ public class JobFilterService {
         throw temporaryFailure();
     }
 
-    private void logStructuredResult(AiFilterResultVO result, AIFilterParam param) {
-        log.info("AI岗位分析 job:{} company:{} 结构化结果:{}",
-                LogValueSanitizer.sanitize(readJsonField(param == null ? null : param.getJobBaseInfo(), "jobName"), 120),
-                LogValueSanitizer.sanitize(readJsonField(param == null ? null : param.getJobBaseInfo(), "brandName"), 120),
-                LogValueSanitizer.sanitize(JSON.toJSONString(result), 2000));
-    }
-
-    private String readJsonField(String rawJson, String field) {
-        if (StringUtils.isBlank(rawJson)) {
-            return "";
-        }
-        try {
-            JsonNode root = SAFE_JSON.readTree(rawJson);
-            JsonNode value = root == null ? null : root.get(field);
-            return value == null || value.isNull() ? "" : StringUtils.defaultString(value.asText());
-        } catch (Exception e) {
-            return "";
-        }
+    private void logStructuredResult(AiFilterResultVO result) {
+        log.info("AI job screening filter:{} action:{} risk:{} jobScore:{} companyScore:{} matchScore:{} clarificationCount:{} riskSignalCount:{}",
+                result.getFilter(), result.getRecommendedAction(), result.getRiskLevel(),
+                result.getJobScore(), result.getCompanyScore(), result.getMatchScore(),
+                result.getClarificationQuestions().size(), result.getRiskSignals().size());
     }
 
     public String buildQuestion(AIFilterParam param) {

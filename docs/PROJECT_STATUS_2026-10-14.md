@@ -14,7 +14,7 @@ PR #2 仍为 OPEN，目标分支是 `release/open-source-20261011`，但远端 h
 | --- | --- |
 | 公网安装页 | HTTP 200；版本 `0.0.116-beta-identity-ready` |
 | 公网 userscript | HTTP 200；脚本头版本 `0.0.116-beta-identity-ready` |
-| 本地候选 | `0.0.117-beta-ai-seat-recovery`；当前本地功能分支 HEAD 为 `8bd6723`，另有 Task 4/6 等未提交改动 |
+| 本地候选 | `0.0.117-beta-ai-seat-recovery`；当前已提交 HEAD 为 `03c48f9`，另有 Task 6、Task 7 文档修正与发布前 smoke 检查的未提交改动；候选整体尚未推送 |
 | PR #2 | OPEN；目标 `release/open-source-20261011`；head `0b6b94359b7f5a1125ac2227f332fd0f04a4cd6a`，落后于当前本地候选 |
 | 远端检查 | PR 页面所示前端、后端 CI 与 Java/TypeScript CodeQL 成功，但仅证明旧 head `0b6b943...` |
 | 当前候选 CI | 未运行/未提交到远端，因此尚无当前候选 CI 结果 |

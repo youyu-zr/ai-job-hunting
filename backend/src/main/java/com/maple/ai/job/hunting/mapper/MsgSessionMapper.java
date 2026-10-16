@@ -89,6 +89,17 @@ public interface MsgSessionMapper extends BaseMapper<MsgSessionDO> {
         return this.update(new MsgSessionDO(), condition);
     }
 
+    default int expireOtherSessions(Long userId, String sessionKey, Long retainedSessionId) {
+        LambdaUpdateWrapper<MsgSessionDO> condition = new LambdaUpdateWrapper<>();
+        condition.eq(MsgSessionDO::getUserId, userId);
+        condition.eq(MsgSessionDO::getSessionKey, sessionKey);
+        condition.ne(MsgSessionDO::getId, retainedSessionId);
+        condition.apply("MOD(status, 4) IN ({0}, {1})",
+                MsgSessionStatusEnum.IN_USE.getCode(), MsgSessionStatusEnum.MANUALLY_PAUSED.getCode());
+        condition.setSql("status = (FLOOR(status / 4) + 1) * 4 + " + MsgSessionStatusEnum.EXPIRED.getCode());
+        return this.update(new MsgSessionDO(), condition);
+    }
+
 
     default void updateMsgContextAndAiType(String sessionId, String msgContext, AITypeEnum aiTypeEnum) {
         LambdaUpdateWrapper<MsgSessionDO> condition = new LambdaUpdateWrapper<>();

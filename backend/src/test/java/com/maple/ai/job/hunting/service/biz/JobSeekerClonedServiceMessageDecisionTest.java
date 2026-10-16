@@ -4,10 +4,12 @@ import com.alibaba.fastjson.JSONObject;
 import com.maple.ai.job.hunting.common.Header;
 import com.maple.ai.job.hunting.common.HeaderContext;
 import com.maple.ai.job.hunting.entity.MsgSessionDO;
+import com.maple.ai.job.hunting.emums.JobSeekerClonedAnswerTypeEnum;
 import com.maple.ai.job.hunting.frame.cache.AiJobGateStopCache;
 import com.maple.ai.job.hunting.frame.cache.HighInterestInformCache;
 import com.maple.ai.job.hunting.frame.cache.QuestionCache;
 import com.maple.ai.job.hunting.frame.cache.SessionKeyIdCache;
+import com.maple.ai.job.hunting.frame.exp.ApplicationException;
 import com.maple.ai.job.hunting.mapper.MsgSessionMapper;
 import com.maple.ai.job.hunting.mapper.UserInfoMapper;
 import com.maple.ai.job.hunting.mapper.UserResumeMapper;
@@ -25,6 +27,9 @@ import com.maple.ai.job.hunting.model.vo.UserInfoVO;
 import com.maple.ai.job.hunting.service.ai.AIServiceFacade;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
@@ -35,6 +40,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -96,6 +102,110 @@ class JobSeekerClonedServiceMessageDecisionTest {
     }
 
     @Test
+    void savedMarketingOptInAllowsPromotionReplyToReachChat() {
+        Fixture fixture = new Fixture();
+        PreferenceEntity preference = new PreferenceEntity();
+        preference.setMarketingReplyE(true);
+        fixture.preference(preference);
+        fixture.triageResult(Category.PROMOTION, Action.REPLY);
+
+        JobSeekerClonedResultVO result = fixture.ask(
+                "Could you explain the brand promotion duties?", "job-opt-in", 1);
+
+        assertNull(result.getStopReason());
+        assertEquals(List.of(JobSeekerClonedAnswerTypeEnum.MSG_TEXT.getCode()), result.getAnswerTypeList());
+        assertFalse(result.getAnswerContent().isBlank());
+        assertEquals(1, fixture.ai.sessionChatCalls.get());
+        assertEquals(preference, fixture.triage.lastPreference);
+        assertTrue(fixture.sessions.pausedJobs.isEmpty());
+        assertTrue(fixture.sessions.aiJobGateStops.isEmpty());
+    }
+
+    @Test
+    void promotionReplyWithoutSavedOptInRemainsSilent() {
+        for (PreferenceEntity preference : new PreferenceEntity[]{null, new PreferenceEntity()}) {
+            Fixture fixture = new Fixture();
+            fixture.preference(preference);
+            fixture.triageResult(Category.PROMOTION, Action.REPLY);
+            JSONObject jobInfo = new JSONObject();
+            jobInfo.put("marketingReplyE", true);
+
+            JobSeekerClonedResultVO result = fixture.ask(
+                    "Could you explain the brand promotion duties?", "job-no-opt-in", 1, jobInfo);
+
+            assertEquals("PROMOTION_SILENT", result.getStopReason());
+            assertEquals(List.of(JobSeekerClonedAnswerTypeEnum.STOP.getCode()), result.getAnswerTypeList());
+            assertTrue(result.getOperationTypeList() == null || result.getOperationTypeList().isEmpty());
+            assertEquals(0, fixture.ai.sessionChatCalls.get());
+            assertTrue(fixture.sessions.pausedJobs.isEmpty());
+            assertTrue(fixture.sessions.aiJobGateStops.isEmpty());
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Action.class, mode = EnumSource.Mode.EXCLUDE, names = "REPLY")
+    @NullSource
+    void marketingOptInNeverTurnsNonReplyOrInvalidActionsIntoChat(Action action) {
+        Fixture fixture = new Fixture();
+        PreferenceEntity preference = new PreferenceEntity();
+        preference.setMarketingReplyE(true);
+        fixture.preference(preference);
+        fixture.triageResult(Category.PROMOTION, action);
+
+        JobSeekerClonedResultVO result = fixture.ask(
+                "方便发一份简历过来吗？", "job-non-reply", 1);
+
+        String expectedReason = action == null ? "AI_PROCESSING_ERROR" : switch (action) {
+            case SILENT_CURRENT_MESSAGE -> "PROMOTION_SILENT";
+            case BLOCK_CURRENT_JOB -> "HIGH_RISK_JOB";
+            case NEEDS_USER_CONFIRMATION -> "USER_CONFIRMATION_REQUIRED";
+            default -> "AI_PROCESSING_ERROR";
+        };
+        assertEquals(expectedReason, result.getStopReason());
+        assertEquals(List.of(JobSeekerClonedAnswerTypeEnum.STOP.getCode()), result.getAnswerTypeList());
+        assertTrue(result.getOperationTypeList() == null || result.getOperationTypeList().isEmpty());
+        assertEquals(0, fixture.ai.sessionChatCalls.get());
+    }
+
+    @Test
+    void marketingOptInCannotOverrideHighRiskCategoryWithConflictingReplyAction() {
+        Fixture fixture = new Fixture();
+        PreferenceEntity preference = new PreferenceEntity();
+        preference.setMarketingReplyE(true);
+        fixture.preference(preference);
+        fixture.triageResult(Category.HIGH_RISK, Action.REPLY);
+
+        JobSeekerClonedResultVO result = fixture.ask(
+                "Please send your resume and pay an upfront fee.", "job-risk-opt-in", 1);
+
+        assertEquals("HIGH_RISK_JOB", result.getStopReason());
+        assertEquals(List.of("job-risk-opt-in:true"), fixture.sessions.aiJobGateStops);
+        assertTrue(result.getOperationTypeList() == null || result.getOperationTypeList().isEmpty());
+        assertEquals(0, fixture.ai.sessionChatCalls.get());
+    }
+
+    @Test
+    void optedInPromotionReplyStillRunsTheAuthoritativeJobGate() {
+        Fixture fixture = new Fixture();
+        PreferenceEntity preference = new PreferenceEntity();
+        preference.setMarketingReplyE(true);
+        fixture.preference(preference);
+        fixture.triageResult(Category.PROMOTION, Action.REPLY);
+        fixture.jobFilter.decision = AiFilterResultVO.builder()
+                .filter(true).recommendedAction("FILTER").riskLevel("HIGH").build();
+        JSONObject jobInfo = new JSONObject();
+        jobInfo.put("jobTitle", "Brand promotion");
+
+        JobSeekerClonedResultVO result = fixture.ask(
+                "Could you explain the brand promotion duties?", "job-promotion-gate", 1, jobInfo);
+
+        assertEquals("JOB_GATE", result.getStopReason());
+        assertEquals(1, fixture.jobFilter.calls.get());
+        assertEquals(List.of("job-promotion-gate:true"), fixture.sessions.aiJobGateStops);
+        assertEquals(0, fixture.ai.sessionChatCalls.get());
+    }
+
+    @Test
     void highRiskBlocksOnlyTheCurrentJobGate() {
         Fixture fixture = new Fixture();
         fixture.triageResult(Category.HIGH_RISK, Action.BLOCK_CURRENT_JOB);
@@ -115,8 +225,10 @@ class JobSeekerClonedServiceMessageDecisionTest {
 
         JobSeekerClonedResultVO interview = fixture.ask(
                 "明天上午十点来公司面试可以吗？", "job-interview", 1);
+        fixture.triageResult(Category.NORMAL_JOB, Action.REPLY);
         JobSeekerClonedResultVO contractDetails = fixture.ask(
                 "合同期限是三年，可以先了解一下吗？", "job-contract-details", 1);
+        fixture.triageResult(Category.NORMAL_JOB, Action.NEEDS_USER_CONFIRMATION);
         JobSeekerClonedResultVO contractCommitment = fixture.ask(
                 "请确认是否接受并签署这份合同。", "job-contract-commitment", 1);
         JobSeekerClonedResultVO vagueInterviewCard = fixture.ask(
@@ -130,6 +242,92 @@ class JobSeekerClonedServiceMessageDecisionTest {
                 fixture.sessions.pausedJobs);
         assertTrue(fixture.sessions.aiJobGateStops.isEmpty());
         assertEquals(1, fixture.ai.sessionChatCalls.get());
+    }
+
+    @Test
+    void classifierConfirmationOutsideKeywordVocabularyStopsBeforeChat() {
+        Fixture fixture = new Fixture();
+        fixture.triageResult(Category.NORMAL_JOB, Action.NEEDS_USER_CONFIRMATION);
+
+        JobSeekerClonedResultVO result = fixture.ask(
+                "请回复确认接受这份报价。", "job-quote", 1);
+
+        assertEquals("USER_CONFIRMATION_REQUIRED", result.getStopReason());
+        assertEquals(List.of("job-quote:true"), fixture.sessions.pausedJobs);
+        assertEquals(0, fixture.ai.sessionChatCalls.get());
+        assertTrue(result.getOperationTypeList() == null || result.getOperationTypeList().isEmpty());
+    }
+
+    @Test
+    void classifierConfirmationStopsBeforeResumeExchange() {
+        Fixture fixture = new Fixture();
+        fixture.triageResult(Category.NORMAL_JOB, Action.NEEDS_USER_CONFIRMATION);
+
+        JobSeekerClonedResultVO result = fixture.ask(
+                "请发一份简历，并回复确认接受这份报价。", "job-quote-resume", 1);
+
+        assertEquals("USER_CONFIRMATION_REQUIRED", result.getStopReason());
+        assertEquals(List.of("job-quote-resume:true"), fixture.sessions.pausedJobs);
+        assertEquals(0, fixture.ai.sessionChatCalls.get());
+        assertTrue(result.getOperationTypeList() == null || result.getOperationTypeList().isEmpty());
+    }
+
+    @Test
+    void failedConfirmationPauseRemainsRetryableWithoutSendingOrConsumingTheMessage() {
+        Fixture fixture = new Fixture();
+        fixture.triageResult(Category.NORMAL_JOB, Action.NEEDS_USER_CONFIRMATION);
+        fixture.sessions.pauseSucceeds = false;
+
+        JobSeekerClonedResultVO failed = fixture.ask(
+                "请发一份简历，并回复确认接受这份报价。", "job-pause-retry", 1);
+        fixture.sessions.pauseSucceeds = true;
+        JobSeekerClonedResultVO recovered = fixture.ask(
+                "请发一份简历，并回复确认接受这份报价。", "job-pause-retry", 1);
+
+        assertEquals("AI_PROCESSING_ERROR", failed.getStopReason());
+        assertTrue(failed.isRetryable());
+        assertTrue(failed.getOperationTypeList() == null || failed.getOperationTypeList().isEmpty());
+        assertEquals("USER_CONFIRMATION_REQUIRED", recovered.getStopReason());
+        assertEquals(0, fixture.ai.sessionChatCalls.get());
+        assertEquals(List.of("job-pause-retry:true", "job-pause-retry:true"), fixture.sessions.pausedJobs);
+    }
+
+    @Test
+    void jobAnalysisExceptionReleasesReservationSoIdenticalMessageCanRecover() {
+        Fixture fixture = new Fixture();
+        fixture.triageResult(Category.NORMAL_JOB, Action.REPLY);
+        fixture.jobFilter.failure = new ApplicationException("岗位分析暂时不可用，请稍后重试");
+        JSONObject jobInfo = new JSONObject();
+        jobInfo.put("jobTitle", "开发工程师");
+
+        assertThrows(ApplicationException.class,
+                () -> fixture.ask("请介绍一下项目经历", "job-analysis-retry", 1, jobInfo));
+        fixture.jobFilter.failure = null;
+        fixture.jobFilter.decision = AiFilterResultVO.builder()
+                .filter(false).recommendedAction("DELIVER").riskLevel("LOW").build();
+        JobSeekerClonedResultVO recovered = fixture.ask(
+                "请介绍一下项目经历", "job-analysis-retry", 1, jobInfo);
+
+        assertNull(recovered.getStopReason());
+        assertEquals(List.of(JobSeekerClonedAnswerTypeEnum.MSG_TEXT.getCode()), recovered.getAnswerTypeList());
+        assertEquals(2, fixture.jobFilter.calls.get());
+        assertEquals(1, fixture.ai.sessionChatCalls.get());
+    }
+
+    @Test
+    void chatFailureResultReleasesReservationSoIdenticalMessageCanRecover() {
+        Fixture fixture = new Fixture();
+        fixture.triageResult(Category.NORMAL_JOB, Action.REPLY);
+        fixture.ai.failNextChat = true;
+
+        JobSeekerClonedResultVO failed = fixture.ask("请介绍一下项目经历", "job-chat-retry", 1);
+        JobSeekerClonedResultVO recovered = fixture.ask("请介绍一下项目经历", "job-chat-retry", 1);
+
+        assertEquals(List.of(JobSeekerClonedAnswerTypeEnum.AI_SERVICE_EXCEPTION.getCode()), failed.getAnswerTypeList());
+        assertTrue(failed.getOperationTypeList() == null || failed.getOperationTypeList().isEmpty());
+        assertNull(recovered.getStopReason());
+        assertEquals(List.of(JobSeekerClonedAnswerTypeEnum.MSG_TEXT.getCode()), recovered.getAnswerTypeList());
+        assertEquals(2, fixture.ai.sessionChatCalls.get());
     }
 
     @Test
@@ -315,11 +513,15 @@ class JobSeekerClonedServiceMessageDecisionTest {
         private final AtomicInteger calls = new AtomicInteger();
         private AIFilterParam lastParam;
         private AiFilterResultVO decision;
+        private RuntimeException failure;
 
         @Override
         public AiFilterResultVO filter(AIFilterParam param) {
             calls.incrementAndGet();
             lastParam = param;
+            if (failure != null) {
+                throw failure;
+            }
             return decision;
         }
     }
@@ -352,11 +554,17 @@ class JobSeekerClonedServiceMessageDecisionTest {
 
     private static final class RecordingAIServiceFacade extends AIServiceFacade {
         private final AtomicInteger sessionChatCalls = new AtomicInteger();
+        private boolean failNextChat;
 
         @Override
         public ChatSessionResult sessionChat(String sessionId, String ask) {
             sessionChatCalls.incrementAndGet();
             ChatSessionResult result = new ChatSessionResult();
+            if (failNextChat) {
+                failNextChat = false;
+                result.setAnswerStatus(JobSeekerClonedAnswerTypeEnum.AI_SERVICE_EXCEPTION);
+                return result;
+            }
             result.setAnswer("好的，我们先了解一下岗位安排。");
             return result;
         }
@@ -365,6 +573,7 @@ class JobSeekerClonedServiceMessageDecisionTest {
     private static final class RecordingMsgSessionService extends MsgSessionService {
         private final List<String> pausedJobs = new java.util.ArrayList<>();
         private final List<String> aiJobGateStops = new java.util.ArrayList<>();
+        private boolean pauseSucceeds = true;
 
         private RecordingMsgSessionService() {
             super(new AiJobGateStopCache(), mock(MsgSessionMapper.class), mock(UserInfoMapper.class));
@@ -383,7 +592,7 @@ class JobSeekerClonedServiceMessageDecisionTest {
         @Override
         public boolean trySetMsgSessionStop(String jobKey, Boolean isStop) {
             pausedJobs.add(jobKey + ":" + isStop);
-            return true;
+            return pauseSucceeds;
         }
 
         @Override

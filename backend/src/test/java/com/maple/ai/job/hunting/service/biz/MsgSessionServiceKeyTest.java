@@ -147,6 +147,7 @@ class MsgSessionServiceKeyTest {
         }
     }
 
+
     @Test
     void explicitlyResumingPausedSessionRestoresItsPersistedContextIntoTheAiService() {
         HeaderContext.setHeader(header(42L));
@@ -169,6 +170,42 @@ class MsgSessionServiceKeyTest {
             assertEquals("已确认的项目经历",
                     openAIService.getMsgSessionMap().get("99").get(0).getContent());
             assertEquals(6L, MsgSessionStatusEnum.revision(paused.getStatus()));
+        } finally {
+            HeaderContext.clear();
+        }
+    }
+
+    @Test
+    void resumingRetiresOtherRowsOnlyForAuthenticatedUserAndCurrentJob() {
+        initializeMapperMetadata();
+        HeaderContext.setHeader(header(42L));
+        try {
+            MsgSessionDO paused = session(99L, 42L, "job-duplicate",
+                    MsgSessionStatusEnum.encode(1L, MsgSessionStatusEnum.MANUALLY_PAUSED));
+            MsgSessionMapper mapper = mock(MsgSessionMapper.class, CALLS_REAL_METHODS);
+            doReturn(paused).when(mapper).selectLatestByUserAndSessionKey(42L, "job-duplicate");
+            doReturn(1).when(mapper).updateSessionStatus(99L, 42L,
+                    MsgSessionStatusEnum.MANUALLY_PAUSED, MsgSessionStatusEnum.IN_USE);
+            AtomicReference<com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<MsgSessionDO>>
+                    retirement = new AtomicReference<>();
+            doAnswer(invocation -> {
+                retirement.set(invocation.getArgument(1));
+                return 1;
+            }).when(mapper).update(any(MsgSessionDO.class), any());
+            MsgSessionService service = service(mapper, mock(UserInfoMapper.class), new OpenAIService());
+
+            assertTrue(service.setMsgSessionStop("job-duplicate", false));
+
+            assertTrue(retirement.get() != null, "resume must retire competing rows before accepting new turns");
+            String condition = retirement.get().getSqlSegment();
+            assertTrue(condition.contains("user_id"));
+            assertTrue(condition.contains("session_key"));
+            assertTrue(condition.contains("id <>"));
+            assertTrue(condition.contains("MOD(status, 4)"));
+            assertTrue(retirement.get().getParamNameValuePairs().containsValue(42L));
+            assertTrue(retirement.get().getParamNameValuePairs().containsValue("job-duplicate"));
+            assertTrue(retirement.get().getParamNameValuePairs().containsValue(99L));
+            assertFalse(retirement.get().getSqlSet().contains("msg_context"));
         } finally {
             HeaderContext.clear();
         }

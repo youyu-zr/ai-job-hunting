@@ -51,6 +51,9 @@ test('the preference toggle is explicitly limited to high-interest handoff', () 
 
 test('only concrete commitments pause the current job session before reply generation', () => {
     const triageIndex = clonedService.indexOf('messageTriageService.classify(');
+    const confirmationActionIndex = clonedService.indexOf(
+        'if (triage.getAction() == Action.NEEDS_USER_CONFIRMATION)',
+    );
     const commitmentGateIndex = clonedService.indexOf(
         'if (isConcreteCurrentCommitment(jobSeekerClonedParam.getQuestion()))',
     );
@@ -59,7 +62,24 @@ test('only concrete commitments pause the current job session before reply gener
         'server AI must classify HR meaning before applying personal-commitment rules');
     assert.ok(commitmentGateIndex < aiCallIndex,
         'concrete personal commitments must stop before reply generation');
-    assert.match(clonedService.slice(commitmentGateIndex, aiCallIndex), /trySetMsgSessionStop\(jobKey, true\)/);
+    assert.ok(triageIndex < confirmationActionIndex && confirmationActionIndex < aiCallIndex,
+        'the authoritative confirmation action must stop before reply generation');
+    assert.match(clonedService.slice(confirmationActionIndex, commitmentGateIndex),
+        /return pauseForUserConfirmation\(jobKey\)/);
+    assert.match(clonedService.slice(commitmentGateIndex, aiCallIndex),
+        /return pauseForUserConfirmation\(jobKey\)/);
+    const pauseHelperStart = clonedService.indexOf(
+        'private JobSeekerClonedResultVO pauseForUserConfirmation(String jobKey)',
+    );
+    const pauseHelperEnd = clonedService.indexOf(
+        'private JobSeekerClonedResultVO retryableProcessingFailure()', pauseHelperStart,
+    );
+    assert.ok(pauseHelperStart >= 0 && pauseHelperEnd > pauseHelperStart);
+    const pauseHelper = clonedService.slice(pauseHelperStart, pauseHelperEnd);
+    assert.match(pauseHelper, /if \(!msgSessionService\.trySetMsgSessionStop\(jobKey, true\)\)/);
+    assert.match(pauseHelper, /return retryableProcessingFailure\(\)/,
+        'failed pause persistence must remain retryable');
+    assert.match(pauseHelper, /"USER_CONFIRMATION_REQUIRED"/);
     assert.doesNotMatch(clonedService.slice(triageIndex, aiCallIndex),
         /humanHandoffCategory/,
         'salary, location, and contact topics must not use the retired keyword pause gate');

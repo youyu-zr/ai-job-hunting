@@ -4,8 +4,9 @@ import java.util.regex.Pattern;
 
 public final class LogValueSanitizer {
 
+    // Exclude every local-part character to prevent rescanning suffixes after a failed match.
     private static final Pattern EMAIL_ADDRESS = Pattern.compile(
-            "(?i)(?<![\\w.+-])[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}(?![\\w.-])");
+            "(?i)(?<![\\w.%+-])[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}(?![\\w.-])");
     private static final Pattern CN_MOBILE_NUMBER = Pattern.compile(
             "(?<![\\p{Nd}])(?:\\+?86[\\s.．\\-－—]*)?[1１][3-9３-９](?:[\\s.．\\-－—]*[0-9０-９]){9}(?![\\p{Nd}])");
 

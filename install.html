@@ -69,7 +69,7 @@
 <body>
   <main class="wrap">
     <header>
-      <div class="eyebrow">项目状态 · 2026-10-14</div>
+      <div class="eyebrow">小范围联调 · 2026-10-16</div>
       <h1>AI 工作猎手</h1>
       <p class="lead">在 BOSS 直聘里帮你筛岗位、生成岗位化第一句话，并辅助处理普通 HR 消息。普通用户不需要填写 API Key。</p>
       <div class="actions">
@@ -78,15 +78,15 @@
         <a class="button secondary" href="https://www.zhipin.com/" target="_blank" rel="noreferrer">第三步：打开 BOSS 直聘</a>
       </div>
       <div class="version">
-        <div><strong>当前线上版本</strong><br><code>0.0.116-beta-identity-ready</code></div>
-        <div><strong>本地候选（尚未上线）</strong><br><code>0.0.117-beta-ai-seat-recovery</code></div>
+        <div><strong>当前联调版本</strong><br><code>0.0.117-beta-ai-seat-recovery</code></div>
+        <div><strong>首次使用</strong><br>先用本人账号测试一个岗位</div>
       </div>
     </header>
 
     <section class="section">
       <div class="notice" role="alert">
         <h2>先小范围试用</h2>
-        <p>当前线上仍是小范围联调版，页面上的新候选还没有上线。先用自己的账号测试登录、导入简历和一个岗位，不要一开始连续投递很多岗位。遇到问题，请记录卡在哪一步。</p>
+        <p>先用自己的账号测试登录、导入简历和一个岗位，不要一开始连续投递很多岗位。遇到问题，先关闭 AI 坐席并记录卡在哪一步；不要分享 Cookie、验证码或简历原件。</p>
       </div>
     </section>
 
@@ -120,7 +120,7 @@
           <li>AI 坐席关闭时不会自动回复，也不会自动处理积压消息；</li>
           <li>重新登录后，如果最后一条确实是 HR 发来的且你没有回复，AI 可以继续处理；</li>
           <li>你手动回复某个 HR 后，只暂停这个 HR 的会话，不影响其他会话；</li>
-          <li>岗位资料缺少薪资或地点，但没有明确风险时，候选版本会继续投递，并把缺少的信息留到后续沟通；AI 调用失败时不会自动投递或回复；</li>
+          <li>岗位资料缺少薪资或地点，但没有明确风险或与你填写的硬性条件冲突时，会继续投递，并把缺少的信息留到后续沟通；AI 调用失败时不会自动投递或回复；</li>
           <li>普通岗位职责里的抖音、推广、销售或账号不会只因关键词被过滤；面向求职者的课程、加群、返佣等推广默认静默，明确高风险始终拦截；</li>
           <li>薪资、地点和联系方式按你保存的偏好判断；具体面试日期或时间需要你本人确认；</li>
           <li>BOSS 的结构化系统通知或卡片可能出现在聊天界面，但不是 HR 消息，脚本按协议类型等元数据识别，不按普通文字关键词识别。</li>
@@ -132,10 +132,10 @@
       <div class="panel">
         <h2>AI 怎么分工</h2>
         <p>浏览器脚本负责读取 BOSS 页面、把消息和必要的结构化信息交给服务器，并执行最终的页面操作；服务器上的 AI 结合岗位、简历和你保存的偏好判断“这是什么消息、应该怎么处理”。浏览器端不放模型 API Key，也不靠“抖音”“收费”“账号”等单个词直接做语义结论。</p>
-        <p>上面关于服务端分类和偏好处理的说明属于 <code>0.0.117</code> 本地候选行为；当前公网安装入口仍是 <code>0.0.116</code>，不要把候选说明当成已部署承诺。</p>
+        <p>本页对应 <code>0.0.117</code> 联调版，不代表真实账号全流程已经验收通过。请保留本人确认和随时停止自动处理的习惯。</p>
       </div>
     </section>
   </main>
-  <footer class="wrap">当前线上版本：0.0.116-beta-identity-ready；本地候选：0.0.117-beta-ai-seat-recovery（尚未上线）。内测权限统一有效至 2026 年 12 月 30 日 23:59:59（中国标准时间）。真实账号流程仍未完成验收。</footer>
+  <footer class="wrap">联调版本：0.0.117-beta-ai-seat-recovery。内测权限统一有效至 2026 年 12 月 30 日 23:59:59（中国标准时间）。真实账号流程仍需本人验收，不保证平台授权、账号安全或求职结果。</footer>
 </body>
 </html>

@@ -15,6 +15,7 @@
 - 不修改或直接推送 `main`；先核实当前远端分支和 PR，再通过受保护分支及维护者审核合并。
 - 不清理或覆盖实现开始前已有的工作区差异；先检查归属并保留。
 - 浏览器不得接触模型 API Key；服务端负责最终语义分类和外发动作闸门。
+- 分类规则必须作为独立 SYSTEM 角色发送；HR 消息、岗位详情、简历和偏好作为单独 JSON USER 数据发送。不支持角色分离的模型通道必须返回可重试错误，不得拼接降级。
 - 不因“推广、抖音、销售、收费、账号、返佣”等单个词自动过滤；必须结合具体主体、动作、岗位职责和上下文。
 - 岗位内容不完整但无明确风险或用户条件冲突时继续投递；AI/API/解析技术故障时不投递。
 - 联系方式、薪资和地点使用用户偏好，不因出现话题本身就暂停；不得编造简历事实或联系方式。
@@ -29,6 +30,7 @@
 ## 文件与职责地图
 
 - `backend/src/main/java/com/maple/ai/job/hunting/service/biz/MessageTriageService.java`：新增服务端 HR 消息结构化分类。
+- `backend/src/main/java/com/maple/ai/job/hunting/service/ai/AIService.java`、`AIServiceFacade.java`、`impl/OpenAIService.java`：保留既有服务选择和权限闸门，同时支持 SYSTEM 与 USER 角色分离；不支持的 Provider 失败关闭。
 - `backend/src/main/java/com/maple/ai/job/hunting/model/vo/MessageTriageResultVO.java`：分类类别、动作、理由和澄清问题。
 - `backend/src/main/java/com/maple/ai/job/hunting/model/param/JobSeekerClonedParam.java`：携带经过白名单校验的 BOSS 消息类型元数据。
 - `backend/src/main/java/com/maple/ai/job/hunting/service/biz/JobSeekerClonedService.java`：按分类动作进入回复、静默、岗位阻断、本人确认或技术失败。
@@ -79,94 +81,56 @@ Expected: Existing candidate behavior is separated from new regressions. Any bas
 **Files:**
 - Create: `backend/src/main/java/com/maple/ai/job/hunting/model/vo/MessageTriageResultVO.java`
 - Modify: `backend/src/main/java/com/maple/ai/job/hunting/model/vo/AiFilterResultVO.java`
-- Test: `backend/src/test/java/com/maple/ai/job/hunting/service/biz/MessageTriageServiceTest.java`
-- Test: `backend/src/test/java/com/maple/ai/job/hunting/service/biz/JobFilterServicePromptBoundaryTest.java`
-- Test: `frontend/tests/filterGate.test.ts`
+- Test: `backend/src/test/java/com/maple/ai/job/hunting/model/vo/MessageTriageResultVOTest.java`
+- Test: `backend/src/test/java/com/maple/ai/job/hunting/model/vo/AiFilterResultVOTest.java`
 
 **Interfaces:**
 - `MessageTriageResultVO.Category`: `NORMAL_JOB`, `PROMOTION`, `HIGH_RISK`, `PLATFORM_EVENT`, `UNCERTAIN`, `PROCESSING_ERROR`.
 - `MessageTriageResultVO.Action`: `REPLY`, `SILENT_CURRENT_MESSAGE`, `BLOCK_CURRENT_JOB`, `NEEDS_USER_CONFIRMATION`, `NO_ACTION_RETRY`.
 - Result fields: `category`, `action`, `reasonCode`, `plainLanguageReason`, `clarificationQuestions`, `evidence`.
-- Job filtering returns `DELIVER` or `FILTER`; transport/model errors are represented by the service/API error path, not by `HUMAN_REVIEW`.
+- `AiFilterResultVO` carries optional `clarificationQuestions` so an incomplete but deliverable job can retain follow-up questions.
 
-- [ ] **Step 1: Add table-driven server tests for message categories**
+- [ ] **Step 1: Add tests for the result contract**
 
-Use fixtures with these expected results:
+Assert that the message result exposes the declared category/action enums and stores category, action, reason code, plain-language reason, clarification questions, and evidence. Assert that `AiFilterResultVO` carries `clarificationQuestions` without changing its existing fields. Do not invoke a classifier in this task; `MessageTriageService` is created in Task 2.
 
-```java
-assertEquals(NORMAL_JOB, classify("我们招聘抖音运营专员，负责短视频账号内容和数据复盘"));
-assertEquals(PROMOTION, classify("加微信领取抖音运营课程资料，报名后安排项目"));
-assertEquals(HIGH_RISK, classify("先交培训费才能入职，之后按拉来的人数返佣"));
-assertEquals(UNCERTAIN, classify("岗位需要做账号运营，具体工作方式可以再沟通"));
-assertEquals(PLATFORM_EVENT, classifyWithBodyType("简历已发送", 12));
-```
+- [ ] **Step 2: Run the focused test and confirm the new case fails**
 
-Add negative examples where “收费” means customer-service duties, “账号” means ordinary account operations, and “返佣” is only quoted as an explicit prohibition. A single word must not decide the category.
+Run `mvn -o '-Dtest=MessageTriageResultVOTest,AiFilterResultVOTest' test` from `backend`.
 
-Define the test helper in `MessageTriageServiceTest` as:
-
-```java
-private Category classify(String message) {
-    return service.classify(message, "招聘抖音运营", "候选人简历文本", preference, 1)
-            .getCategory();
-}
-
-private Category classifyWithBodyType(String message, int bodyType) {
-    return service.classify(message, "招聘岗位", "候选人简历文本", preference, bodyType)
-            .getCategory();
-}
-```
-
-- [ ] **Step 2: Add failure-first job action tests**
-
-Assert:
-
-```java
-assertEquals("DELIVER", filterDecision("岗位地点未写明，其他职责与简历方向相符").getRecommendedAction());
-assertEquals("FILTER", filterDecision("先交培训费才能入职").getRecommendedAction());
-assertEquals("FILTER", filterDecision("岗位地点为杭州；用户明确只接受上海").getRecommendedAction());
-assertThrows(ApplicationException.class, this::filterDecisionWithMalformedOrUnavailableModel);
-```
-
-`ApplicationException` is the existing backend transport error type. The test must also assert its message is the stable retryable text `岗位分析暂时不可用，请稍后重试`, without exposing provider details.
-
-Also assert that the legacy action `CHAT_FIRST` normalizes to `DELIVER` with non-empty `clarificationQuestions`, while `HUMAN_REVIEW` is not emitted by new server responses.
-
-`filterDecision(String jobDescription)` builds an `AIFilterParam` with that exact description, the user's stored preference fixture, and the recording AI facade. `filterDecisionWithMalformedOrUnavailableModel()` supplies either an empty response or a facade that throws; both must produce the same typed processing failure.
-
-- [ ] **Step 3: Add frontend action tests**
-
-Assert that `DELIVER` proceeds, `FILTER` skips, and `PROCESSING_ERROR` skips with a retryable user-facing status. Add a regression that an incomplete low-risk result does not get blocked solely because it has clarification questions.
-
-- [ ] **Step 4: Run the focused tests and confirm the new cases fail**
-
-Run the new Java and TypeScript test files only.
-
-Expected: Failures identify missing/old behavior, not compilation problems in unrelated modules.
+Expected: failures identify missing DTO types/fields, not compilation problems in unrelated modules. Do not implement the classifier, frontend gate, or job-filter service behavior in this task.
 
 ### Task 2: Build the server-authoritative HR message classifier
 
 **Files:**
 - Create: `backend/src/main/java/com/maple/ai/job/hunting/service/biz/MessageTriageService.java`
 - Modify: `backend/src/main/java/com/maple/ai/job/hunting/consts/AIPromptStrConstant.java`
+- Modify: `backend/src/main/java/com/maple/ai/job/hunting/service/ai/AIService.java`
+- Modify: `backend/src/main/java/com/maple/ai/job/hunting/service/ai/AIServiceFacade.java`
+- Modify: `backend/src/main/java/com/maple/ai/job/hunting/service/ai/impl/OpenAIService.java`
 - Test: `backend/src/test/java/com/maple/ai/job/hunting/service/biz/MessageTriageServiceTest.java`
+- Test: `backend/src/test/java/com/maple/ai/job/hunting/service/ai/impl/OpenAIServicePromptRolesTest.java`
 
 **Interfaces:**
 - `MessageTriageService.classify(String question, String jobContext, String resumeContent, PreferenceEntity preference, Integer platformBodyType): MessageTriageResultVO`
 - The service uses the existing server-side `AIServiceFacade`; it never returns raw model output to the browser.
+- `AIServiceFacade.askAndAnswer(systemPrompt, userPayload)` uses the configured `ask` provider and current entitlement checks. The classifier policy is a SYSTEM message; external data is a JSON USER message. Providers without role-separated support fail closed and never concatenate the roles as fallback.
 - Strict parsing accepts only the declared enums and bounded text/list fields. Empty, malformed, unsupported, or timed-out model output becomes `PROCESSING_ERROR` / `NO_ACTION_RETRY`.
 
 - [ ] **Step 1: Add tests for strict JSON parsing and invalid-output handling**
 
-Cover valid JSON, extra prose around JSON, missing category, unknown action, empty response, timeout/exception, and oversized evidence. Invalid output must not become `NORMAL_JOB`.
+Add table-driven category fixtures: ordinary Douyin/short-video duties => `NORMAL_JOB`; candidate-directed course/group funnel => `PROMOTION`; recruitment upfront fee plus referral scheme => `HIGH_RISK`; ordinary ambiguous account-operation discussion => `UNCERTAIN`; verified body type 12 => `PLATFORM_EVENT`. Add negative examples where “收费” means customer-service duties, “账号” means ordinary account operations, and “返佣” is explicitly prohibited. A single word must not decide a category.
+
+Also cover valid JSON, extra prose around JSON, missing category, unknown action, empty response, timeout/exception, and oversized evidence. Invalid output must not become `NORMAL_JOB`.
 
 The classifier bypasses the model for verified protocol metadata before calling `AIServiceFacade`: body types `4`, `8`, and `12` return `PLATFORM_EVENT`; body type `14` returns `NEEDS_USER_CONFIRMATION`; body type `1` uses AI classification. Unknown body types use AI classification rather than being silently discarded.
 
 - [ ] **Step 2: Add prompt-boundary tests**
 
-Assert that the prompt:
+Assert that the model request:
 
-- labels HR message, BOSS job details, resume, and user preferences as external data, not instructions;
+- sends classifier rules in SYSTEM role and sends HR message, BOSS job details, resume, and user preferences as distinct JSON values in USER role;
+- does not place user-controlled fields in the SYSTEM message or allow input text to forge/close JSON fields;
 - requires intent/action classification using full context rather than standalone keyword matching;
 - treats missing job facts as `UNCERTAIN` and recommends asking HR, not `HIGH_RISK`;
 - treats ordinary Douyin/short-video/marketing/sales job duties as potentially normal work;
@@ -176,7 +140,9 @@ Assert that the prompt:
 
 - [ ] **Step 3: Implement the minimum classifier**
 
-Build a dedicated prompt and strict parser. Bound the message, job context, resume, and preference independently. Do not log their contents. Return only the typed result and sanitized reason.
+Build a role-separated request and strict parser. Bound the message, job context, resume, and preference independently. Sanitize model-produced reason, clarification, and evidence fields before returning them. Do not log their contents. Return only the typed result and sanitized text. Providers without separate SYSTEM/USER role support must return `PROCESSING_ERROR`; do not fall back to a concatenated user message.
+
+Mocked category fixtures verify prompt forwarding, strict parsing, and server action normalization only. They do not prove live model semantic accuracy.
 
 - [ ] **Step 4: Run the classifier tests**
 
@@ -277,7 +243,6 @@ Expected: ordinary text reaches server classification; structured events and sen
 **Files:**
 - Modify: `backend/src/main/java/com/maple/ai/job/hunting/model/entity/PreferenceEntity.java`
 - Modify: `backend/src/main/java/com/maple/ai/job/hunting/utils/PreferenceDefaults.java`
-- Modify: `backend/src/main/java/com/maple/ai/job/hunting/service/biz/JobFilterService.java`
 - Modify: `backend/src/main/java/com/maple/ai/job/hunting/service/biz/MessageTriageService.java`
 - Modify: `frontend/src/stores/types.ts`
 - Modify: `frontend/src/stores/preferenceDefaults.ts`
@@ -290,6 +255,7 @@ Expected: ordinary text reaches server classification; structured events and sen
 - Add optional editable `promotionReplyPolicy` to the existing JSON preference object.
 - Keep `jobGoal`, `unacceptableConditions`, `clarifyConditions`, `communicationPreferences`, and `marketingReplyE`.
 - The default policy says ordinary promotional messages are silent unless allowed; normal Douyin/short-video/market/sales job duties are not filtered by words alone.
+- These fields govern HR message classification and reply behavior. Job-screening use of job goal, hard exclusions, and clarification preferences is verified in Task 6; the promotion-reply policy must not be treated as a job filter.
 
 - [ ] **Step 1: Write preservation and migration tests**
 
@@ -326,13 +292,17 @@ Expected: old customized preferences survive upgrade; new accounts receive edita
 - Test: `backend/src/test/java/com/maple/ai/job/hunting/service/biz/JobSeekerClonedServiceReplyGuardTest.java`
 - Test: `frontend/tests/filterGate.test.ts`
 
-- [ ] **Step 1: Write model and action contract regressions**
+- [ ] **Step 1: Reuse and complete the job-action regression tests**
 
 Cover low-risk missing salary/location/company details => `DELIVER` with clarification questions; explicit user-condition conflict => `FILTER`; contextual high-risk payment/recruitment scheme => `FILTER`; benign job duties mentioning Douyin, account operations, customer payment handling, or commission in a non-risk context => not filtered solely by term.
+
+The pending tests currently added to `JobFilterServicePromptBoundaryTest.java` and `frontend/tests/filterGate.test.ts` are initial RED drafts for this task. Keep them, correct fixture/assertion defects, and add focused cases for empty response, malformed JSON, missing required fields, model exception, and timeout.
 
 - [ ] **Step 2: Write technical-failure tests**
 
 For empty response, malformed JSON, missing required decision fields, model exception, and timeout, assert the automatic action is skipped and the caller gets an explicit retryable processing error. Do not map these cases to `HUMAN_REVIEW` or `DELIVER`.
+
+Also assert legacy `CHAT_FIRST` => `DELIVER` plus non-empty clarification questions, and new server responses never emit `HUMAN_REVIEW`. Use the stable user-facing message `岗位分析暂时不可用，请稍后重试`; do not expose provider details.
 
 - [ ] **Step 3: Simplify the job screening prompt and normalizer**
 
@@ -419,6 +389,7 @@ Use `adversarial-test-review` after normal verification. Challenge:
 Create a synthetic offline regression set with at least 20 Chinese cases: benign job duties, explicit recruiting funnels, high-risk actions, negated risk statements, user-preference conflicts, incomplete job cards, protocol events, and technical failures. Require every named acceptance fixture in the spec to pass; record false-positive and false-negative cases separately. Do not claim broad classification accuracy from prompt inspection or mocked model responses.
 
 Record each finding with a reproducible test or source path; fix high/critical findings before release.
+Run the same set through the configured model using a controlled classifier-only harness that cannot send BOSS messages. Record provider/model/version and each expected/actual category/action. If the configured model cannot be exercised safely, mark semantic accuracy unverified and block production release.
 
 ### Task 9: Publish candidate and deploy only through protected release flow
 
@@ -443,6 +414,12 @@ Back up the existing JAR, userscript, and install page; upload to staging; verif
 Check authenticated service health, downloaded userscript/install hashes, first login, default preference display, one controlled job-screen result, one ordinary chat, one promotion classification, and one interview-confirmation pause. If any check fails, restore the backed-up artifacts and restart only `ai-job.service`.
 
 ## Deferred After the Initial Controlled Release
+
+### 2026-10-16 受控联调交付记录
+
+维护者再次要求修复后继续推送并上线。此次上线指升级维护者现有实例供本人小范围验收，不代表正式扩大公开服务，不操作真实 BOSS 账号，也不绕过 `main` 的 PR 审核保护。最终代码须通过完整本地测试、独立复审、当前提交 CI/CodeQL 及隔离的真实模型评估；之后才备份、替换产物并仅重启求职应用。真实 BOSS 全流程、平台授权边界和正式公开开放仍分别保留为未完成项。
+
+已验证的交付修复包括完整 JSON 决策解析、风险优先级、分类确认动作、失败重试去重释放、暂停与建会话的串行化、日志正则性能、普通推广显式授权和模型结果日志隐私。离线评估工具不再初始化网络客户端；离线结果只证明解析与协议契约，真实模型准确性必须另行测量。
 
 These items have separate data, product, or scheduling boundaries and must not be silently folded into this implementation:
 

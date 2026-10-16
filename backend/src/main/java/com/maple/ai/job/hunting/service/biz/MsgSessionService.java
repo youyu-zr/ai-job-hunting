@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Nonnull;
 import jakarta.annotation.Resource;
@@ -59,7 +60,9 @@ public class MsgSessionService {
     }
 
     /** Persist the global stop for every currently active conversation. */
+    @Transactional
     public boolean stopUserAllSession(Long userId) {
+        userInfoMapper.selectByIdForUpdate(userId);
         msgSessionMapper.updateUserSessionStatuses(userId,
                 MsgSessionStatusEnum.IN_USE, MsgSessionStatusEnum.MANUALLY_PAUSED);
         return true;
@@ -75,6 +78,24 @@ public class MsgSessionService {
         return true;
     }
 
+    @Transactional
+    public MsgSessionDO getOrCreateSession(Long userId, String jobKey) {
+        // Share the account row lock with pause/resume, without holding it during model calls.
+        userInfoMapper.selectByIdForUpdate(userId);
+        if (msgSessionStop(jobKey)) {
+            return null;
+        }
+        MsgSessionDO session = selectSession(userId, jobKey);
+        if (session == null) {
+            session = new MsgSessionDO(null, null, MsgSessionStatusEnum.IN_USE.getCode(), userId, jobKey);
+            if (msgSessionMapper.insert(session) <= 0) {
+                throw new ApplicationException("会话创建失败，请稍后重试");
+            }
+        }
+        return session;
+    }
+
+    @Transactional
     public boolean setMsgSessionStop(String jobKey, Boolean isStop) {
         Long userId = HeaderContext.getHeader().getUserId();
         if ("globalJobKey".equals(jobKey)) {
@@ -86,6 +107,7 @@ public class MsgSessionService {
             return true;
         }
 
+        userInfoMapper.selectByIdForUpdate(userId);
         MsgSessionDO session = selectSession(userId, jobKey);
         if (Boolean.TRUE.equals(isStop)) {
             UserInfoDO userInfo = userInfoMapper.selectById(userId);
@@ -126,6 +148,7 @@ public class MsgSessionService {
                         MsgSessionStatusEnum.IN_USE));
             }
         }
+        msgSessionMapper.expireOtherSessions(userId, jobKey, session.getId());
         if (openAIService != null) {
             openAIService.restoreSession(session);
         }
@@ -133,6 +156,7 @@ public class MsgSessionService {
         return true;
     }
 
+    @Transactional
     public boolean trySetMsgSessionStop(String jobKey, Boolean isStop) {
         try {
             return setMsgSessionStop(jobKey, isStop);

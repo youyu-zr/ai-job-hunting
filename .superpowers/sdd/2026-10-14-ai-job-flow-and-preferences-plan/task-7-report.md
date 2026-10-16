@@ -24,7 +24,7 @@ Added the 11 requested acceptance scenarios: ordinary Douyin operator role, cour
 
 - On 2026-10-15, `https://aijob.zxpnb.top/install.html` returned HTTP 200 and identified `0.0.116-beta-identity-ready`.
 - On 2026-10-15, `https://aijob.zxpnb.top/ai-job-hunting.user.js` returned HTTP 200 and its userscript header identified `0.0.116-beta-identity-ready`.
-- GitHub PR #2 is OPEN and targets `release/open-source-20261011`. Its remote head remains `0b6b94359b7f5a1125ac2227f332fd0f04a4cd6a`, not current local candidate HEAD `8bd6723`. The passing PR CI and Java/TypeScript CodeQL checks correspond only to that remote old head. No CI result for the current local candidate was confirmed; it has not been pushed, approved, merged, or deployed.
+- GitHub PR #2 is OPEN and targets `release/open-source-20261011`. Its remote head remains `0b6b94359b7f5a1125ac2227f332fd0f04a4cd6a`, not the current locally committed candidate HEAD `03c48f9`; Task 6 implementation, Task 7 wording corrections, and the prelaunch smoke correction are additional uncommitted working-tree changes. The passing PR CI and Java/TypeScript CodeQL checks correspond only to that remote old head. No CI result for the current local candidate was confirmed; it has not been pushed, approved, merged, or deployed.
 - GitHub API reports `main` protected with one required PR approval and required `frontend` and `backend` checks. `release/open-source-20261011` is not protected.
 - BOSS current authorization boundary and real-account end-to-end acceptance remain unresolved.
 
