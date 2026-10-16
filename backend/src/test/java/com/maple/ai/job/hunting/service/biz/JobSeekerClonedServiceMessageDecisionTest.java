@@ -35,6 +35,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -93,14 +94,35 @@ class JobSeekerClonedServiceMessageDecisionTest {
 
         JobSeekerClonedResultVO text = fixture.ask(preview, "job-card-after-text", 1);
         JobSeekerClonedResultVO card = fixture.ask(preview, "job-card-after-text", 14);
-        JobSeekerClonedResultVO repeatedCard = fixture.ask(preview, "job-card-after-text", 14);
 
         assertNull(text.getStopReason());
         assertEquals("USER_CONFIRMATION_REQUIRED", card.getStopReason());
-        assertEquals("DUPLICATE_MESSAGE", repeatedCard.getStopReason());
         assertEquals(List.of("job-card-after-text:true"), fixture.sessions.pausedJobs);
         assertTrue(card.getOperationTypeList() == null || card.getOperationTypeList().isEmpty());
         assertEquals(1, fixture.ai.sessionChatCalls.get());
+    }
+
+    @Test
+    void interviewCardAfterExplicitResumeCannotBeSilencedByTextDeduplication() {
+        Fixture fixture = new Fixture();
+        AtomicBoolean paused = new AtomicBoolean();
+        MsgSessionService sessions = mock(MsgSessionService.class);
+        when(sessions.msgSessionStop("job-resumed-card")).thenAnswer(invocation -> paused.get());
+        when(sessions.trySetMsgSessionStop("job-resumed-card", true)).thenAnswer(invocation -> {
+            paused.set(true);
+            return true;
+        });
+        ReflectionTestUtils.setField(fixture.service, "msgSessionService", sessions);
+
+        assertEquals("USER_CONFIRMATION_REQUIRED",
+                fixture.ask("Interview invitation", "job-resumed-card", 14).getStopReason());
+        assertEquals("SESSION_PAUSED",
+                fixture.ask("Interview invitation", "job-resumed-card", 14).getStopReason());
+        paused.set(false);
+        assertEquals("USER_CONFIRMATION_REQUIRED",
+                fixture.ask("Interview invitation", "job-resumed-card", 14).getStopReason());
+        assertTrue(paused.get());
+        assertEquals(0, fixture.ai.sessionChatCalls.get());
     }
 
     @Test

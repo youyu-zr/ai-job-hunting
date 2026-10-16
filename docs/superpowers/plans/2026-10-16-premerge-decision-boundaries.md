@@ -42,8 +42,9 @@
 - [x] Replace independently actionable body-type partitions with one conversation-level safety decision, preserving interview protocol semantics.
 - [x] Cover independent conversations and recovery after a failed processing callback; do not allow one failure to permanently block a queue.
 - [x] Preserve same-preview interview packets at browser ingress and during batch cleanup; RED: 3 of 45 failed, GREEN: all 45 passed, expanded focused set 78 passed.
-- [x] Reproduce backend cross-window type-1/type-14 text identity collision; RED: one assertion returned DUPLICATE_MESSAGE instead of USER_CONFIRMATION_REQUIRED. Use an interview-only suffix, preserving normal null/type-1 and repeated-card deduplication.
-- [x] Run focused Node tests and then the full frontend suite. Controller: 222 passed. Backend full package: 399, no failures/errors, 2 external-service skips.
+- [x] Reproduce backend cross-window type-1/type-14 text identity collision; RED: one assertion returned DUPLICATE_MESSAGE instead of USER_CONFIRMATION_REQUIRED. The first suffix-only repair still missed a new same-preview interview after explicit resume; a separate stateful RED regression demonstrated that path.
+- [x] Place mandatory type-14 confirmation after the existing account/session pause guard but before ordinary text deduplication. Remove the insufficient suffix; preserve normal null/type-1 deduplication, paused replay rejection, and confirmation after explicit resume.
+- [x] Run focused Node tests and then the full frontend suite. Controller: 222 passed. Final backend full package: 400, no failures/errors, 2 external-service skips.
 
 ## Task 3: Review And Integration
 

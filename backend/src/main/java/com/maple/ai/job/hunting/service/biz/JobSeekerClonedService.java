@@ -106,6 +106,9 @@ public class JobSeekerClonedService {
         if (msgSessionService.msgSessionStop(jobKey) && !msgSessionService.isAiJobGateStopOnly(jobKey)) {
             return new JobSeekerClonedResultVO(JobSeekerClonedAnswerTypeEnum.STOP, "", "SESSION_PAUSED");
         }
+        if (Integer.valueOf(14).equals(jobSeekerClonedParam.getPlatformBodyType())) {
+            return pauseForUserConfirmation(jobKey);
+        }
         // 重复问题过滤
         if (askDuplication(jobSeekerClonedParam)) {
             return new JobSeekerClonedResultVO(JobSeekerClonedAnswerTypeEnum.STOP, "", "DUPLICATE_MESSAGE");
@@ -1227,8 +1230,6 @@ public class JobSeekerClonedService {
 
     private String askDuplicationKey(JobSeekerClonedParam jobSeekerClonedParam) {
         String question = Optional.ofNullable(jobSeekerClonedParam.getQuestion()).orElse("").hashCode() + "";
-        String protocol = Integer.valueOf(14).equals(jobSeekerClonedParam.getPlatformBodyType())
-                ? "-interview-card" : "";
-        return jobSeekerClonedParam.getJobKey() + "-" + question + protocol;
+        return jobSeekerClonedParam.getJobKey() + "-" + question;
     }
 }
