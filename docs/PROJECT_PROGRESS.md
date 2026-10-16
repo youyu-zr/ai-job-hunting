@@ -1,57 +1,41 @@
-# Project Progress
+# 项目进度入口
 
-## 2026-09-11 Release Addendum
+本文件提供简明状态入口；最新交付、验证和部署结果见 [2026-10-16 项目状态核验](PROJECT_STATUS_2026-10-16.md)，真实账号验收见 [验收清单](ACCEPTANCE.md)。以下 2026-10-15 及之前的描述保留为阶段记录，不代表最新部署结论。
 
-- Release: `0.0.108-greeting-filter-cleanup`.
-- Removed fixed greeting-result rejection based on generic opening phrases and removed the hard requirement that generated text repeat the exact job title or a job anchor.
-- Kept only meaningful output validation: non-empty content and protection against unsupported resume facts.
-- Removed the unused legacy `isStrongHumanHandoffSignal` method from the chat service; semantic high-risk handoff logic remains where it is still part of the configured human-review boundary.
-- Rebuilt and synchronized the public userscript. The workspace build, public repository copy, and install artifact share SHA-256 `093B2B930AEB2D26C9E3F15004E3672F97D8DB6580E191A18B68A3573E735766`.
-- Local targeted backend tests, frontend type-check/build, and the available frontend smoke suite passed. Full Maven tests remain environment-blocked by unavailable MySQL name resolution and `localhost:9100`.
-- Production deployment completed on 2026-09-11 after identifying the active host at `15.204.82.147`; the previous SSH target `103.189.141.250` was stale. The backend JAR, userscript, and install page were replaced only after SHA-256 verification.
+## 当前状态：2026-10-16
 
-## 2026-09-08 Release Addendum
+`0.0.118-beta-decision-boundaries` 已于北京时间 14:47:25 升级现有联调实例，仅重启求职应用，其他服务进程与启动时间未变。前端 222 项测试通过，后端 400 项无失败且 2 项外部测试跳过；真实模型加离线评估精确匹配 50/51，唯一类别差异的执行动作一致，不能写成全通过。生产源码 `d36e21b` 的 CI 与 CodeQL 全通过，独立复核已关闭本轮发现的阻断问题。
 
-- Release: `0.0.108-greeting-filter-cleanup`.
-- The public userscript was rebuilt after restoring the BOSS-owned `GeekChatCore` message path used by the previously working delivery flow.
-- The delivery path now distinguishes generated, submitted, platform-confirmed, own-echo-confirmed, and failed states; a legacy BOSS client invocation with no return value is treated as submitted and waits for own-message echo instead of being retried.
-- The greeting Prompt is maintained server-side. It now asks for one concrete job fact plus one resume-supported match, keeps the opening compact and natural, and treats the user-facing field as an optional personal supplement rather than a second system Prompt.
-- Local verification completed: 20 adapter tests, all 18 frontend smoke checks, focused backend tests, `vue-tsc --noEmit`, Vite production build, public userscript verification, and backend packaging.
-- Production deployment and GitHub synchronization completed. Live authenticated BOSS delivery remains the final acceptance test; it must confirm one targeted greeting, no generic platform greeting, and a visible own-message echo or platform confirmation.
+PR #2 的合并目标为 `release/open-source-20261011`，`main` 仍有强制另一账号批准的策略约束，未擅自降低。真实 BOSS 账号流程仍需本人小范围验收，不扩大公开推广。本机下载页校验通过，但脚本直连连续两次约 90 秒超时，国内下载体验是推广前需要优先改善的实际问题。通俗流程说明见 [旧问题与新链路](DECISION_FLOW.md)。
 
-## Current Release
+## 阶段记录：2026-10-15
 
-- Version: `0.0.108-greeting-filter-cleanup`
-- Status: deployed for controlled production acceptance on BOSS
-- Public install: https://aijob.zxpnb.top/ai-job-hunting.user.js
-- GitHub commit: https://github.com/youyu-zr/ai-job-hunting/commit/b02e0b4
-- Public install check on 2026-09-11: served `0.0.108-greeting-filter-cleanup`
-- Remote rollback backup: `/home/ubuntu/ai-job-runtime/backups/pre-0.0.108-greeting-filter-cleanup-20260911_182815`
+**正在交付 `0.0.117-beta-ai-seat-recovery` 候选。**代码已完成本地提交；最终远端提交、CI 与线上版本见[项目状态](PROJECT_STATUS_2026-10-14.md)。维护者已要求继续推送和上线小范围联调，`main` 仍须由本人审核，不直接推送或绕过保护。
 
-## Root Cause
+PR #2 跟踪本次候选。旧 head `0b6b943...` 的通过结果只作为历史记录，新候选须重新运行 CI/CodeQL。远端三笔旧提交与本地对应提交已验证为相同内容；合并提交保留双方历史，没有强推。BOSS 当前授权边界和真实账号验收仍未完成。
 
-- BOSS新版职位页使用 `GeekChatCore 2.0.3 + SharedWorker`。
-- 职位页可能显示 `DISCONNECTED`，但 SharedWorker 已就绪；旧逻辑把页面状态误当成唯一发送条件。
-- `socketConnect.sendTextMessage()` 内部会异步发送，但包装函数固定返回 `null`，不能作为发送回执。
-- 旧版固定招呼语之所以偶尔成功，是 BOSS 原生建联先创建了会话，随后旧 protobuf 通道才有机会发送第二条消息。
+本轮已实现浏览器消息传输、服务端 AI 分类、偏好默认值与迁移、岗位动作和故障处理。独立复核进一步发现模型多结果解析、本人确认动作和消息恢复边界问题；修复须有失败复现和回归测试，不能用前一轮测试结果替代修复后的验证。
 
-## Changes
+上述行为描述针对本地候选，不代表线上 `0.0.116` 已具备，也不是模型准确率或生产验收证明。文档新增的 11 个语义场景是待执行验收用例，尚未记录为通过。
 
-- 投递后主动初始化 BOSS SharedWorker 会话通道，不再依赖用户先打开聊天页。
-- 识别“Worker 已就绪但页面状态滞后”的合法状态。
-- 文本消息优先调用底层 `SharedWorkerClient.sendTextMessage()`，等待真实 Promise 结果。
-- 保留目标岗位、公司、简历和求职偏好生成岗位化招呼语的原流程。
-- 不恢复固定“你好”或 BOSS 默认招呼语，避免污染和重复发送。
-- 仍以目标会话中的己方消息回执作为最终确认条件。
+## 发布前顺序
 
-## Verification
+1. 完成独立复核发现的阻断修复与复测；
+2. 运行最终候选完整前后端测试、构建、发布检查和独立复审，并补做真实模型的隔离分类评估；
+3. 推送当前确切候选并确认 PR 指向新 head；不修改 `main`；
+4. 等待该 head 的 CI/CodeQL、维护者审核和合并；旧 head 的检查不计入；
+5. 核实 BOSS 当前授权边界，并由账号本人完成真实账号流程验收；
+6. 全部门槛通过后，备份线上产物、原子部署、只重启目标应用服务并复核线上版本/哈希，保留回滚方案。
 
-- Adapter regression tests: 16 passed.
-- `vue-tsc --noEmit`: passed.
-- Vite production build: passed.
-- 服务器 `ai-job.service` active，9100 和 6768 正常监听。
-- 剩余验收：更新脚本后，在已登录 BOSS 环境单职位投递一次，确认真实消息回执。
+**状态口径：**本地测试、远端 CI、维护者批准、真实 BOSS 账号验收、已部署分别记录。任何一项未完成都不写成正式发布。
 
-## Next Action
+## 历史部署记录
 
-安装或更新脚本到 `0.0.108-greeting-filter-cleanup`，禁用旧版本，刷新 BOSS，将单次投递数量设为 `1`，再观察岗位化招呼语和发送回执。
+以下部署记录发生于 2026-10-13 或更早，仅保留作时间线，不代表今天的生产状态：
+
+- 2026-10-13：历史记录称 `0.0.116-beta-identity-ready` 部署，并记录当时服务状态。
+- 2026-10-12：历史记录称 BOSS 来源 CORS 预检修复并部署；首次真实账号验收仍未完成。
+- 2026-10-09：曾部署 `0.0.113-beta-auto-grant`，后续版本已取代。
+- 历史健康检查在未登录时返回 `401 not login`，只说明请求到达认证层，不是登录后业务健康证明。
+
+2026-10-15 已通过现有 OVH SSH 密钥重新确认求职服务、Nginx、MariaDB、Redis 与 Sub2API 均在运行。此次只读检查没有重启服务，也不证明真实账号业务验收通过；最终部署和回滚证据需另行记录。

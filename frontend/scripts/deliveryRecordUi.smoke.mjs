@@ -1,0 +1,41 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+
+const source = readFileSync(new URL('../src/components/ui/AiJob.vue', import.meta.url), 'utf8');
+const queries = readFileSync(new URL('../src/logging/queries.ts', import.meta.url), 'utf8');
+const eventStream = readFileSync(new URL('../src/logging/eventStream.ts', import.meta.url), 'utf8');
+const record = readFileSync(new URL('../src/logging/record.ts', import.meta.url), 'utf8');
+const presentation = readFileSync(new URL('../src/logging/presentation.ts', import.meta.url), 'utf8');
+
+assert.doesNotMatch(source, /onMounted\(\(\) => \{\s*updateLatestPushRecords\(\);?\s*}\);/s);
+assert.doesNotMatch(source, /import \{inject, ref, Ref, onMounted, onUnmounted\} from "vue";/);
+assert.match(source, /const startRecordsUpdate = \(\) => \{[\s\S]*?updateLatestPushRecords\(\);/);
+assert.match(source, /v-show="pushRecordsVisible" class="fixed-stop-button"/);
+assert.match(source, /实时投递记录/);
+assert.match(source, /v-if="pushStatus !== PushStatus\.PUSHING"/);
+assert.match(source, /@click="closePushRecords"/);
+assert.match(source, /const pushRecordsVisible = ref\(false\);/);
+assert.match(source, /const closePushRecords = \(\) => \{[\s\S]*?pushRecordsVisible\.value = false;/);
+assert.match(source, /let pushSessionStartEventId: string \| null = null;/);
+assert.match(source, /pushSessionStartEventId = logRecorder\.getLatestEventId\(\);/);
+assert.match(source, /latestPushRecords\.value = \[\];[\s\S]*?pushRecordsVisible\.value = true;[\s\S]*?pushStatus\.value = PushStatus\.PUSHING[\s\S]*?startRecordsUpdate\(\);/s);
+assert.match(source, /pushRecordsVisible\.value = true;[\s\S]*?pushStatus\.value = PushStatus\.PAUSE;/s);
+assert.match(source, /getLatestPushLogs\(logRecorder, 10, pushSessionStartEventId\)/);
+assert.match(source, /import \{LoginStore, pushResultCount, UserStore\} from "\.\.\/\.\.\/stores";/);
+assert.match(source, /const CURRENT_SCRIPT_VERSION = typeof __APP_VERSION__ !== 'undefined' \? __APP_VERSION__ : '0\.0\.0-unknown';/);
+assert.doesNotMatch(source, /产品列表|更多产品|优惠码|generate\/order\/group|handlerAISeatClick|ProductStore/);
+assert.match(eventStream, /getLatestPushLogs\(source: LogEventSource, limit = 10, startEventId: string \| null = null\)/);
+assert.match(eventStream, /const logsInWriteOrder = readLogsInWriteOrder\(source\);/);
+assert.match(eventStream, /const startIndex = startEventId[\s\S]*?logsInWriteOrder\.findIndex/);
+assert.match(eventStream, /"投递成功"/);
+assert.match(source, /\.fixed-stop-button\s*\{[\s\S]*?width:\s*min\(420px,\s*calc\(100vw\s*-\s*32px\)\)/);
+assert.match(source, /\.push-records-container\s*\{[\s\S]*?width:\s*100%;[\s\S]*?height:\s*240px/);
+assert.match(source, /\.push-records-content\s*\{[\s\S]*?flex:\s*1(?:\s+1\s+auto)?;[\s\S]*?min-height:\s*0/);
+assert.match(source, /\.record-message\s*\{[\s\S]*?white-space:\s*pre-wrap;[\s\S]*?overflow-wrap:\s*anywhere/);
+assert.doesNotMatch(source, /\.log-message\s*\{[\s\S]*?max-height:\s*240px/);
+assert.doesNotMatch(source, /\.log-message\s*\{[\s\S]*?overflow-y:\s*auto/);
+assert.match(record, /eventId: LogRecorder\.newEventId\(\)/);
+assert.match(presentation, /load user preference config/);
+assert.match(presentation, /正在加载用户偏好/);
+
+console.log('delivery record UI smoke: PASS');

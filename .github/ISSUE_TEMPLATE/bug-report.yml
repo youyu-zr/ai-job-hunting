@@ -1,0 +1,41 @@
+name: Bug report
+description: 报告可复现的问题
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请不要提交真实简历、BOSS Cookie、页面 token、手机号、邮箱、聊天记录、API Key 或生产日志。
+  - type: textarea
+    id: problem
+    attributes:
+      label: 问题描述
+      description: 发生了什么？预期是什么？
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      description: 请使用虚构或脱敏数据，按 1、2、3 写出步骤。
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: 版本
+      placeholder: 例如 0.0.114-beta-consent
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 环境
+      description: 浏览器、脚本管理器、操作系统，以及托管或自部署。
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 脱敏日志或测试结果
+      description: 只粘贴脱敏文本，不要上传凭据或真实个人资料。
