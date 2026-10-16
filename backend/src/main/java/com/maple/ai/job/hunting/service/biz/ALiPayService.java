@@ -220,7 +220,7 @@ public class ALiPayService {
 
         OrderDO orderDO = orderMapper.selectById(orderId);
         if (orderDO == null) {
-            log.error("订单[{}]不存在", orderId);
+            log.error("支付回调对应订单不存在");
             return;
         }
 
