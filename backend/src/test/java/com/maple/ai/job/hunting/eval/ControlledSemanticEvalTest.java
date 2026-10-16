@@ -212,8 +212,52 @@ class ControlledSemanticEvalTest {
                     ControlledSemanticEval.classify(fixture, api, "OFFLINE_CONTRACT_ONLY");
             assertEquals(fixture.expectedCategory.name(), outcome.category(), fixture.id);
             assertEquals(fixture.expectedAction.name(), outcome.action(), fixture.id);
-            assertEquals(fixture.kind.equals("PROTOCOL") || fixture.kind.equals("INPUT_GUARD") ? 0 : 1,
+            assertEquals(fixture.kind.equals("PROTOCOL") || fixture.kind.equals("INPUT_GUARD") ? 0
+                            : fixture.id.equals("parser_malformed") || fixture.id.equals("parser_duplicate") ? 2 : 1,
                     api.requests.get(), fixture.id);
+        }
+    }
+
+    @Test
+    void repairedFormatFailureRemainsVisibleAndCountsBothRequests() throws Exception {
+        ControlledSemanticEval.Fixture fixture = ControlledSemanticEval.fixtures().stream()
+                .filter(f -> f.id.equals("parser_normal")).findFirst().orElseThrow();
+        ControlledSemanticEval.OfflineApi syntheticResponse = new ControlledSemanticEval.OfflineApi(fixture);
+        ControlledSemanticEval.EvalApi api = new ControlledSemanticEval.EvalApi() {
+            @Override
+            String askAndAnswer(String systemPrompt, String userPrompt, String model) {
+                int attempt = requests.incrementAndGet();
+                assertTrue(attempt <= 2);
+                return attempt == 1 ? "synthetic invalid json"
+                        : syntheticResponse.askAndAnswer(systemPrompt, userPrompt, model);
+            }
+        };
+
+        ControlledSemanticEval.Outcome outcome =
+                ControlledSemanticEval.classify(fixture, api, "OFFLINE_CONTRACT_ONLY");
+
+        assertEquals("NORMAL_JOB", outcome.category());
+        assertEquals("REPLY", outcome.action());
+        assertEquals(2, api.requests.get());
+        JsonNode record = new ObjectMapper().valueToTree(outcome);
+        assertEquals("RESPONSE_JSON_INVALID", record.path("firstDiagnosticCode").asText());
+        assertEquals("NONE", record.path("diagnosticCode").asText());
+        assertTrue(record.path("repairAttempted").asBoolean());
+    }
+
+    @Test
+    void repairHistorySurvivesTimeoutAndUnexpectedExecutionFailure() {
+        var trace = java.util.List.of(com.maple.ai.job.hunting.service.biz.MessageTriageService
+                .DiagnosticCode.RESPONSE_JSON_INVALID_REPAIR_REQUESTED);
+        for (ControlledSemanticEval.Outcome outcome : java.util.List.of(
+                ControlledSemanticEval.Outcome.timeout("SYNTHETIC_ONLY", trace),
+                ControlledSemanticEval.Outcome.failure("SYNTHETIC_ONLY", trace))) {
+            assertEquals("PROCESSING_ERROR", outcome.category());
+            assertEquals("NO_ACTION_RETRY", outcome.action());
+            assertEquals("RESPONSE_JSON_INVALID", outcome.firstDiagnosticCode());
+            assertTrue(outcome.repairAttempted());
+            assertTrue(java.util.Set.of("REQUEST_TIMEOUT", "EVAL_EXECUTION_FAILED")
+                    .contains(outcome.diagnosticCode()));
         }
     }
 
@@ -237,9 +281,15 @@ class ControlledSemanticEvalTest {
                 assertEquals(16, record.path("counts").path("offlineChecked").asInt());
                 assertEquals(31, record.path("counts").path("semanticSkipped").asInt());
                 assertEquals(0, record.path("counts").path("liveRequests").asInt());
+                assertEquals(12, record.path("counts").path("offlineRequests").asInt());
+                assertEquals(0, record.path("counts").path("semanticRepairAttempts").asInt());
+                assertEquals(0, record.path("counts").path("semanticFirstAttemptFailed").asInt());
             } else {
                 assertEquals(failures.getOrDefault(record.path("caseId").asText(), "NONE"),
                         record.path("diagnosticCode").asText(), record.path("caseId").asText());
+                assertEquals(record.path("diagnosticCode").asText(), record.path("firstDiagnosticCode").asText());
+                assertEquals(java.util.Set.of("parser_malformed", "parser_duplicate")
+                        .contains(record.path("caseId").asText()), record.path("repairAttempted").asBoolean());
                 assertFalse(record.has("response"));
                 assertFalse(record.has("reason"));
                 assertFalse(record.has("exception"));

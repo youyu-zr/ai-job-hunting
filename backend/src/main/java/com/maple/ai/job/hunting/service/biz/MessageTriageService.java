@@ -51,6 +51,7 @@ public class MessageTriageService {
         RESPONSE_EMPTY,
         RESPONSE_TOO_LARGE,
         RESPONSE_JSON_INVALID,
+        RESPONSE_JSON_INVALID_REPAIR_REQUESTED,
         RESPONSE_FIELDS_INVALID,
         RESPONSE_CATEGORY_INVALID,
         RESPONSE_ACTION_INVALID,
@@ -63,7 +64,7 @@ public class MessageTriageService {
         RESULT_PROCESSING_FAILED
     }
 
-    /** Optional fixed-code observer; no input, model content, or exception details. */
+    /** Optional fixed-code observer for rejection/repair events; never includes model content. */
     protected void onDiagnostic(DiagnosticCode code) {
     }
 
@@ -93,12 +94,27 @@ public class MessageTriageService {
             if (StringUtils.isBlank(userPayload)) {
                 return processingError(DiagnosticCode.PAYLOAD_REJECTED);
             }
-            failureStage = DiagnosticCode.MODEL_CALL_FAILED;
-            String modelResponse = aiServiceFacade.askAndAnswer(
-                    AIPromptStrConstant.AI_MESSAGE_TRIAGE_PROMPT,
-                    userPayload);
-            failureStage = DiagnosticCode.RESULT_PROCESSING_FAILED;
-            ParsedDecision decision = parseResponse(modelResponse);
+            ParsedDecision decision;
+            for (int attempt = 0; ; attempt++) {
+                if (attempt != 0 && Thread.currentThread().isInterrupted()) {
+                    throw new InvalidModelResponse(DiagnosticCode.RESPONSE_JSON_INVALID);
+                }
+                failureStage = DiagnosticCode.MODEL_CALL_FAILED;
+                String modelResponse = aiServiceFacade.askAndAnswer(
+                        AIPromptStrConstant.AI_MESSAGE_TRIAGE_PROMPT, userPayload);
+                failureStage = DiagnosticCode.RESULT_PROCESSING_FAILED;
+                try {
+                    decision = parseResponse(modelResponse);
+                    break;
+                } catch (InvalidModelResponse rejected) {
+                    if (rejected.code != DiagnosticCode.RESPONSE_JSON_INVALID
+                            || attempt != 0 || Thread.currentThread().isInterrupted()) {
+                        throw rejected;
+                    }
+                    // One repair uses the identical trusted prompt and original payload, never model text.
+                    emitDiagnostic(DiagnosticCode.RESPONSE_JSON_INVALID_REPAIR_REQUESTED);
+                }
+            }
             if (decision.category() == Category.PROCESSING_ERROR) {
                 return processingError(DiagnosticCode.MODEL_REPORTED_ERROR);
             }
@@ -364,13 +380,17 @@ public class MessageTriageService {
     }
 
     private MessageTriageResultVO processingError(DiagnosticCode code) {
+        emitDiagnostic(code);
+        return result(Category.PROCESSING_ERROR, Action.NO_ACTION_RETRY,
+                "AI_PROCESSING_ERROR", "消息暂时无法安全分析，请稍后重试。");
+    }
+
+    private void emitDiagnostic(DiagnosticCode code) {
         try {
             onDiagnostic(code);
         } catch (RuntimeException ignored) {
-            // Observability must not change the fail-closed business result.
+            // Observability must not change the bounded repair or fail-closed result.
         }
-        return result(Category.PROCESSING_ERROR, Action.NO_ACTION_RETRY,
-                "AI_PROCESSING_ERROR", "消息暂时无法安全分析，请稍后重试。");
     }
 
     private static final class InvalidModelResponse extends RuntimeException {

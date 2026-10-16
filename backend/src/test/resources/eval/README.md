@@ -133,7 +133,14 @@ java -Xmx192m \
   because this harness cannot reproduce them safely. Production endpoint
   validation and bounded-response HTTP helpers are reused.
 - Default concurrency is 1, maximum 3. Each wave has a hard 60-second deadline;
-  transport read timeout is 60 seconds and there is one attempt, no retries.
+  transport read timeout is 60 seconds and each transport call has one attempt.
+  The production classifier allows exactly one additional request only after
+  `RESPONSE_JSON_INVALID`, with the identical trusted system prompt and original
+  payload. Rejected model text is never sent back. Both responses use the same
+  strict parser/action guards; all other failures and valid decisions do not
+  retry. A second failure remains `PROCESSING_ERROR/NO_ACTION_RETRY`.
+  The repair shares the existing wave deadline and is not started for an
+  interrupted caller. `liveRequests` counts actual calls, including repairs.
   After a timeout, no later waves are dispatched. Remaining cases are reported
   `NOT_EVALUATED` and the run fails. Evaluate rejects a JVM heap above 192 MiB.
 - All fixture resumes are absent. Salary/city/contact preferences are explicitly
@@ -144,8 +151,8 @@ java -Xmx192m \
 ## Reports and Exit Codes
 
 Evaluation emits JSON lines containing only case ID, expected/actual category
-and action, response model/fingerprint identifiers, and a fixed `diagnosticCode`,
-followed by counts.
+and action, response model/fingerprint identifiers, fixed `diagnosticCode` and
+`firstDiagnosticCode`, and boolean `repairAttempted`, followed by counts.
 If a response omits the version/fingerprint it is `UNREPORTED`, never invented.
 Identifiers are length/character constrained. Raw config, credentials,
 requests, responses, reasons, stack traces, and model error bodies are never
@@ -154,6 +161,14 @@ printed. Library logging is disabled in the standalone main.
 Failure diagnostics come from the production classifier's optional enum-only
 observer. Business results still use `PROCESSING_ERROR`, `NO_ACTION_RETRY`, and
 `AI_PROCESSING_ERROR`; no parser rejection, size bound, or action guard is relaxed.
+The observer also emits `RESPONSE_JSON_INVALID_REPAIR_REQUESTED` before the
+single repair. The report retains `firstDiagnosticCode=RESPONSE_JSON_INVALID`
+even if the repair succeeds (`diagnosticCode=NONE`) or hits the wave deadline.
+`semanticFirstAttemptPassed`/`semanticFirstAttemptFailed` keep initial results
+separate from final counts. `semanticRepairAttempts` records requested repairs;
+`semanticRepairRecovered` counts repairs that returned a strictly valid result,
+not necessarily the expected semantic decision. Previous live results are not
+replaced by a later repaired run.
 `RESPONSE_EMPTY`, `RESPONSE_TOO_LARGE`, `RESPONSE_JSON_INVALID`,
 `RESPONSE_FIELDS_INVALID`, `RESPONSE_CATEGORY_INVALID`, `RESPONSE_ACTION_INVALID`,
 `RESPONSE_REASON_CODE_INVALID`, `RESPONSE_REASON_INVALID`,

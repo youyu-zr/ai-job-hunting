@@ -37,11 +37,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static com.maple.ai.job.hunting.eval.EvalProviderConfig.JSON;
 import static com.maple.ai.job.hunting.eval.EvalProviderConfig.require;
@@ -100,7 +100,8 @@ public final class ControlledSemanticEval {
                     "semanticSkipped", "liveRequests", "passed", "failed", "riskFalsePositives",
                     "riskFalseNegatives", "promotionFalsePositives", "promotionFalseNegatives",
                     "categoryMismatches", "actionMismatches",
-                    "processingErrors", "requestTimeouts")) {
+                    "processingErrors", "requestTimeouts", "semanticFirstAttemptPassed",
+                    "semanticFirstAttemptFailed", "semanticRepairAttempts", "semanticRepairRecovered")) {
                 counts.put(key, 0);
             }
             List<Fixture> semantic = new ArrayList<>();
@@ -150,9 +151,12 @@ public final class ControlledSemanticEval {
                 }
                 long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(REQUEST_SECONDS);
                 List<Future<Outcome>> pending = new ArrayList<>();
+                List<List<DiagnosticCode>> diagnostics = new ArrayList<>();
                 for (int i = start; i < end; i++) {
                     Fixture fixture = fixtures.get(i);
-                    pending.add(workers.submit(() -> classify(fixture, api, config.model())));
+                    List<DiagnosticCode> trace = new CopyOnWriteArrayList<>();
+                    diagnostics.add(trace);
+                    pending.add(workers.submit(() -> classify(fixture, api, config.model(), trace)));
                 }
                 for (int i = 0; i < pending.size(); i++) {
                     Future<Outcome> future = pending.get(i);
@@ -164,11 +168,11 @@ public final class ControlledSemanticEval {
                     } catch (java.util.concurrent.TimeoutException ignored) {
                         future.cancel(true);
                         add(counts, "requestTimeouts", 1);
-                        outcome = Outcome.timeout(config.model());
+                        outcome = Outcome.timeout(config.model(), diagnostics.get(i));
                         // Never enqueue more calls while a timed-out transport might still be unwinding.
                         aborted = true;
                     } catch (java.util.concurrent.ExecutionException ignored) {
-                        outcome = Outcome.failure(config.model());
+                        outcome = Outcome.failure(config.model(), diagnostics.get(i));
                     }
                     account(report, fixtures.get(start + i), outcome, counts, true);
                 }
@@ -181,6 +185,11 @@ public final class ControlledSemanticEval {
     }
 
     static Outcome classify(Fixture fixture, EvalApi api, String model) throws Exception {
+        return classify(fixture, api, model, new CopyOnWriteArrayList<>());
+    }
+
+    private static Outcome classify(Fixture fixture, EvalApi api, String model,
+                                    List<DiagnosticCode> diagnostics) throws Exception {
         api.metadata.remove();
         AIServiceFacade routingOnly = new AIServiceFacade() {
             @Override
@@ -193,11 +202,10 @@ public final class ControlledSemanticEval {
                 throw new IllegalStateException("ROLE_SEPARATION_REQUIRED");
             }
         };
-        AtomicReference<DiagnosticCode> diagnostic = new AtomicReference<>();
         MessageTriageService triage = new MessageTriageService() {
             @Override
             protected void onDiagnostic(DiagnosticCode code) {
-                diagnostic.set(code);
+                diagnostics.add(code);
             }
         };
         Field field = MessageTriageService.class.getDeclaredField("aiServiceFacade");
@@ -209,12 +217,14 @@ public final class ControlledSemanticEval {
                 fixture.message.repeat(fixture.messageRepeat) + fixture.messageSuffix, fixture.jobContext, "",
                 preference, fixture.bodyType);
         String[] metadata = api.metadata.get();
-        String diagnosticCode = diagnostic.get() == null
+        List<DiagnosticCode> observed = List.copyOf(diagnostics);
+        DiagnosticCode last = observed.isEmpty() ? null : observed.get(observed.size() - 1);
+        String diagnosticCode = last == null || last == DiagnosticCode.RESPONSE_JSON_INVALID_REPAIR_REQUESTED
                 ? result.getCategory() == Category.PROCESSING_ERROR ? "DIAGNOSTIC_UNAVAILABLE" : "NONE"
-                : diagnostic.get().name();
-        return new Outcome(result.getCategory().name(), result.getAction().name(),
+                : last.name();
+        return Outcome.withDiagnostics(result.getCategory().name(), result.getAction().name(),
                 metadata == null ? model : metadata[0], metadata == null ? UNREPORTED : metadata[1],
-                diagnosticCode);
+                diagnosticCode, observed);
     }
 
     private static void account(PrintStream report, Fixture fixture, Outcome result,
@@ -231,6 +241,11 @@ public final class ControlledSemanticEval {
             add(counts, "categoryMismatches", categoryMatches ? 0 : 1);
             add(counts, "actionMismatches", actionMatches ? 0 : 1);
             if (semantic) {
+                add(counts, !result.repairAttempted && categoryMatches && actionMatches
+                        ? "semanticFirstAttemptPassed" : "semanticFirstAttemptFailed", 1);
+                add(counts, "semanticRepairAttempts", result.repairAttempted ? 1 : 0);
+                add(counts, "semanticRepairRecovered",
+                        result.repairAttempted && !result.category.equals("PROCESSING_ERROR") ? 1 : 0);
                 add(counts, "processingErrors", result.category.equals("PROCESSING_ERROR") ? 1 : 0);
                 add(counts, "riskFalseNegatives",
                         fixture.expectedCategory == Category.HIGH_RISK && !result.category.equals("HIGH_RISK") ? 1 : 0);
@@ -251,6 +266,8 @@ public final class ControlledSemanticEval {
         record.put("model", result.model);
         record.put("version", result.version);
         record.put("diagnosticCode", result.diagnosticCode);
+        record.put("firstDiagnosticCode", result.firstDiagnosticCode);
+        record.put("repairAttempted", result.repairAttempted);
         emit(report, record);
     }
 
@@ -307,17 +324,30 @@ public final class ControlledSemanticEval {
         public boolean transportFailure;
     }
 
-    record Outcome(String category, String action, String model, String version, String diagnosticCode) {
+    record Outcome(String category, String action, String model, String version, String diagnosticCode,
+                   String firstDiagnosticCode, boolean repairAttempted) {
         static Outcome skipped(String model) {
-            return new Outcome("NOT_EVALUATED", "NOT_EVALUATED", model, UNREPORTED, "NONE");
+            return withDiagnostics("NOT_EVALUATED", "NOT_EVALUATED", model, UNREPORTED, "NONE", List.of());
         }
 
-        static Outcome failure(String model) {
-            return new Outcome("PROCESSING_ERROR", "NO_ACTION_RETRY", model, UNREPORTED, "EVAL_EXECUTION_FAILED");
+        static Outcome failure(String model, List<DiagnosticCode> diagnostics) {
+            return withDiagnostics("PROCESSING_ERROR", "NO_ACTION_RETRY", model, UNREPORTED,
+                    "EVAL_EXECUTION_FAILED", diagnostics);
         }
 
-        static Outcome timeout(String model) {
-            return new Outcome("PROCESSING_ERROR", "NO_ACTION_RETRY", model, UNREPORTED, "REQUEST_TIMEOUT");
+        static Outcome timeout(String model, List<DiagnosticCode> diagnostics) {
+            return withDiagnostics("PROCESSING_ERROR", "NO_ACTION_RETRY", model, UNREPORTED,
+                    "REQUEST_TIMEOUT", diagnostics);
+        }
+
+        static Outcome withDiagnostics(String category, String action, String model, String version,
+                                       String diagnosticCode, List<DiagnosticCode> diagnostics) {
+            List<DiagnosticCode> snapshot = List.copyOf(diagnostics);
+            boolean repaired = snapshot.contains(DiagnosticCode.RESPONSE_JSON_INVALID_REPAIR_REQUESTED);
+            String first = snapshot.isEmpty() ? diagnosticCode
+                    : snapshot.get(0) == DiagnosticCode.RESPONSE_JSON_INVALID_REPAIR_REQUESTED
+                    ? DiagnosticCode.RESPONSE_JSON_INVALID.name() : snapshot.get(0).name();
+            return new Outcome(category, action, model, version, diagnosticCode, first, repaired);
         }
     }
 
