@@ -5,7 +5,6 @@ import com.maple.ai.job.hunting.frame.exp.ApplicationException;
 import com.maple.ai.job.hunting.service.ai.AIService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.MockMakers;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.prompt.Prompt;
@@ -97,7 +96,7 @@ class OpenAIServicePromptRolesTest {
     }
 
     private static RequestHarness requestHarness() throws Exception {
-        OpenAiApi api = mock(OpenAiApi.class, withSettings().mockMaker(MockMakers.SUBCLASS));
+        OpenAiApi api = mock(OpenAiApi.class);
         ChatCompletion completion = new ObjectMapper().readValue("""
                 {"id":"synthetic","model":"synthetic-model","object":"chat.completion","created":0,
                  "usage":{"prompt_tokens":0,"completion_tokens":0,"total_tokens":0},
