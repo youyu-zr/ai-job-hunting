@@ -2,6 +2,7 @@ import axiosOriginal from "axios";
 import {Message, MessageRead, TechwolfChatProtocol} from "../webSocket/protobuf";
 import {MessageCache, Tools} from "./utils";
 import {MessageMergeBatch, MessageMergeQueue} from "./messageMerge";
+import {batchPlatformBodyTypeOf} from "./messageBatchMetadata";
 import {UserStore} from '../stores'
 import {rememberAiSeatStatus} from '../stores/remote'
 import logging from "../logging";
@@ -24,7 +25,6 @@ import {
     shouldTreatPendingConversationAsReplyable,
 } from "./pendingConversation";
 import {
-    allowedPlatformBodyTypeOf,
     bodyTypeOf,
     messageIdOf,
     msgTypeOf,
@@ -36,15 +36,18 @@ import {normalizedMessageBatch} from "../webSocket/messageBody";
 let userStore = null as any;
 const remotelyPausedJobs = new Set<string>();
 
+type BossMessageMergeItem = {
+    msgObj: TechwolfChatProtocol;
+    bossUserInfo: BossUserInfo;
+    cacheText: string;
+};
+
 export class BossOption {
 
     static bossUserInfoMap: Map<number, BossUserInfo> = new Map();
     static logRecorder: LogRecorder = new LogRecorder('recorder');
     static messageCache = new MessageCache();
-    private static readonly messageMergeQueue = new MessageMergeQueue<{
-        msgObj: TechwolfChatProtocol;
-        bossUserInfo: BossUserInfo;
-    }>(3500);
+    private static readonly messageMergeQueue = new MessageMergeQueue<BossMessageMergeItem>(3500);
     private static unreadScanStarted = false;
     private static unreadScanRunning = false;
     private static unreadScanCache: Map<string, number> = new Map();
@@ -252,25 +255,29 @@ export class BossOption {
             logger.info("AI坐席未开启，不处理消息");
             return false;
         }
+        // A text preview must not consume a structured interview's confirmation.
+        const cacheText = bodyTypeOf(msgObj) === 14
+            ? `\0interview-card:${JSON.stringify([String(messageIdOf(msgObj) ?? ''), text])}`
+            : text;
         const senderId = senderIdOf(msgObj);
         if (senderId && senderId !== String(bossId)) {
             logger.warn("消息发送者与当前联系人不匹配，停止处理");
             BossOption.messageCache.markMessageCompletedWithoutReply(
                 bossId,
-                text,
+                cacheText,
                 BossOption.MESSAGE_COMPLETED_TTL,
             );
             return true;
         }
-        if (BossOption.messageCache.isMessageProcessed(bossId, text)) {
+        if (BossOption.messageCache.isMessageProcessed(bossId, cacheText)) {
             logging.trace("【跳过重复消息】:", bossId, text);
             return true;
         }
         // 先标记再进入合并窗口，避免 WebSocket 与未读补扫同时触发同一句消息造成重复回复。
-        BossOption.messageCache.markMessageAsProcessed(bossId, text, BossOption.MESSAGE_IN_FLIGHT_TTL)
+        BossOption.messageCache.markMessageAsProcessed(bossId, cacheText, BossOption.MESSAGE_IN_FLIGHT_TTL)
 
         if (!this.preHandlerMsgByMsgType(msgObj, text)) {
-            BossOption.markMessageAsCompleted(bossId, text);
+            BossOption.markMessageAsCompleted(bossId, cacheText);
             return true;
         }
 
@@ -278,7 +285,7 @@ export class BossOption {
         try {
             bossUserInfo = await this.getBossUserInfoByBossId(bossId);
         } catch (e) {
-            BossOption.messageCache.removeMessage(bossId, text);
+            BossOption.messageCache.removeMessage(bossId, cacheText);
             BossOption.logRecorder.error("【处理Boss消息-失败】获取联系人信息异常", e);
             return false;
         }
@@ -286,21 +293,21 @@ export class BossOption {
             const bodyType = bodyTypeOf(msgObj);
             // 15 => 过滤活动通知
             if (bodyType === 15) {
-                BossOption.markMessageAsCompleted(bossId, text);
+                BossOption.markMessageAsCompleted(bossId, cacheText);
                 return true;
             }
-            BossOption.messageCache.removeMessage(bossId, text);
+            BossOption.messageCache.removeMessage(bossId, cacheText);
             BossOption.logRecorder.error("【处理Boss消息-失败】无法获取联系人信息", text)
             return false;
         }
 
         if (!this.preHandlerMsgByBodyType(msgObj, bossUserInfo, text)) {
-            BossOption.markMessageAsCompleted(bossId, text);
+            BossOption.markMessageAsCompleted(bossId, cacheText);
             return true;
         }
-        if (BossOption.messageCache.hasPendingOperation(bossId, text, 'SEND_RESUME')) {
+        if (BossOption.messageCache.hasPendingOperation(bossId, cacheText, 'SEND_RESUME')) {
             logging.warn("【简历发送结果不确定】为避免重复发送，已停止自动重试，请先人工检查该会话 bossId:", bossId);
-            BossOption.markMessageAsCompleted(bossId, text);
+            BossOption.markMessageAsCompleted(bossId, cacheText);
             return true;
         }
         logger.debug("接收消息解码内容：", text)
@@ -309,14 +316,14 @@ export class BossOption {
         return BossOption.messageMergeQueue.enqueue(
             jobKey,
             text,
-            {msgObj, bossUserInfo},
+            {msgObj, bossUserInfo, cacheText},
             (batch) => this.processMergedMessages(batch, jobKey),
             String(bodyTypeOf(msgObj) ?? "unknown"),
         );
     }
 
     private async processMergedMessages(
-        batch: MessageMergeBatch<{ msgObj: TechwolfChatProtocol; bossUserInfo: BossUserInfo }>,
+        batch: MessageMergeBatch<BossMessageMergeItem>,
         jobKey: string,
     ): Promise<boolean> {
         const firstItem = batch.items[0];
@@ -405,7 +412,7 @@ export class BossOption {
             jobKey,
             bossUserInfo,
             AiPower.SEMANTIC_SCREENING_PROMPT,
-            allowedPlatformBodyTypeOf(firstItem.msgObj),
+            batchPlatformBodyTypeOf(batch.items),
         ).then(async resp => {
             const canDeliverTurn = canDeliverLocally;
             const canDeliverImmediatelyBeforeSend = canDeliverAtServer;
@@ -497,8 +504,8 @@ export class BossOption {
 
             // 文本回复
             if (answerTypeList.includes(JobSeekerClonedAnswerTypeEnum.MSG_TEXT)) {
-                const replyAlreadySent = batch.texts.some(text =>
-                    BossOption.messageCache.wasReplySent(bossUserInfo.bossId, text));
+                const replyAlreadySent = batch.items.some(item =>
+                    BossOption.messageCache.wasReplySent(bossUserInfo.bossId, item.cacheText));
                 if (!replyAlreadySent) {
                     const html = this.buildNoticeHtml(
                         senderOf(firstItem.msgObj).name,
@@ -618,14 +625,14 @@ export class BossOption {
     }
 
     private removeBatchMessages(
-        batch: MessageMergeBatch<{ msgObj: TechwolfChatProtocol; bossUserInfo: BossUserInfo }>,
+        batch: MessageMergeBatch<BossMessageMergeItem>,
         preserveSentReply = false,
     ): void {
         const bossId = batch.items[0]?.bossUserInfo?.bossId;
         if (!bossId) {
             return;
         }
-        for (const text of batch.texts) {
+        for (const text of new Set(batch.items.map(item => item.cacheText))) {
             if (preserveSentReply && (BossOption.messageCache.isMessageCompleted(bossId, text)
                 || BossOption.messageCache.wasReplySent(bossId, text)
                 || BossOption.messageCache.hasPendingOperation(bossId, text, 'SEND_RESUME'))) {
@@ -644,13 +651,13 @@ export class BossOption {
     }
 
     private markBatchRepliesAsSent(
-        batch: MessageMergeBatch<{ msgObj: TechwolfChatProtocol; bossUserInfo: BossUserInfo }>,
+        batch: MessageMergeBatch<BossMessageMergeItem>,
     ): void {
         const bossId = batch.items[0]?.bossUserInfo?.bossId;
         if (!bossId) {
             return;
         }
-        for (const text of batch.texts) {
+        for (const text of new Set(batch.items.map(item => item.cacheText))) {
             BossOption.messageCache.markReplySent(
                 bossId,
                 text,
@@ -660,14 +667,14 @@ export class BossOption {
     }
 
     private markBatchPendingOperation(
-        batch: MessageMergeBatch<{ msgObj: TechwolfChatProtocol; bossUserInfo: BossUserInfo }>,
+        batch: MessageMergeBatch<BossMessageMergeItem>,
         operation: string,
     ): void {
         const bossId = batch.items[0]?.bossUserInfo?.bossId;
         if (!bossId) {
             return;
         }
-        for (const text of batch.texts) {
+        for (const text of new Set(batch.items.map(item => item.cacheText))) {
             BossOption.messageCache.markPendingOperation(
                 bossId,
                 text,
@@ -678,25 +685,25 @@ export class BossOption {
     }
 
     private markBatchMessagesAsCompleted(
-        batch: MessageMergeBatch<{ msgObj: TechwolfChatProtocol; bossUserInfo: BossUserInfo }>,
+        batch: MessageMergeBatch<BossMessageMergeItem>,
     ): void {
         const bossId = batch.items[0]?.bossUserInfo?.bossId;
         if (!bossId) {
             return;
         }
-        for (const text of batch.texts) {
+        for (const text of new Set(batch.items.map(item => item.cacheText))) {
             BossOption.markMessageAsCompleted(bossId, text);
         }
     }
 
     private markBatchMessagesUnresolved(
-        batch: MessageMergeBatch<{ msgObj: TechwolfChatProtocol; bossUserInfo: BossUserInfo }>,
+        batch: MessageMergeBatch<BossMessageMergeItem>,
     ): void {
         const bossId = batch.items[0]?.bossUserInfo?.bossId;
         if (!bossId) {
             return;
         }
-        for (const text of batch.texts) {
+        for (const text of new Set(batch.items.map(item => item.cacheText))) {
             BossOption.messageCache.markMessageCompletedWithoutReply(
                 bossId,
                 text,

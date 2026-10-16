@@ -6,6 +6,7 @@ export interface MessageMergeBatch<T> {
 
 interface PendingBatch<T> {
     texts: string[];
+    textKeys: Set<string>;
     items: T[];
     promise: Promise<boolean>;
 }
@@ -13,9 +14,11 @@ interface PendingBatch<T> {
 /**
  * Coalesces a short burst of messages from one contact into one AI turn.
  * The first message starts the window; later messages join without extending it.
+ * Body-type partitions scope text deduplication, never the safety decision.
  */
 export class MessageMergeQueue<T> {
     private readonly pending = new Map<string, PendingBatch<T>>();
+    private readonly processing = new Map<string, Promise<boolean>>();
     private readonly windowMs: number;
 
     public constructor(windowMs = 3500) {
@@ -27,38 +30,51 @@ export class MessageMergeQueue<T> {
         text: string,
         item: T,
         process: (batch: MessageMergeBatch<T>) => Promise<boolean> | boolean,
-        partitionKey?: string,
+        textPartitionKey?: string,
     ): Promise<boolean> {
-        const pendingKey = partitionKey === undefined ? key : `${key}\0${partitionKey}`;
-        const existing = this.pending.get(pendingKey);
+        const textKey = JSON.stringify([textPartitionKey, text]);
+        const existing = this.pending.get(key);
         if (existing) {
-            if (!existing.texts.includes(text)) {
+            if (!existing.textKeys.has(textKey)) {
+                existing.textKeys.add(textKey);
                 existing.texts.push(text);
-                existing.items.push(item);
             }
+            existing.items.push(item);
             return existing.promise;
         }
 
         const pending: PendingBatch<T> = {
             texts: [text],
+            textKeys: new Set([textKey]),
             items: [item],
             promise: Promise.resolve(false),
         };
         pending.promise = new Promise<boolean>((resolve) => {
-            setTimeout(async () => {
-                this.pending.delete(pendingKey);
-                try {
-                    resolve(await process({
-                        key,
-                        texts: [...pending.texts],
-                        items: [...pending.items],
-                    }));
-                } catch {
-                    resolve(false);
-                }
+            setTimeout(() => {
+                this.pending.delete(key);
+                const batch = {
+                    key,
+                    texts: [...pending.texts],
+                    items: [...pending.items],
+                };
+                const previous = this.processing.get(key) ?? Promise.resolve(false);
+                const processing = previous.then(async () => {
+                    try {
+                        return await process(batch);
+                    } catch {
+                        return false;
+                    }
+                });
+                this.processing.set(key, processing);
+                void processing.then(result => {
+                    if (this.processing.get(key) === processing) {
+                        this.processing.delete(key);
+                    }
+                    resolve(result);
+                });
             }, this.windowMs);
         });
-        this.pending.set(pendingKey, pending);
+        this.pending.set(key, pending);
         return pending.promise;
     }
 }

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AI工作猎手-让ai帮您找工作！
 // @namespace    https://github.com/youyu-zr/ai-job-hunting
-// @version      0.0.117-beta-ai-seat-recovery
+// @version      0.0.118-beta-decision-boundaries
 // @author       maple.
 // @description  AI工作猎手：辅助岗位筛选、职位沟通与求职流程管理。
 // @downloadURL  https://aijob.zxpnb.top/ai-job-hunting.user.js
@@ -26,7 +26,7 @@
 !function(t){function e(t){t.registerRegistry=Object.create(null),t.namedRegisterAliases=Object.create(null)}var r=t.System;e(r);var i,s,n=r.constructor.prototype,l=r.constructor,a=function(){l.call(this),e(this)};a.prototype=n,r.constructor=a;var o=n.register;n.register=function(t,e,r,n){if("string"!=typeof t)return o.apply(this,arguments);var l=[e,r,n];return this.registerRegistry[t]=l,i||(i=l,s=t),Promise.resolve().then((function(){i=null,s=null})),o.apply(this,[e,r,n])};var u=n.resolve;n.resolve=function(t,e){try{return u.call(this,t,e)}catch(r){if(t in this.registerRegistry)return this.namedRegisterAliases[t]||t;throw r}};var c=n.instantiate;n.instantiate=function(t,e,r){var i=this.registerRegistry[t];return i?(this.registerRegistry[t]=null,i):c.call(this,t,e,r)};var g=n.getRegister;n.getRegister=function(t){var e=g.call(this,t);s&&t&&(this.namedRegisterAliases[s]=t);var r=i||e;return i=null,s=null,r}}("undefined"!=typeof self?self:global);
 ;(typeof System!='undefined')&&(System=new System.constructor());
 
-System.register("./__entry.js", ['./__monkey.entry-BW5Bbmv4.js'], (function (exports, module) {
+System.register("./__entry.js", ['./__monkey.entry-CdD4o6Nv.js'], (function (exports, module) {
 	'use strict';
 	return {
 		setters: [null],
@@ -38,7 +38,7 @@ System.register("./__entry.js", ['./__monkey.entry-BW5Bbmv4.js'], (function (exp
 	};
 }));
 
-System.register("./__monkey.entry-BW5Bbmv4.js", [], (function (exports, module) {
+System.register("./__monkey.entry-CdD4o6Nv.js", [], (function (exports, module) {
   'use strict';
   return {
     execute: (function () {
@@ -78648,11 +78648,11 @@ System.register("./__monkey.entry-BW5Bbmv4.js", [], (function (exports, module) 
         }
         async getRenderComponent() {
           if (this.curUrl.includes("www.zhipin.com/web/geek/chat")) {
-            let promise = __vitePreload(() => module.import('./BossMessage-DYNdIt29-CZpgF1jL.js'), void 0 );
+            let promise = __vitePreload(() => module.import('./BossMessage-B7QtBkjG-DJsOktv2.js'), void 0 );
             return promise.then((item) => item.default);
           }
           if (this.curUrl.includes("www.zhipin.com/web/geek/job") || this.curUrl.includes("overseas")) {
-            let promise = __vitePreload(() => module.import('./BossJobList-D-EsL-Vh-CohbW_ik.js'), void 0 );
+            let promise = __vitePreload(() => module.import('./BossJobList-ChjuZvhB-Db9HMFhY.js'), void 0 );
             return promise.then((item) => item.default);
           }
         }
@@ -79759,41 +79759,106 @@ System.register("./__monkey.entry-BW5Bbmv4.js", [], (function (exports, module) 
       class MessageMergeQueue {
         constructor(windowMs = 3500) {
           __publicField(this, "pending", /* @__PURE__ */ new Map());
+          __publicField(this, "processing", /* @__PURE__ */ new Map());
           __publicField(this, "windowMs");
           this.windowMs = windowMs;
         }
-        enqueue(key, text, item, process2, partitionKey) {
-          const pendingKey = partitionKey === void 0 ? key : `${key}\0${partitionKey}`;
-          const existing = this.pending.get(pendingKey);
+        enqueue(key, text, item, process2, textPartitionKey) {
+          const textKey = JSON.stringify([textPartitionKey, text]);
+          const existing = this.pending.get(key);
           if (existing) {
-            if (!existing.texts.includes(text)) {
+            if (!existing.textKeys.has(textKey)) {
+              existing.textKeys.add(textKey);
               existing.texts.push(text);
-              existing.items.push(item);
             }
+            existing.items.push(item);
             return existing.promise;
           }
           const pending = {
             texts: [text],
+            textKeys: /* @__PURE__ */ new Set([textKey]),
             items: [item],
             promise: Promise.resolve(false)
           };
           pending.promise = new Promise((resolve2) => {
-            setTimeout(async () => {
-              this.pending.delete(pendingKey);
-              try {
-                resolve2(await process2({
-                  key,
-                  texts: [...pending.texts],
-                  items: [...pending.items]
-                }));
-              } catch {
-                resolve2(false);
-              }
+            setTimeout(() => {
+              this.pending.delete(key);
+              const batch = {
+                key,
+                texts: [...pending.texts],
+                items: [...pending.items]
+              };
+              const previous = this.processing.get(key) ?? Promise.resolve(false);
+              const processing = previous.then(async () => {
+                try {
+                  return await process2(batch);
+                } catch {
+                  return false;
+                }
+              });
+              this.processing.set(key, processing);
+              void processing.then((result) => {
+                if (this.processing.get(key) === processing) {
+                  this.processing.delete(key);
+                }
+                resolve2(result);
+              });
             }, this.windowMs);
           });
-          this.pending.set(pendingKey, pending);
+          this.pending.set(key, pending);
           return pending.promise;
         }
+      }
+      function firstMessageOf(packet) {
+        const messages2 = packet == null ? void 0 : packet.messages;
+        if (!Array.isArray(messages2) || messages2.length === 0) {
+          return void 0;
+        }
+        return messages2[0];
+      }
+      function bodyTypeOf(packet) {
+        var _a2, _b;
+        return (_b = (_a2 = firstMessageOf(packet)) == null ? void 0 : _a2.body) == null ? void 0 : _b.type;
+      }
+      const ALLOWED_PLATFORM_BODY_TYPES = /* @__PURE__ */ new Set([1, 4, 8, 12, 14]);
+      function allowedPlatformBodyTypeOf(packet) {
+        const bodyType = bodyTypeOf(packet);
+        return typeof bodyType === "number" && ALLOWED_PLATFORM_BODY_TYPES.has(bodyType) ? bodyType : void 0;
+      }
+      function bodyImageOf(packet) {
+        var _a2, _b;
+        return (_b = (_a2 = firstMessageOf(packet)) == null ? void 0 : _a2.body) == null ? void 0 : _b.image;
+      }
+      function msgTypeOf(packet) {
+        var _a2;
+        return (_a2 = firstMessageOf(packet)) == null ? void 0 : _a2.type;
+      }
+      function senderOf(packet) {
+        var _a2;
+        const from = (_a2 = firstMessageOf(packet)) == null ? void 0 : _a2.from;
+        return {
+          name: String((from == null ? void 0 : from.name) ?? ""),
+          avatar: String((from == null ? void 0 : from.avatar) ?? "")
+        };
+      }
+      function senderIdOf(packet) {
+        var _a2, _b;
+        const uid2 = (_b = (_a2 = firstMessageOf(packet)) == null ? void 0 : _a2.from) == null ? void 0 : _b.uid;
+        return uid2 === void 0 || uid2 === null ? "" : String(uid2).trim();
+      }
+      function messageIdOf(packet) {
+        var _a2;
+        return (_a2 = firstMessageOf(packet)) == null ? void 0 : _a2.mid;
+      }
+      function batchPlatformBodyTypeOf(items) {
+        const types2 = items.map((item) => allowedPlatformBodyTypeOf(item.msgObj));
+        if (types2.includes(14)) {
+          return 14;
+        }
+        if (types2.includes(1)) {
+          return 1;
+        }
+        return types2.every((type4) => type4 === types2[0]) ? types2[0] : void 0;
       }
       var JobSeekerClonedAnswerTypeEnum = /* @__PURE__ */ ((JobSeekerClonedAnswerTypeEnum2) => {
         JobSeekerClonedAnswerTypeEnum2[JobSeekerClonedAnswerTypeEnum2["MSG_TEXT"] = 1] = "MSG_TEXT";
@@ -79881,47 +79946,6 @@ System.register("./__monkey.entry-BW5Bbmv4.js", [], (function (exports, module) 
         }
         return false;
       }
-      function firstMessageOf(packet) {
-        const messages2 = packet == null ? void 0 : packet.messages;
-        if (!Array.isArray(messages2) || messages2.length === 0) {
-          return void 0;
-        }
-        return messages2[0];
-      }
-      function bodyTypeOf(packet) {
-        var _a2, _b;
-        return (_b = (_a2 = firstMessageOf(packet)) == null ? void 0 : _a2.body) == null ? void 0 : _b.type;
-      }
-      const ALLOWED_PLATFORM_BODY_TYPES = /* @__PURE__ */ new Set([1, 4, 8, 12, 14]);
-      function allowedPlatformBodyTypeOf(packet) {
-        const bodyType = bodyTypeOf(packet);
-        return typeof bodyType === "number" && ALLOWED_PLATFORM_BODY_TYPES.has(bodyType) ? bodyType : void 0;
-      }
-      function bodyImageOf(packet) {
-        var _a2, _b;
-        return (_b = (_a2 = firstMessageOf(packet)) == null ? void 0 : _a2.body) == null ? void 0 : _b.image;
-      }
-      function msgTypeOf(packet) {
-        var _a2;
-        return (_a2 = firstMessageOf(packet)) == null ? void 0 : _a2.type;
-      }
-      function senderOf(packet) {
-        var _a2;
-        const from = (_a2 = firstMessageOf(packet)) == null ? void 0 : _a2.from;
-        return {
-          name: String((from == null ? void 0 : from.name) ?? ""),
-          avatar: String((from == null ? void 0 : from.avatar) ?? "")
-        };
-      }
-      function senderIdOf(packet) {
-        var _a2, _b;
-        const uid2 = (_b = (_a2 = firstMessageOf(packet)) == null ? void 0 : _a2.from) == null ? void 0 : _b.uid;
-        return uid2 === void 0 || uid2 === null ? "" : String(uid2).trim();
-      }
-      function messageIdOf(packet) {
-        var _a2;
-        return (_a2 = firstMessageOf(packet)) == null ? void 0 : _a2.mid;
-      }
       let userStore$1 = null;
       const remotelyPausedJobs = /* @__PURE__ */ new Set();
       const _BossOption = class _BossOption {
@@ -79977,50 +80001,51 @@ System.register("./__monkey.entry-BW5Bbmv4.js", [], (function (exports, module) 
             logger$1.info("AI坐席未开启，不处理消息");
             return false;
           }
+          const cacheText = bodyTypeOf(msgObj) === 14 ? `\0interview-card:${JSON.stringify([String(messageIdOf(msgObj) ?? ""), text])}` : text;
           const senderId = senderIdOf(msgObj);
           if (senderId && senderId !== String(bossId)) {
             logger$1.warn("消息发送者与当前联系人不匹配，停止处理");
             _BossOption.messageCache.markMessageCompletedWithoutReply(
               bossId,
-              text,
+              cacheText,
               _BossOption.MESSAGE_COMPLETED_TTL
             );
             return true;
           }
-          if (_BossOption.messageCache.isMessageProcessed(bossId, text)) {
+          if (_BossOption.messageCache.isMessageProcessed(bossId, cacheText)) {
             logger$1.trace("【跳过重复消息】:", bossId, text);
             return true;
           }
-          _BossOption.messageCache.markMessageAsProcessed(bossId, text, _BossOption.MESSAGE_IN_FLIGHT_TTL);
+          _BossOption.messageCache.markMessageAsProcessed(bossId, cacheText, _BossOption.MESSAGE_IN_FLIGHT_TTL);
           if (!this.preHandlerMsgByMsgType(msgObj, text)) {
-            _BossOption.markMessageAsCompleted(bossId, text);
+            _BossOption.markMessageAsCompleted(bossId, cacheText);
             return true;
           }
           let bossUserInfo;
           try {
             bossUserInfo = await this.getBossUserInfoByBossId(bossId);
           } catch (e) {
-            _BossOption.messageCache.removeMessage(bossId, text);
+            _BossOption.messageCache.removeMessage(bossId, cacheText);
             _BossOption.logRecorder.error("【处理Boss消息-失败】获取联系人信息异常", e);
             return false;
           }
           if (!bossUserInfo) {
             const bodyType = bodyTypeOf(msgObj);
             if (bodyType === 15) {
-              _BossOption.markMessageAsCompleted(bossId, text);
+              _BossOption.markMessageAsCompleted(bossId, cacheText);
               return true;
             }
-            _BossOption.messageCache.removeMessage(bossId, text);
+            _BossOption.messageCache.removeMessage(bossId, cacheText);
             _BossOption.logRecorder.error("【处理Boss消息-失败】无法获取联系人信息", text);
             return false;
           }
           if (!this.preHandlerMsgByBodyType(msgObj, bossUserInfo, text)) {
-            _BossOption.markMessageAsCompleted(bossId, text);
+            _BossOption.markMessageAsCompleted(bossId, cacheText);
             return true;
           }
-          if (_BossOption.messageCache.hasPendingOperation(bossId, text, "SEND_RESUME")) {
+          if (_BossOption.messageCache.hasPendingOperation(bossId, cacheText, "SEND_RESUME")) {
             logger$1.warn("【简历发送结果不确定】为避免重复发送，已停止自动重试，请先人工检查该会话 bossId:", bossId);
-            _BossOption.markMessageAsCompleted(bossId, text);
+            _BossOption.markMessageAsCompleted(bossId, cacheText);
             return true;
           }
           logger$1.debug("接收消息解码内容：", text);
@@ -80028,7 +80053,7 @@ System.register("./__monkey.entry-BW5Bbmv4.js", [], (function (exports, module) 
           return _BossOption.messageMergeQueue.enqueue(
             jobKey,
             text,
-            { msgObj, bossUserInfo },
+            { msgObj, bossUserInfo, cacheText },
             (batch) => this.processMergedMessages(batch, jobKey),
             String(bodyTypeOf(msgObj) ?? "unknown")
           );
@@ -80129,7 +80154,7 @@ System.register("./__monkey.entry-BW5Bbmv4.js", [], (function (exports, module) 
             jobKey,
             bossUserInfo,
             AiPower.SEMANTIC_SCREENING_PROMPT,
-            allowedPlatformBodyTypeOf(firstItem.msgObj)
+            batchPlatformBodyTypeOf(batch.items)
           ).then(async (resp) => {
             var _a2;
             const canDeliverTurn = canDeliverLocally;
@@ -80213,7 +80238,7 @@ System.register("./__monkey.entry-BW5Bbmv4.js", [], (function (exports, module) 
               return false;
             }
             if (answerTypeList.includes(JobSeekerClonedAnswerTypeEnum.MSG_TEXT)) {
-              const replyAlreadySent = batch.texts.some((text) => _BossOption.messageCache.wasReplySent(bossUserInfo.bossId, text));
+              const replyAlreadySent = batch.items.some((item) => _BossOption.messageCache.wasReplySent(bossUserInfo.bossId, item.cacheText));
               if (!replyAlreadySent) {
                 const html = this.buildNoticeHtml(
                   senderOf(firstItem.msgObj).name,
@@ -80326,7 +80351,7 @@ System.register("./__monkey.entry-BW5Bbmv4.js", [], (function (exports, module) 
           if (!bossId) {
             return;
           }
-          for (const text of batch.texts) {
+          for (const text of new Set(batch.items.map((item) => item.cacheText))) {
             if (preserveSentReply && (_BossOption.messageCache.isMessageCompleted(bossId, text) || _BossOption.messageCache.wasReplySent(bossId, text) || _BossOption.messageCache.hasPendingOperation(bossId, text, "SEND_RESUME"))) {
               continue;
             }
@@ -80346,7 +80371,7 @@ System.register("./__monkey.entry-BW5Bbmv4.js", [], (function (exports, module) 
           if (!bossId) {
             return;
           }
-          for (const text of batch.texts) {
+          for (const text of new Set(batch.items.map((item) => item.cacheText))) {
             _BossOption.messageCache.markReplySent(
               bossId,
               text,
@@ -80360,7 +80385,7 @@ System.register("./__monkey.entry-BW5Bbmv4.js", [], (function (exports, module) 
           if (!bossId) {
             return;
           }
-          for (const text of batch.texts) {
+          for (const text of new Set(batch.items.map((item) => item.cacheText))) {
             _BossOption.messageCache.markPendingOperation(
               bossId,
               text,
@@ -80375,7 +80400,7 @@ System.register("./__monkey.entry-BW5Bbmv4.js", [], (function (exports, module) 
           if (!bossId) {
             return;
           }
-          for (const text of batch.texts) {
+          for (const text of new Set(batch.items.map((item) => item.cacheText))) {
             _BossOption.markMessageAsCompleted(bossId, text);
           }
         }
@@ -80385,7 +80410,7 @@ System.register("./__monkey.entry-BW5Bbmv4.js", [], (function (exports, module) 
           if (!bossId) {
             return;
           }
-          for (const text of batch.texts) {
+          for (const text of new Set(batch.items.map((item) => item.cacheText))) {
             _BossOption.messageCache.markMessageCompletedWithoutReply(
               bossId,
               text,
@@ -81587,7 +81612,7 @@ System.register("./__monkey.entry-BW5Bbmv4.js", [], (function (exports, module) 
   };
 }));
 
-System.register("./BossMessage-DYNdIt29-CZpgF1jL.js", ['./__monkey.entry-BW5Bbmv4.js'], (function (exports, module) {
+System.register("./BossMessage-B7QtBkjG-DJsOktv2.js", ['./__monkey.entry-CdD4o6Nv.js'], (function (exports, module) {
   'use strict';
   var _export_sfc, defineComponent, UserStore, ref, computed, onMounted, onUnmounted, openBlock, createElementBlock, createBaseVNode, createVNode, withCtx, normalizeClass, createTextVNode, toDisplayString, createBlock, createCommentVNode, Fragment, ConversationPauseRegistry, AiPower, parseAiSeatRuntimeStatus, getAiSeatStatusRevision, rememberAiSeatStatus, ElMessage, ElTag, ElButton, pushScopeId, popScopeId, BossOption;
   return {
@@ -81764,7 +81789,7 @@ System.register("./BossMessage-DYNdIt29-CZpgF1jL.js", ['./__monkey.entry-BW5Bbmv
   };
 }));
 
-System.register("./BossJobList-D-EsL-Vh-CohbW_ik.js", ['./__monkey.entry-BW5Bbmv4.js'], (function (exports, module) {
+System.register("./BossJobList-ChjuZvhB-Db9HMFhY.js", ['./__monkey.entry-CdD4o6Nv.js'], (function (exports, module) {
   'use strict';
   var defineComponent, openBlock, createBlock, _export_sfc, shallowRef, createElementBlock, createVNode, withCtx, Fragment, renderList, unref, createTextVNode, toDisplayString, createBaseVNode, resolveDynamicComponent, ElMenuItem, ElMenu, inject, ServerStore, ref, PushStatus, LogRecorder, LoginStore, pushResultCount, UserStore, watch, onUnmounted, isProdEnv, createCommentVNode, withDirectives, vShow, CircleCloseFilled, normalizeClass, reactive, Tools, onMounted, logger$1, isRef, userRemoteLoad, ElNotification, ElMessage, loginInterceptor, userSessionScope, axios, fetchWithGM_request, storeScopedAuthorization, serializeAiSeatStatus, rememberAiSeatStatus, shouldApplyAiSeatRollback, ElText, ElBadge, ElTag, ElButton, ElIcon, ElTooltip, ElButtonGroup$1, ElInput, ElCard, ElInputNumber, ElSwitch, applyPersonalPreferenceDefaults, ElFormItem, ElCheckbox, ElOption, ElSelect, ElUpload, ElRadioButton, ElRadioGroup, ElForm, ElCol, ElTimePicker, ElRow, ElTableColumn, ElEmpty, ElTable, ElPagination, pushScopeId, popScopeId, userSnapshotStorageKey, TampermonkeyApi, createStaticVNode;
   return {
@@ -82017,7 +82042,7 @@ System.register("./BossJobList-D-EsL-Vh-CohbW_ik.js", ['./__monkey.entry-BW5Bbmv
         __name: "AiJob",
         setup(__props) {
           var _a;
-          const CURRENT_SCRIPT_VERSION = "0.0.117-beta-ai-seat-recovery";
+          const CURRENT_SCRIPT_VERSION = "0.0.118-beta-decision-boundaries";
           const platform = inject("$platform");
           const axios$1 = inject("$axios");
           const serverStore = ServerStore();
@@ -84001,7 +84026,7 @@ System.register("./BossJobList-D-EsL-Vh-CohbW_ik.js", ['./__monkey.entry-BW5Bbmv
       });
       const RunRecord = /* @__PURE__ */ _export_sfc(_sfc_main$5, [["__scopeId", "data-v-96e72c6f"]]);
       const _hoisted_1$3 = { class: "markdown-body" };
-      const _hoisted_2$2 = /* @__PURE__ */ createStaticVNode('<h2>开始使用</h2><blockquote><p>本说明适用于 <code class="">0.0.117-beta-ai-seat-recovery</code> 联调版。请先用本人账号和一个岗位验证；安装页显示的版本应与脚本管理器一致。真实账号全流程验收仍需本人完成。</p></blockquote><ol><li>登录 BOSS 后刷新职位或消息页面，确认 AI 工作猎手面板出现；服务端会验证身份并自动创建账号。</li><li>在 AI 助手页点击连接测试，确认服务器状态为在线；开放期内内测权限会自动开通。</li><li>在偏好设置中填写目标城市、通知邮箱、薪资范围和求职方向，并保存。</li><li>在 BOSS 上传本人附件简历并主动点击导入简历；账号创建和内测开通不需要简历，但开始投递或开启 AI 坐席前必须完成。</li><li>第一次投递将单次投递数量设为 1（默认上限为 5），确认岗位分析、投递记录和发送状态正常后再增加数量。</li></ol><h2>AI 偏好</h2><p>用白话说明你想找什么工作、可以接受的经验要求、薪资范围和不考虑的方向即可。AI 会结合已导入的简历、职位详情、地点、薪资和公司信息逐岗位分析，不需要填写复杂提示词。</p><p>浏览器脚本读取 BOSS 页面信息并执行页面动作；服务器 AI 结合岗位上下文、简历和已保存偏好判断职位及 HR 消息。岗位缺少薪资或地点等普通信息、且没有明确风险或偏好冲突时，继续投递并把待确认事项留给后续沟通；AI 调用或结果格式失败时不投递、不发送。</p><p>薪资、城市和联系方式按你自己保存的偏好处理。没有填写时表示“未知”，AI 可以继续向 HR 询问，但不会替你编造条件、透露联系方式或自动暂停。具体面试日期/时间、平台面试卡片、接受 offer 或签约承诺需要本人确认，只暂停当前会话。普通推广消息默认静默；正常抖音运营、市场、销售和推广岗位不会仅凭关键词被过滤。偏好可以自行编辑，明确高风险保护不能被用户偏好覆盖。更换 BOSS 附件简历后，请重新导入。</p><p>BOSS 系统通知和卡片可能出现在聊天界面，但它们不是 HR 消息。脚本按结构化协议类型识别已知事件，不因普通消息中出现“系统通知”等词而丢弃。</p><h2>AI 坐席</h2><p>打开 AI 坐席总开关后，普通 HR 消息会进入 AI 回复流程。登录过期或浏览器断开后重新连接时，系统会接续最后一条确实来自 HR、且用户尚未回复的消息；如果用户已经在其他设备回复，则不会因为未读标记重复发送。人工接管后，只暂停当前会话；需要继续自动回复时，在消息页点击“恢复本会话自动回复”。</p><p>具体面试时间、接受 offer/签约等明确承诺以及任何要求付款的事项，请由本人确认。单纯询问薪资、城市或合同期限，不会只因话题本身暂停；按已填写偏好处理，未填写时先向 HR 了解。</p><h2>遇到问题</h2><ul><li>面板不显示：确认只有一个 AI 工作猎手脚本处于启用状态，然后刷新 BOSS 页面。</li><li>连接失败：点击连接测试；仍失败时刷新页面后重试。</li><li>简历导入失败：确认 BOSS 中已有附件简历且账号仍处于登录状态。</li><li>没有自动回复：确认 AI 坐席开关开启，并查看运行记录中的暂停或人工确认原因。</li></ul>', 13);
+      const _hoisted_2$2 = /* @__PURE__ */ createStaticVNode('<h2>开始使用</h2><blockquote><p>本说明适用于 <code class="">0.0.118-beta-decision-boundaries</code> 联调版。请先用本人账号和一个岗位验证；安装页显示的版本应与脚本管理器一致。真实账号全流程验收仍需本人完成。</p></blockquote><ol><li>登录 BOSS 后刷新职位或消息页面，确认 AI 工作猎手面板出现；服务端会验证身份并自动创建账号。</li><li>在 AI 助手页点击连接测试，确认服务器状态为在线；开放期内内测权限会自动开通。</li><li>在偏好设置中填写目标城市、通知邮箱、薪资范围和求职方向，并保存。</li><li>在 BOSS 上传本人附件简历并主动点击导入简历；账号创建和内测开通不需要简历，但开始投递或开启 AI 坐席前必须完成。</li><li>第一次投递将单次投递数量设为 1（默认上限为 5），确认岗位分析、投递记录和发送状态正常后再增加数量。</li></ol><h2>AI 偏好</h2><p>用白话说明你想找什么工作、可以接受的经验要求、薪资范围和不考虑的方向即可。AI 会结合已导入的简历、职位详情、地点、薪资和公司信息逐岗位分析，不需要填写复杂提示词。</p><p>浏览器脚本读取 BOSS 页面信息并执行页面动作；服务器 AI 结合岗位上下文、简历和已保存偏好判断职位及 HR 消息。岗位缺少薪资或地点等普通信息、且没有明确风险或偏好冲突时，继续投递并把待确认事项留给后续沟通；AI 调用或结果格式失败时不投递、不发送。</p><p>薪资、城市和联系方式按你自己保存的偏好处理。没有填写时表示“未知”，AI 可以继续向 HR 询问，但不会替你编造条件、透露联系方式或自动暂停。具体面试日期/时间、平台面试卡片、接受 offer 或签约承诺需要本人确认，只暂停当前会话。普通推广消息默认静默；正常抖音运营、市场、销售和推广岗位不会仅凭关键词被过滤。偏好可以自行编辑，明确高风险保护不能被用户偏好覆盖。更换 BOSS 附件简历后，请重新导入。</p><p>BOSS 系统通知和卡片可能出现在聊天界面，但它们不是 HR 消息。脚本按结构化协议类型识别已知事件，不因普通消息中出现“系统通知”等词而丢弃。</p><h2>AI 坐席</h2><p>打开 AI 坐席总开关后，普通 HR 消息会进入 AI 回复流程。登录过期或浏览器断开后重新连接时，系统会接续最后一条确实来自 HR、且用户尚未回复的消息；如果用户已经在其他设备回复，则不会因为未读标记重复发送。人工接管后，只暂停当前会话；需要继续自动回复时，在消息页点击“恢复本会话自动回复”。</p><p>具体面试时间、接受 offer/签约等明确承诺以及任何要求付款的事项，请由本人确认。单纯询问薪资、城市或合同期限，不会只因话题本身暂停；按已填写偏好处理，未填写时先向 HR 了解。</p><h2>遇到问题</h2><ul><li>面板不显示：确认只有一个 AI 工作猎手脚本处于启用状态，然后刷新 BOSS 页面。</li><li>连接失败：点击连接测试；仍失败时刷新页面后重试。</li><li>简历导入失败：确认 BOSS 中已有附件简历且账号仍处于登录状态。</li><li>没有自动回复：确认 AI 坐席开关开启，并查看运行记录中的暂停或人工确认原因。</li></ul>', 13);
       const _hoisted_15 = [
         _hoisted_2$2
       ];

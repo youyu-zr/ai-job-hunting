@@ -1,7 +1,7 @@
 {
   "name": "ai-job-hunting",
   "private": true,
-  "version": "0.0.117-beta-ai-seat-recovery",
+  "version": "0.0.118-beta-decision-boundaries",
   "type": "module",
   "scripts": {
     "dev": "vite",

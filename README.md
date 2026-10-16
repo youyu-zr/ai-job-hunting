@@ -47,6 +47,7 @@
 - [前端开发](frontend/README.md)：构建用户脚本。
 - [后端开发](backend/README.md)：数据库、模型与本地配置。
 - [项目状态](docs/PROJECT_STATUS_2026-10-16.md)：最新核验事实、代码修复和仍未解除的发布门槛。
+- [流程讲解](docs/DECISION_FLOW.md)：旧问题的原因、修改后的完整链路、暂停和恢复到底做什么。
 - [开源与推广方案](docs/OPEN_SOURCE_PLAN.md)：协作顺序和宣传边界。
 - [贡献指南](CONTRIBUTING.md)、[安全说明](SECURITY.md)、[来源说明](NOTICE)。
 

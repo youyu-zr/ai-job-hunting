@@ -86,6 +86,37 @@ class JobSeekerClonedServiceMessageDecisionTest {
     }
 
     @Test
+    void identicalInterviewCardAfterAnOrdinaryTextStillRequiresConfirmation() {
+        Fixture fixture = new Fixture();
+        fixture.triageResult(Category.NORMAL_JOB, Action.REPLY);
+        String preview = "Interview invitation";
+
+        JobSeekerClonedResultVO text = fixture.ask(preview, "job-card-after-text", 1);
+        JobSeekerClonedResultVO card = fixture.ask(preview, "job-card-after-text", 14);
+        JobSeekerClonedResultVO repeatedCard = fixture.ask(preview, "job-card-after-text", 14);
+
+        assertNull(text.getStopReason());
+        assertEquals("USER_CONFIRMATION_REQUIRED", card.getStopReason());
+        assertEquals("DUPLICATE_MESSAGE", repeatedCard.getStopReason());
+        assertEquals(List.of("job-card-after-text:true"), fixture.sessions.pausedJobs);
+        assertTrue(card.getOperationTypeList() == null || card.getOperationTypeList().isEmpty());
+        assertEquals(1, fixture.ai.sessionChatCalls.get());
+    }
+
+    @Test
+    void legacyAndTypedOrdinaryTextStillShareTheSameDeduplicationIdentity() {
+        Fixture fixture = new Fixture();
+        fixture.triageResult(Category.NORMAL_JOB, Action.REPLY);
+
+        fixture.ask("Please describe the job", "job-text-identity", null);
+        JobSeekerClonedResultVO repeated = fixture.ask("Please describe the job", "job-text-identity", 1);
+
+        assertEquals("DUPLICATE_MESSAGE", repeated.getStopReason());
+        assertEquals(1, fixture.ai.sessionChatCalls.get());
+        assertTrue(fixture.sessions.pausedJobs.isEmpty());
+    }
+
+    @Test
     void promotionSilencesOnlyTheCurrentMessageAndDoesNotPauseTheSession() {
         Fixture fixture = new Fixture();
         fixture.triageResult(Category.PROMOTION, Action.SILENT_CURRENT_MESSAGE);

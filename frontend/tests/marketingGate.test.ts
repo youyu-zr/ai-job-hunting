@@ -12,7 +12,6 @@ test('browser no longer makes semantic promotion decisions from message words', 
     assert.equal(/HARD_PROMOTIONAL_RISKS|PROMOTION_CONTEXT|FUNNEL_ACTIONS/.test(marketingGate), false);
     assert.equal(bossPlatform.includes('return AiPower.ask('), true);
     assert.equal(bossPlatform.includes('消息内容较长，未自动回复；请打开会话查看'), true);
-    assert.equal(bossPlatform.includes('allowedPlatformBodyTypeOf(firstItem.msgObj)'), true);
     const oversizedStart = bossPlatform.indexOf('if (normalizedBatch.tooLong)');
     const oversizedEnd = bossPlatform.indexOf('// 记录本轮的暂停代次', oversizedStart);
     const oversizedBranch = bossPlatform.slice(oversizedStart, oversizedEnd);

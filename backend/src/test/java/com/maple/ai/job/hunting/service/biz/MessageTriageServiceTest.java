@@ -164,15 +164,53 @@ class MessageTriageServiceTest {
     }
 
     @Test
-    void parsesOneJsonObjectSurroundedByExplanatoryText() {
+    void rejectsJsonObjectSurroundedByExplanatoryText() {
         ai.response = "分析结果如下：\n" + response(Category.NORMAL_JOB, Action.REPLY, "岗位职责清楚")
                 + "\n以上是分类结果。";
+
+        MessageTriageResultVO result = classify("招聘短视频运营", 1);
+
+        assertProcessingError(result);
+        assertEquals(2, ai.calls);
+    }
+
+    @Test
+    void acceptsOneCompleteJsonObjectInsideACompleteMarkdownFence() {
+        ai.response = "```json\n" + response(Category.NORMAL_JOB, Action.REPLY, "岗位职责清楚") + "\n```";
 
         MessageTriageResultVO result = classify("招聘短视频运营", 1);
 
         assertEquals(Category.NORMAL_JOB, result.getCategory());
         assertEquals(Action.REPLY, result.getAction());
         assertEquals("岗位职责清楚", result.getPlainLanguageReason());
+        assertEquals(1, ai.calls);
+    }
+
+    @Test
+    void arrayWrappedDecisionIsNeverExtractedAsAReply() {
+        ai.response = "[" + response(Category.NORMAL_JOB, Action.REPLY, "岗位职责清楚") + "]";
+
+        assertProcessingError(classify("招聘短视频运营", 1));
+        assertEquals(2, ai.calls);
+    }
+
+    @Test
+    void trailingCommaIsNotDiscardedFromAReplyDecision() {
+        ai.response = response(Category.NORMAL_JOB, Action.REPLY, "岗位职责清楚") + ",";
+
+        assertProcessingError(classify("招聘短视频运营", 1));
+        assertEquals(2, ai.calls);
+    }
+
+    @Test
+    void trailingPrimitiveTokensAreNotDiscardedFromAReplyDecision() {
+        String valid = response(Category.NORMAL_JOB, Action.REPLY, "岗位职责清楚");
+        for (String suffix : List.of(" null", " true", " 42", " \"extra\"", " trailing prose")) {
+            ai.response = valid + suffix;
+
+            assertProcessingError(classify("招聘短视频运营", 1));
+        }
+        assertEquals(10, ai.calls);
     }
 
     @Test

@@ -1227,6 +1227,8 @@ public class JobSeekerClonedService {
 
     private String askDuplicationKey(JobSeekerClonedParam jobSeekerClonedParam) {
         String question = Optional.ofNullable(jobSeekerClonedParam.getQuestion()).orElse("").hashCode() + "";
-        return jobSeekerClonedParam.getJobKey() + "-" + question;
+        String protocol = Integer.valueOf(14).equals(jobSeekerClonedParam.getPlatformBodyType())
+                ? "-interview-card" : "";
+        return jobSeekerClonedParam.getJobKey() + "-" + question + protocol;
     }
 }

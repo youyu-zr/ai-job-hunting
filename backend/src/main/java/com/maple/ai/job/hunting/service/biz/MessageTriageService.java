@@ -3,6 +3,7 @@ package com.maple.ai.job.hunting.service.biz;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectReader;
 import com.maple.ai.job.hunting.consts.AIPromptStrConstant;
 import com.maple.ai.job.hunting.model.entity.PreferenceEntity;
 import com.maple.ai.job.hunting.model.vo.MessageTriageResultVO;
@@ -36,6 +37,8 @@ public class MessageTriageService {
     private static final int MAX_EVIDENCE_LENGTH = 240;
     private static final ObjectMapper SAFE_JSON = new ObjectMapper()
             .enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY);
+    private static final ObjectReader DECISION_JSON = SAFE_JSON.reader()
+            .with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
     private static final Pattern REASON_CODE = Pattern.compile("[A-Z][A-Z0-9_]{0,63}");
     private static final List<String> ALLOWED_RESPONSE_FIELDS = List.of(
             "category", "action", "reasonCode", "plainLanguageReason",
@@ -182,7 +185,7 @@ public class MessageTriageService {
     }
 
     private static ParsedDecision parseResponse(String response) {
-        JsonNode json = firstJsonObject(response);
+        JsonNode json = completeJsonObject(response);
         if (json.has("@type")) {
             throw new InvalidModelResponse(DiagnosticCode.RESPONSE_FIELDS_INVALID);
         }
@@ -286,7 +289,7 @@ public class MessageTriageService {
         return values.stream().map(MessageTriageService::sanitizeOutput).toList();
     }
 
-    private static JsonNode firstJsonObject(String response) {
+    private static JsonNode completeJsonObject(String response) {
         if (StringUtils.isBlank(response)) {
             throw new InvalidModelResponse(DiagnosticCode.RESPONSE_EMPTY);
         }
@@ -294,47 +297,26 @@ public class MessageTriageService {
             throw new InvalidModelResponse(DiagnosticCode.RESPONSE_TOO_LARGE);
         }
         String text = response.trim();
-        int start = text.indexOf('{');
-        if (start < 0) {
+        if (text.startsWith("```")) {
+            int lineEnd = text.indexOf('\n');
+            if (lineEnd < 0 || !text.endsWith("```")) {
+                throw new InvalidModelResponse(DiagnosticCode.RESPONSE_JSON_INVALID);
+            }
+            String fence = text.substring(0, lineEnd).trim();
+            if (!"```".equals(fence) && !"```json".equalsIgnoreCase(fence)) {
+                throw new InvalidModelResponse(DiagnosticCode.RESPONSE_JSON_INVALID);
+            }
+            text = text.substring(lineEnd + 1, text.length() - 3).trim();
+        }
+        try {
+            JsonNode root = DECISION_JSON.readTree(text);
+            if (root == null || !root.isObject()) {
+                throw new InvalidModelResponse(DiagnosticCode.RESPONSE_JSON_INVALID);
+            }
+            return root;
+        } catch (Exception ignored) {
             throw new InvalidModelResponse(DiagnosticCode.RESPONSE_JSON_INVALID);
         }
-        boolean inString = false;
-        boolean escaped = false;
-        int depth = 0;
-        for (int i = start; i < text.length(); i++) {
-            char current = text.charAt(i);
-            if (inString) {
-                if (escaped) {
-                    escaped = false;
-                } else if (current == '\\') {
-                    escaped = true;
-                } else if (current == '"') {
-                    inString = false;
-                }
-                continue;
-            }
-            if (current == '"') {
-                inString = true;
-            } else if (current == '{') {
-                depth++;
-            } else if (current == '}' && --depth == 0) {
-                try {
-                    String jsonObject = text.substring(start, i + 1);
-                    JsonNode root = SAFE_JSON.readTree(jsonObject);
-                    String suffix = text.substring(i + 1).trim();
-                    if (suffix.indexOf('{') >= 0 || suffix.indexOf('[') >= 0) {
-                        throw new InvalidModelResponse(DiagnosticCode.RESPONSE_JSON_INVALID);
-                    }
-                    if (root == null || !root.isObject()) {
-                        throw new InvalidModelResponse(DiagnosticCode.RESPONSE_JSON_INVALID);
-                    }
-                    return root;
-                } catch (Exception ignored) {
-                    throw new InvalidModelResponse(DiagnosticCode.RESPONSE_JSON_INVALID);
-                }
-            }
-        }
-        throw new InvalidModelResponse(DiagnosticCode.RESPONSE_JSON_INVALID);
     }
 
     private static String serializePreference(PreferenceEntity preference) {

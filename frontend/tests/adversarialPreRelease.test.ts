@@ -101,7 +101,7 @@ test('adversarial: free-text marketing decisions are deferred to the server', ()
     const requestAt = bossPlatform.indexOf('return AiPower.ask(');
     assert.ok(requestAt >= 0);
     assert.doesNotMatch(bossPlatform, /shouldSilencePromotionalMessage/);
-    assert.match(bossPlatform, /allowedPlatformBodyTypeOf\(firstItem\.msgObj\)/);
+    assert.match(bossPlatform, /batchPlatformBodyTypeOf\(batch\.items\)/);
     assert.match(bossPlatform, /stopReason === 'PROMOTION_SILENT'/);
     assert.match(bossPlatform, /stopReason === 'HIGH_RISK_JOB'/);
     assert.match(bossPlatform, /stopReason === 'USER_CONFIRMATION_REQUIRED'/);
@@ -135,7 +135,7 @@ test('adversarial: unread recovery confirms account-level seat status before rea
 
 test('adversarial: an uncertain resume exchange is never automatically retried', () => {
     const bossPlatform = ui('platform/bossPlatform.ts');
-    const retryStart = bossPlatform.indexOf("hasPendingOperation(bossId, text, 'SEND_RESUME')");
+    const retryStart = bossPlatform.indexOf("hasPendingOperation(bossId, cacheText, 'SEND_RESUME')");
     const retryEnd = bossPlatform.indexOf('logger.debug("接收消息解码内容：", text)', retryStart);
     assert.ok(retryStart >= 0 && retryEnd > retryStart);
     const retryBranch = bossPlatform.slice(retryStart, retryEnd);
