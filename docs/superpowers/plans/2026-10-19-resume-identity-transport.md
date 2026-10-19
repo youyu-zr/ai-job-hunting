@@ -64,9 +64,9 @@
 **Files:** `frontend/package.json`, relevant public version references, generated public userscript, release evidence and status documentation.
 
 - [x] Update the script release to `0.0.119-beta-resume-import` without changing user-facing installation instructions.
-- [ ] Review both workers' diffs, reproduce important failure tests independently and obtain an independent final source/adversarial review.
-- [ ] Prove that the generated userscript matches reviewed frontend source; ensure no credentials or private probe artifacts are staged.
-- [ ] Push a scoped branch, require current-head frontend/backend and code-scanning checks, and merge normally under the owner's existing delegation.
-- [ ] Package and hash the backend, userscript and install page. Preserve a private rollback set and compare unrelated service IDs/start times.
-- [ ] Replace only application artifacts and restart only the application's service. Verify HTTPS artifacts and explicit header/CORS transport behavior without using a real account unless one is actually available.
-- [ ] Report the old failure chain, the repaired chain, exact verification boundary and a single concrete owner-operated import acceptance step. Do not call public reachability authenticated acceptance.
+- [x] Review both workers' diffs, reproduce important failure tests independently and obtain an independent final source/adversarial review.
+- [x] Prove that the generated userscript matches reviewed frontend source; ensure no credentials or private probe artifacts are staged.
+- [x] Push a scoped branch, require current-head frontend/backend and code-scanning checks, and merge normally under the owner's existing delegation.
+- [x] Package and hash the backend, userscript and install page. Preserve a private rollback set and compare unrelated service IDs/start times.
+- [x] Replace only application artifacts and restart only the application's service. Verify HTTPS artifacts and explicit header/CORS transport behavior without using a real account unless one is actually available.
+- [x] Report the old failure chain, the repaired chain, exact verification boundary and a single concrete owner-operated import acceptance step. Do not call public reachability authenticated acceptance.
