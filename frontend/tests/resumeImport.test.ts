@@ -180,3 +180,42 @@ test("untrusted nonnumeric business codes cannot put response objects in import 
     await app.run();
     assert.doesNotMatch(JSON.stringify(app.logs), /synthetic-secret|token/);
 });
+
+for (const serverUrl of ["/", "relative/backend", ""]) {
+    test(`invalid server scope stops import before any attachment action: ${JSON.stringify(serverUrl)}`, async () => {
+        const app = importHarness();
+        app.server.baseUrl = serverUrl;
+        await app.run();
+        assert.equal(app.lookups.length, 0, "invalid destinations must not read BOSS attachments");
+        assert.equal(app.downloads.length, 0, "invalid destinations must not download a resume");
+        assert.equal(app.requests.length, 0, "invalid destinations must never receive identity proof or a file");
+        assert.equal(app.userStore.user.resumeId, "old-resume");
+        assert.equal(app.loading.value, false);
+        assert.equal(app.notices.length, 1);
+        assert.match(app.notices[0].message, /服务器|服务地址/);
+        assert.match(app.notices[0].message, /无效|完整|HTTP/);
+        assert.doesNotMatch(JSON.stringify(app.logs), /synthetic-proof|synthetic-session/);
+    });
+}
+
+test("scope validation waits for an initially missing live account before allowing a valid import", async () => {
+    const app = importHarness();
+    const wait = deferred<{accountId: string; token: string}>();
+    app.page.uid = "";
+    app.page.token = "";
+    app.identityWith(() => wait.promise);
+    const pending = app.run();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(app.lookups.length, 0);
+    assert.equal(app.notices.length, 0);
+    assert.equal(app.status.value, "成功导入简历");
+    app.page.uid = "ready-account";
+    app.page.token = "ready-proof";
+    wait.resolve({accountId: app.page.uid, token: app.page.token});
+    await pending;
+    assert.equal(app.lookups.length, 1);
+    assert.equal(app.downloads.length, 1);
+    assert.equal(app.requests.length, 1);
+    assert.equal(app.requests[0].headers.get("X-Boss-Token"), "ready-proof");
+    assert.equal(app.status.value, "成功导入简历");
+});

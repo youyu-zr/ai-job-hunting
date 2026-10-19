@@ -125,3 +125,33 @@ for (const http of [false, true]) {
         assert.equal(app.login.login, true);
     });
 }
+
+for (const serverUrl of ["/", "relative/backend", ""]) {
+    test(`identity-context request rejects an invalid server scope before its adapter: ${JSON.stringify(serverUrl)}`, async () => {
+        const app = applicationHarness();
+        app.server.baseUrl = serverUrl;
+        await assert.rejects(app.client.post("/api/user/import/resume", null, {
+            headers: {Zp_token: app.page.token},
+            bossIdentityContext: {accountId: app.page.uid, token: app.page.token, serverUrl},
+        }), (error: any) => {
+            assert.equal(error.code, "RESUME_SCOPE_INVALID");
+            assert.match(error.message, /服务器|服务地址/);
+            assert.doesNotMatch(error.message, /synthetic-proof|synthetic-session/);
+            return true;
+        });
+        assert.equal(app.requests.length, 0, "no adapter may receive the proof for a relative destination");
+    });
+}
+
+test("identity-context request rejects a null account scope before its adapter", async () => {
+    const app = applicationHarness();
+    app.page.uid = "";
+    await assert.rejects(app.client.post("/api/user/import/resume", null, {
+        headers: {"X-Boss-Token": app.page.token},
+        bossIdentityContext: {accountId: "", token: app.page.token, serverUrl: app.server.baseUrl},
+    }), (error: any) => {
+        assert.equal(error.code, "RESUME_SCOPE_INVALID");
+        return true;
+    });
+    assert.equal(app.requests.length, 0);
+});

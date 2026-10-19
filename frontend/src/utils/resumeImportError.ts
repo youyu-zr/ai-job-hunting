@@ -45,6 +45,9 @@ export function resumeImportErrorNotice(error: any, stage: ResumeImportStage): s
     if (error?.response?.data?.code === 2003) {
         return "服务端身份校验失败，简历尚未导入；请确认已登录本人 BOSS 账号。";
     }
+    if (error?.code === "RESUME_SCOPE_INVALID") {
+        return "当前账号或服务器地址无效，请填写完整的 HTTP(S) 服务地址，并确认 BOSS 登录状态后重试。";
+    }
     if (stage === "identity") {
         return "未能读取完整的 BOSS 登录身份，请确认已登录本人账号后重试。";
     }

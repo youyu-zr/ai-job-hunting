@@ -45,12 +45,15 @@ request.interceptors.request.use(req => {
 
         const accountId = String(Tools.window?._PAGE?.uid ?? "").trim()
         const expectedIdentity = req.bossIdentityContext
+        const scope = userSessionScope(accountId, serverUrl)
+        if (expectedIdentity && !scope) {
+            throw new AxiosError("当前账号或服务器地址无效，请填写完整的 HTTP(S) 服务地址后重试", "RESUME_SCOPE_INVALID", req)
+        }
         if (expectedIdentity && (serverUrl !== expectedIdentity.serverUrl
             || accountId !== expectedIdentity.accountId
             || String(Tools.window?._PAGE?.token ?? "").trim() !== expectedIdentity.token)) {
             throw new AxiosError("BOSS账号、登录身份或服务器已变更，请重新导入", AxiosError.ERR_CANCELED, req)
         }
-        const scope = userSessionScope(accountId, serverUrl)
         ;(req as any).__aiSessionScope = scope
         ;(req as any).__aiServerUrl = serverUrl
         const authorization = scopedAuthorization(scope)

@@ -141,6 +141,7 @@ import {serializeAiSeatStatus, shouldApplyAiSeatRollback} from "../../stores/sea
 import {isUserConfigReady, rememberAiSeatStatus, userRemoteLoad} from "../../stores/remote";
 import {waitForBossIdentity} from "../../utils/bossIdentity";
 import type {BossIdentity} from "../../utils/bossIdentity";
+import {userSessionScope} from "../../utils/sessionContext";
 import {applicationResponseError, resumeImportErrorNotice} from "../../utils/resumeImportError";
 import type {ResumeImportStage} from "../../utils/resumeImportError";
 
@@ -315,6 +316,9 @@ const handlerImport = async () => {
             return;
         }
         const {accountId: bossUserId, token} = identity;
+        if (!userSessionScope(bossUserId, requestedServerUrl)) {
+            throw Object.assign(new Error("当前账号或服务器地址无效"), {code: "RESUME_SCOPE_INVALID"});
+        }
         resumeImportAttempted = true;
         resumeImportStatus.value = '未成功导入简历';
         stage = "lookup";
