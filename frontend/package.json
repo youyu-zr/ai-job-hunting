@@ -1,7 +1,7 @@
 {
   "name": "ai-job-hunting",
   "private": true,
-  "version": "0.0.118-beta-decision-boundaries",
+  "version": "0.0.119-beta-resume-import",
   "type": "module",
   "scripts": {
     "dev": "vite",
