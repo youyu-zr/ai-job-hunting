@@ -66,8 +66,8 @@ public class CorsFilter implements Filter {
             response.setHeader("Access-Control-Allow-Credentials", "true");
             response.setHeader("Access-Control-Max-Age", "3600");
             // 跨域时需要暴露自定义header
-            response.setHeader("Access-Control-Expose-Headers", "Authorization");
-            response.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Zp_token");
+            response.setHeader("Access-Control-Expose-Headers", "Authorization, Retry-After");
+            response.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Boss-Token, Zp_token");
             response.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE, PUT");
             // 命中白名单时缓存整个响应，避免同一响应在不同 Origin 下被 CDN 混用
             response.setHeader("Vary", "Origin");

@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, {AxiosError} from "axios";
 import {ElMessage} from "./utils/tools";
 import {BizCodeEnum} from "./types";
 import {ProductStore} from "./stores";
@@ -8,9 +8,12 @@ import {Tools} from "./platform/utils";
 import {
     clearScopedAuthorization,
     isScopedAuthorizationCurrent,
+    normalizeServerUrl,
     scopedAuthorization,
     userSessionScope
 } from "./utils/sessionContext";
+import {installBossIdentityTransport} from "./utils/bossIdentityTransport";
+import {applicationResponseError, markRequestErrorNotified, rateLimitMessage} from "./utils/resumeImportError";
 
 
 /**
@@ -25,6 +28,7 @@ const request = axios.create({
         'Content-Type': 'application/json; charset=utf-8',
     }
 })
+installBossIdentityTransport(request);
 
 /**
  * 请求拦截器
@@ -34,14 +38,23 @@ request.interceptors.request.use(req => {
         try {
             const serverStore = ServerStore()
             serverUrl = serverStore.baseUrl
-            req.baseURL = serverUrl
         } catch (e) {
             // 如果在 Pinia 初始化前调用了 axios，回退到默认地址
-            req.baseURL = DEFAULT_SERVER_URL
         }
 
         const accountId = String(Tools.window?._PAGE?.uid ?? "").trim()
+        const expectedIdentity = req.bossIdentityContext
+        const destination = normalizeServerUrl(serverUrl)
         const scope = userSessionScope(accountId, serverUrl)
+        if (!destination || (expectedIdentity && !scope)) {
+            throw new AxiosError("当前账号或服务器地址无效，请填写完整的 HTTP(S) 服务地址后重试", "RESUME_SCOPE_INVALID", req)
+        }
+        if (expectedIdentity && (serverUrl !== expectedIdentity.serverUrl
+            || accountId !== expectedIdentity.accountId
+            || String(Tools.window?._PAGE?.token ?? "").trim() !== expectedIdentity.token)) {
+            throw new AxiosError("BOSS账号、登录身份或服务器已变更，请重新导入", AxiosError.ERR_CANCELED, req)
+        }
+        req.baseURL = destination
         ;(req as any).__aiSessionScope = scope
         ;(req as any).__aiServerUrl = serverUrl
         const authorization = scopedAuthorization(scope)
@@ -70,6 +83,21 @@ function isCurrentSessionRequest(config: any): boolean {
     return Boolean(config?.__aiSessionScope && config.__aiSessionScope === currentScope)
 }
 
+function isCurrentImportRequest(config: any): boolean {
+    const expected = config?.bossIdentityContext;
+    return !expected || (isCurrentSessionRequest(config)
+        && isCurrentServerRequest(config)
+        && String(Tools.window?._PAGE?.token ?? "").trim() === expected.token);
+}
+
+function notifyRequestError(error: any, options: any): void {
+    if (!isCurrentImportRequest(error.config)) {
+        return;
+    }
+    ElMessage(options);
+    markRequestErrorNotified(error);
+}
+
 function handlerErrorCode(result: any) {
     if (!result || result?.code < 5000) {
         return;
@@ -90,7 +118,7 @@ request.interceptors.response.use((resp: any) => {
         }
 
         // http的响应状态码会进入这里
-        let result = resp.data;
+        let result = resp.data || {};
         if (result.code === 200) {
             return resp;
         }
@@ -99,6 +127,7 @@ request.interceptors.response.use((resp: any) => {
             return resp;
         }
 
+        const error = applicationResponseError(resp);
         if (result.code === 401) {
             const scope = (resp.config as any)?.__aiSessionScope as string | null | undefined
             const authorizationIsCurrent = isScopedAuthorizationCurrent(
@@ -111,24 +140,24 @@ request.interceptors.response.use((resp: any) => {
             )
             if (isCurrentSessionRequest(resp.config) && authorizationIsCurrent) {
                 LoginStore().loginFailForScope(scope || null)
-                ElMessage({
+                notifyRequestError(error, {
                     type: "error",
                     message: "登录过期，请刷新页面重试"
                 });
             }
-            return Promise.reject(result.message)
+            return Promise.reject(error)
         }
 
         if (!result.code || result.code === 500 || result.code >= 5000) {
             // 代码执行下来，说明code不为200，或者result有问题【使用弹窗提示,可能为空白】
-            ElMessage({
+            notifyRequestError(error, {
                 type: "error",
                 message: result.message ? result.message : '系统异常'
             });
             handlerErrorCode(result);
         }
         // 使请求不进入正常的响应处理函数
-        return Promise.reject(result.message)
+        return Promise.reject(error)
     },
 
     /**
@@ -157,14 +186,16 @@ request.interceptors.response.use((resp: any) => {
                 serverStore.setStatus('offline', '请求超时')
             }
             // 弹窗提示
-            ElMessage({
-                message: '网络超时',
+            notifyRequestError(error, {
+                message: error.config?.url === '/api/user/import/resume'
+                    ? '简历导入请求超时，保存结果尚未确认；请稍后刷新状态，勿重复上传。'
+                    : '网络超时',
                 type: 'error',
                 grouping: true,
                 duration: 2000
             })
             // 使请求不进入正常的响应处理函数
-            return Promise.reject("time out")
+            return Promise.reject(error)
         }
         // 网络不通，无法访问后端，或者服务器不在线
         if (error.code === 'ERR_NETWORK') {
@@ -172,8 +203,10 @@ request.interceptors.response.use((resp: any) => {
                 serverStore.setStatus('offline', '无法访问服务器')
             }
             // 弹窗提示
-            ElMessage({
-                message: '系统异常,请稍后重试',
+            notifyRequestError(error, {
+                message: error.config?.url === '/api/user/import/resume'
+                    ? '无法连接服务端，简历导入结果尚未确认；请稍后刷新状态，勿重复上传。'
+                    : '系统异常,请稍后重试',
                 type: 'error',
                 grouping: true,
                 duration: 2000
@@ -183,7 +216,7 @@ request.interceptors.response.use((resp: any) => {
         }
 
         // 获取后端返回的错误信息
-        if (error.response && error.response.data) {
+        if (typeof error.response?.data?.message === "string" && error.response.data.message.trim()) {
             error.message = error.response.data.message;
         }
 
@@ -192,8 +225,8 @@ request.interceptors.response.use((resp: any) => {
         }
 
         // 弹窗提示，3秒
-        ElMessage({
-            message: error.message,
+        notifyRequestError(error, {
+            message: rateLimitMessage(error) || error.message || '服务端请求失败',
             type: 'error',
             grouping: true,
             duration: 3000

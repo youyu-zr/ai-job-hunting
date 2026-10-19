@@ -3,9 +3,9 @@ export const AUTHORIZATION_SCOPE_KEY = "AuthorizationScope";
 
 type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
-function normalizedServer(serverUrl: string | null | undefined): string | null {
+export function normalizeServerUrl(serverUrl: string | null | undefined): string | null {
     const raw = String(serverUrl ?? "").trim();
-    if (!raw) {
+    if (!/^https?:\/\/[^/\\\s?#]+(?:[/?#]|$)/i.test(raw)) {
         return null;
     }
     try {
@@ -33,7 +33,7 @@ export function userSessionScope(
     serverUrl: string | null | undefined
 ): string | null {
     const normalizedAccountId = String(accountId ?? "").trim();
-    const server = normalizedServer(serverUrl);
+    const server = normalizeServerUrl(serverUrl);
     if (!normalizedAccountId || !server) {
         return null;
     }

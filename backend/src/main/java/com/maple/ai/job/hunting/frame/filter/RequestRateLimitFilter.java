@@ -7,6 +7,7 @@ import com.google.common.hash.Hashing;
 import com.google.common.util.concurrent.RateLimiter;
 import com.maple.ai.job.hunting.common.HeaderContext;
 import com.maple.ai.job.hunting.model.common.Response;
+import com.maple.ai.job.hunting.utils.BossTokenHeaders;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
@@ -56,15 +57,19 @@ public class RequestRateLimitFilter implements Filter {
             return;
         }
 
+        String bossToken = rule.anonymousIdentity
+                ? BossTokenHeaders.resolve(request.getHeader(BossTokenHeaders.CANONICAL_HEADER),
+                        request.getHeader(BossTokenHeaders.LEGACY_HEADER))
+                : null;
         if (rule.anonymousIdentity
                 && !tryAcquire("route|" + request.getRequestURI(), rule.globalPermitsPerSecond)) {
-            reject(response);
+            reject(response, rule.globalPermitsPerSecond);
             return;
         }
 
-        String key = rateLimitKey(request, rule.anonymousIdentity);
+        String key = rateLimitKey(request, rule.anonymousIdentity, bossToken);
         if (!tryAcquire(key, rule.permitsPerSecond)) {
-            reject(response);
+            reject(response, rule.permitsPerSecond);
             return;
         }
 
@@ -72,7 +77,8 @@ public class RequestRateLimitFilter implements Filter {
         if (rule.modelRequest) {
             modelSlotAcquired = activeModelRequests.tryAcquire();
             if (!modelSlotAcquired) {
-                reject(response);
+                // The identity permit has already been consumed, even without a model slot.
+                reject(response, rule.permitsPerSecond);
                 return;
             }
         }
@@ -120,12 +126,11 @@ public class RequestRateLimitFilter implements Filter {
         };
     }
 
-    private static String rateLimitKey(HttpServletRequest request, boolean anonymousIdentity) {
+    private static String rateLimitKey(HttpServletRequest request, boolean anonymousIdentity, String bossToken) {
         String identity;
         if (anonymousIdentity) {
             String uniqueId = request.getParameter("uniqueId");
             String remoteAddress = request.getRemoteAddr();
-            String bossToken = request.getHeader("Zp_token");
             identity = request.getRequestURI() + "|" + remoteAddress + "|"
                     + (uniqueId == null ? "" : uniqueId.substring(0, Math.min(uniqueId.length(), 64)))
                     + "|" + (bossToken == null ? "" : bossToken);
@@ -135,9 +140,10 @@ public class RequestRateLimitFilter implements Filter {
         return Hashing.sha256().hashString(identity, StandardCharsets.UTF_8).toString();
     }
 
-    private static void reject(HttpServletResponse response) throws IOException {
+    private static void reject(HttpServletResponse response, double permitsPerSecond) throws IOException {
         response.setStatus(429);
-        response.setHeader("Retry-After", "1");
+        long retryAfterSeconds = Math.max(1L, (long) Math.ceil(1.0 / permitsPerSecond));
+        response.setHeader("Retry-After", Long.toString(retryAfterSeconds));
         response.setContentType("application/json;charset=utf-8");
         response.getWriter().write(JSONUtil.toJsonStr(Response.error(429, "请求过于频繁，请稍后重试")));
     }

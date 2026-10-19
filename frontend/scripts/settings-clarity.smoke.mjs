@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {deferred, importHarness} from '../tests/helpers/resumeImportHarness.ts';
 
 const panel = readFileSync(new URL('../src/components/ui/Panel.vue', import.meta.url), 'utf8');
 const invitationExchange = readFileSync(new URL('../src/components/ui/InvitationExchange.vue', import.meta.url), 'utf8');
@@ -39,10 +40,21 @@ assert.match(aiJob, /let resumeImportAttempted = false;/);
 assert.match(aiJob, /watch\(\(\) => userStore\.user\.resumeId,\s*\(resumeId\) => \{\s*if \(!resumeImportAttempted\) \{\s*resumeImportStatus\.value = resumeId \? '成功导入简历' : '未成功导入简历';/);
 assert.match(aiJob, /成功导入简历/);
 assert.match(aiJob, /未成功导入简历/);
-assert.match(aiJob, /const handlerImport = async \(\) => \{\s*resumeImportAttempted = true;\s*resumeImportStatus\.value = '未成功导入简历';/);
-assert.match(aiJob, /if \(importResp\.data\.code !== 200\)[\s\S]*?return;[\s\S]*?userStore\.user\.resumeId\s*=\s*resumeId/);
 assert.match(aiJob, /userStore\.user\.resumeId\s*=\s*resumeId;\s*resumeImportStatus\.value = '成功导入简历';/);
-assert.match(aiJob, /catch \(error: any\) \{[\s\S]*?resumeImportStatus\.value = '未成功导入简历';[\s\S]*?导入简历失败/);
+const identityWait = deferred();
+const importing = importHarness();
+importing.identityWith(() => identityWait.promise);
+const pendingImport = importing.run();
+await new Promise(resolve => setImmediate(resolve));
+assert.equal(importing.status.value, '成功导入简历', 'waiting for identity must preserve the saved-state badge');
+assert.equal(importing.lookups.length, 0, 'identity must be ready before looking up attachments');
+importing.respondWith(async () => ({code: 2003, message: '身份校验失败'}));
+identityWait.resolve({accountId: importing.page.uid, token: importing.page.token});
+await pendingImport;
+assert.equal(importing.userStore.user.resumeId, 'old-resume', 'identity rejection must preserve the existing resume');
+assert.equal(importing.status.value, '未成功导入简历', 'a rejected save must not be shown as a new successful import');
+assert.equal(importing.notices.length, 1, 'identity rejection must be reported once');
+assert.match(importing.notices[0].message, /身份/);
 
 assert.match(preference, /系统底层规则/);
 assert.match(preference, /求职要求/);
