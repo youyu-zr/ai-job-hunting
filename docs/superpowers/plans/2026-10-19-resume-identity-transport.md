@@ -37,11 +37,11 @@
 - Produces `BossTokenHeaders.resolve(String canonical, String legacy): String`.
 - Both nonblank and unequal values fail with the existing identity-verification business error. Blank canonical values may use a nonblank legacy value; neither value authenticates a user by itself.
 
-- [ ] Add failing tests for canonical/legacy/equal/conflicting/missing proof, actual controller binding, limiter identity selection, CORS preflight and exposed `Retry-After`.
-- [ ] Run the focused tests and observe the missing canonical behavior before implementation.
-- [ ] Implement the resolver and use it at both identity-bearing endpoints and the anonymous limiter key.
-- [ ] Keep verifier ownership checks unchanged. Give identity throttling a conservative delay based on its configured rate, rather than always advertising one second.
-- [ ] Rerun focused tests and the full backend suite. Do not update tests merely to assert source spelling.
+- [x] Add failing tests for canonical/legacy/equal/conflicting/missing proof, actual controller binding, limiter identity selection, CORS preflight and exposed `Retry-After`.
+- [x] Run the focused tests and observe the missing canonical behavior before implementation.
+- [x] Implement the resolver and use it at both identity-bearing endpoints and the anonymous limiter key.
+- [x] Keep verifier ownership checks unchanged. Give identity throttling a conservative delay based on its configured rate, rather than always advertising one second.
+- [x] Rerun focused tests and the full backend suite. Do not update tests merely to assert source spelling.
 
 ## Task 2: Browser Proof Transport And Honest Import Failures
 
@@ -52,18 +52,18 @@
 - The real Axios adapter must receive `X-Boss-Token`; platform clients retain `Zp_token`.
 - Error notices distinguish attachment lookup/download, application identity rejection, HTTP 429, and transport failure. Already displayed application errors must not create a second misleading generic toast.
 
-- [ ] Reproduce the missing canonical header using a real Axios instance and a synthetic adapter.
-- [ ] Add import-error regressions for application 429 versus missing attachment, failed identity proof versus file parsing, and duplicate notification suppression.
-- [ ] Apply minimal scoped changes. Read a ready live identity before import, keep account/server/token guards, and prevent overlapping import actions.
-- [ ] Preserve successful-import status if only later session refresh fails; avoid a redundant login request after storing a fresh session.
-- [ ] Validate download status before treating a response as a resume file. Do not silently retry a failed platform action.
-- [ ] Run focused tests, all frontend tests, prelaunch checks, build and public-userscript parity verification.
+- [x] Reproduce the missing canonical header using a real Axios instance and a synthetic adapter.
+- [x] Add import-error regressions for application 429 versus missing attachment, failed identity proof versus file parsing, and duplicate notification suppression.
+- [x] Apply minimal scoped changes. Read a ready live identity before import, keep account/server/token guards, and prevent overlapping import actions.
+- [x] Preserve successful-import status if only later session refresh fails; avoid a redundant login request after storing a fresh session.
+- [x] Validate download status before treating a response as a resume file. Do not silently retry a failed platform action.
+- [x] Run focused tests, all frontend tests, prelaunch checks, build and public-userscript parity verification.
 
 ## Task 3: Verification, Version And Controlled Release
 
 **Files:** `frontend/package.json`, relevant public version references, generated public userscript, release evidence and status documentation.
 
-- [ ] Update the script release to `0.0.119-beta-resume-import` without changing user-facing installation instructions.
+- [x] Update the script release to `0.0.119-beta-resume-import` without changing user-facing installation instructions.
 - [ ] Review both workers' diffs, reproduce important failure tests independently and obtain an independent final source/adversarial review.
 - [ ] Prove that the generated userscript matches reviewed frontend source; ensure no credentials or private probe artifacts are staged.
 - [ ] Push a scoped branch, require current-head frontend/backend and code-scanning checks, and merge normally under the owner's existing delegation.
