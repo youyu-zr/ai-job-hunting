@@ -8,6 +8,7 @@ import {Tools} from "./platform/utils";
 import {
     clearScopedAuthorization,
     isScopedAuthorizationCurrent,
+    normalizeServerUrl,
     scopedAuthorization,
     userSessionScope
 } from "./utils/sessionContext";
@@ -37,16 +38,15 @@ request.interceptors.request.use(req => {
         try {
             const serverStore = ServerStore()
             serverUrl = serverStore.baseUrl
-            req.baseURL = serverUrl
         } catch (e) {
             // 如果在 Pinia 初始化前调用了 axios，回退到默认地址
-            req.baseURL = DEFAULT_SERVER_URL
         }
 
         const accountId = String(Tools.window?._PAGE?.uid ?? "").trim()
         const expectedIdentity = req.bossIdentityContext
+        const destination = normalizeServerUrl(serverUrl)
         const scope = userSessionScope(accountId, serverUrl)
-        if (expectedIdentity && !scope) {
+        if (!destination || (expectedIdentity && !scope)) {
             throw new AxiosError("当前账号或服务器地址无效，请填写完整的 HTTP(S) 服务地址后重试", "RESUME_SCOPE_INVALID", req)
         }
         if (expectedIdentity && (serverUrl !== expectedIdentity.serverUrl
@@ -54,6 +54,7 @@ request.interceptors.request.use(req => {
             || String(Tools.window?._PAGE?.token ?? "").trim() !== expectedIdentity.token)) {
             throw new AxiosError("BOSS账号、登录身份或服务器已变更，请重新导入", AxiosError.ERR_CANCELED, req)
         }
+        req.baseURL = destination
         ;(req as any).__aiSessionScope = scope
         ;(req as any).__aiServerUrl = serverUrl
         const authorization = scopedAuthorization(scope)

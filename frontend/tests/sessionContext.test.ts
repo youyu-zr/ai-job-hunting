@@ -70,3 +70,9 @@ test("legacy unscoped authorization is not accepted", () => {
 
     assert.equal(scopedAuthorization(scope!, storage), null);
 });
+
+for (const malformed of ["https:application.invalid/", "https:/application.invalid/"]) {
+    test(`a repairable but nonabsolute server string has no authorization scope: ${malformed}`, () => {
+        assert.equal(userSessionScope("synthetic-account", malformed), null);
+    });
+}

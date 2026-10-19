@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import axios, {AxiosHeaders} from "axios";
-import {applicationHarness, httpFailure} from "./helpers/resumeImportHarness.ts";
+import {applicationHarness, browserImportHarness, httpFailure} from "./helpers/resumeImportHarness.ts";
 
 for (const endpoint of ["/api/user/import/resume", "/api/user/silently/login"]) {
     test(`application adapter receives canonical proof without underscore header: ${endpoint}`, async () => {
@@ -154,4 +154,29 @@ test("identity-context request rejects a null account scope before its adapter",
         return true;
     });
     assert.equal(app.requests.length, 0);
+});
+
+for (const malformed of ["https:application.invalid/", "https:/application.invalid/"]) {
+    test(`real browser client never dispatches proof to a repaired relative destination: ${malformed}`, async () => {
+        const app = browserImportHarness();
+        app.server.baseUrl = malformed;
+        await assert.rejects(app.client.post("/api/user/import/resume", null, {
+            headers: {Zp_token: app.page.token},
+            bossIdentityContext: {accountId: app.page.uid, token: app.page.token, serverUrl: malformed},
+        }), (error: any) => error.code === "RESUME_SCOPE_INVALID");
+        assert.equal(app.xhrInstances.length, 0);
+        assert.equal(app.xhrCalls.length, 0);
+    });
+}
+
+test("browser normalization does not bypass a captured raw-server context change", async () => {
+    const app = browserImportHarness();
+    const context = {accountId: app.page.uid, token: app.page.token, serverUrl: app.server.baseUrl};
+    app.server.baseUrl = "https://APPLICATION.invalid:443";
+    await assert.rejects(app.client.post("/api/user/import/resume", null, {
+        headers: {Zp_token: app.page.token},
+        bossIdentityContext: context,
+    }), (error: any) => error.code === "ERR_CANCELED");
+    assert.equal(app.xhrInstances.length, 0);
+    assert.equal(app.xhrCalls.length, 0);
 });

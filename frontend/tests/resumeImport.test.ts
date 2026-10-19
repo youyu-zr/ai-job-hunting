@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {runInNewContext} from "node:vm";
-import {deferred, httpFailure, importHarness} from "./helpers/resumeImportHarness.ts";
+import {browserImportHarness, deferred, httpFailure, importHarness} from "./helpers/resumeImportHarness.ts";
+import {userSessionScope} from "../src/utils/sessionContext.ts";
 
 for (const [status, code, message] of [
     [429, 429, "请求过于频繁，请稍后重试"],
@@ -219,3 +220,40 @@ test("scope validation waits for an initially missing live account before allowi
     assert.equal(app.requests[0].headers.get("X-Boss-Token"), "ready-proof");
     assert.equal(app.status.value, "成功导入简历");
 });
+
+for (const malformed of ["https:application.invalid/", "https:/application.invalid/"]) {
+    test(`real browser import rejects malformed destination before any attachment or XHR: ${malformed}`, async () => {
+        const app = browserImportHarness();
+        app.server.baseUrl = malformed;
+        await app.run();
+        assert.equal(app.lookups.length, 0);
+        assert.equal(app.downloads.length, 0);
+        assert.equal(app.xhrInstances.length, 0);
+        assert.equal(app.xhrCalls.length, 0);
+        assert.equal(app.notices.length, 1);
+        assert.match(app.notices[0].message, /服务器|服务地址/);
+    });
+}
+
+for (const [serverUrl, destination] of [
+    ["https://application.invalid/", "https://application.invalid/api/user/import/resume"],
+    [" https://APPLICATION.invalid:443/custom/backend/ ", "https://application.invalid/custom/backend/api/user/import/resume"],
+    ["https://application.invalid/custom/backend", "https://application.invalid/custom/backend/api/user/import/resume"],
+    ["https://application.invalid/custom/backend///", "https://application.invalid/custom/backend/api/user/import/resume"],
+]) {
+    test(`production handler dispatches to normalized application URL through real XHR: ${JSON.stringify(serverUrl)}`, async () => {
+        const app = browserImportHarness();
+        app.server.baseUrl = serverUrl;
+        app.memoryStorage.setItem("AuthorizationScope", userSessionScope(app.page.uid, serverUrl)!);
+        await app.run();
+        assert.equal(app.xhrCalls.length, 1);
+        const sent = app.xhrCalls[0];
+        assert.equal(sent.rawUrl, destination);
+        assert.equal(sent.url, destination);
+        assert.equal(sent.headers.get("x-boss-token"), "synthetic-proof");
+        assert.equal(sent.headers.get("authorization"), "synthetic-session");
+        assert.equal(sent.headers.has("zp_token"), false);
+        assert.equal(sent.data.get("file").size > 0, true);
+        assert.equal(app.status.value, "成功导入简历");
+    });
+}

@@ -26,7 +26,7 @@
 !function(t){function e(t){t.registerRegistry=Object.create(null),t.namedRegisterAliases=Object.create(null)}var r=t.System;e(r);var i,s,n=r.constructor.prototype,l=r.constructor,a=function(){l.call(this),e(this)};a.prototype=n,r.constructor=a;var o=n.register;n.register=function(t,e,r,n){if("string"!=typeof t)return o.apply(this,arguments);var l=[e,r,n];return this.registerRegistry[t]=l,i||(i=l,s=t),Promise.resolve().then((function(){i=null,s=null})),o.apply(this,[e,r,n])};var u=n.resolve;n.resolve=function(t,e){try{return u.call(this,t,e)}catch(r){if(t in this.registerRegistry)return this.namedRegisterAliases[t]||t;throw r}};var c=n.instantiate;n.instantiate=function(t,e,r){var i=this.registerRegistry[t];return i?(this.registerRegistry[t]=null,i):c.call(this,t,e,r)};var g=n.getRegister;n.getRegister=function(t){var e=g.call(this,t);s&&t&&(this.namedRegisterAliases[s]=t);var r=i||e;return i=null,s=null,r}}("undefined"!=typeof self?self:global);
 ;(typeof System!='undefined')&&(System=new System.constructor());
 
-System.register("./__entry.js", ['./__monkey.entry-DYWbTcKo.js'], (function (exports, module) {
+System.register("./__entry.js", ['./__monkey.entry-C3RLgAjA.js'], (function (exports, module) {
 	'use strict';
 	return {
 		setters: [null],
@@ -38,7 +38,7 @@ System.register("./__entry.js", ['./__monkey.entry-DYWbTcKo.js'], (function (exp
 	};
 }));
 
-System.register("./__monkey.entry-DYWbTcKo.js", [], (function (exports, module) {
+System.register("./__monkey.entry-C3RLgAjA.js", [], (function (exports, module) {
   'use strict';
   return {
     execute: (function () {
@@ -23513,9 +23513,9 @@ System.register("./__monkey.entry-DYWbTcKo.js", [], (function (exports, module) 
       }
       const AUTHORIZATION_KEY = "Authorization";
       const AUTHORIZATION_SCOPE_KEY = "AuthorizationScope";
-      function normalizedServer(serverUrl) {
+      function normalizeServerUrl(serverUrl) {
         const raw = String(serverUrl ?? "").trim();
-        if (!raw) {
+        if (!/^https?:\/\/[^/\\\s?#]+(?:[/?#]|$)/i.test(raw)) {
           return null;
         }
         try {
@@ -23538,7 +23538,7 @@ System.register("./__monkey.entry-DYWbTcKo.js", [], (function (exports, module) 
       }
       function userSessionScope(accountId, serverUrl) {
         const normalizedAccountId = String(accountId ?? "").trim();
-        const server = normalizedServer(serverUrl);
+        const server = normalizeServerUrl(serverUrl);
         if (!normalizedAccountId || !server) {
           return null;
         }
@@ -23874,19 +23874,19 @@ System.register("./__monkey.entry-DYWbTcKo.js", [], (function (exports, module) 
           try {
             const serverStore2 = ServerStore();
             serverUrl = serverStore2.baseUrl;
-            req.baseURL = serverUrl;
           } catch (e) {
-            req.baseURL = DEFAULT_SERVER_URL;
           }
           const accountId = String(((_b = (_a2 = Tools.window) == null ? void 0 : _a2._PAGE) == null ? void 0 : _b.uid) ?? "").trim();
           const expectedIdentity = req.bossIdentityContext;
+          const destination = normalizeServerUrl(serverUrl);
           const scope = userSessionScope(accountId, serverUrl);
-          if (expectedIdentity && !scope) {
+          if (!destination || expectedIdentity && !scope) {
             throw new AxiosError("当前账号或服务器地址无效，请填写完整的 HTTP(S) 服务地址后重试", "RESUME_SCOPE_INVALID", req);
           }
           if (expectedIdentity && (serverUrl !== expectedIdentity.serverUrl || accountId !== expectedIdentity.accountId || String(((_d = (_c = Tools.window) == null ? void 0 : _c._PAGE) == null ? void 0 : _d.token) ?? "").trim() !== expectedIdentity.token)) {
             throw new AxiosError("BOSS账号、登录身份或服务器已变更，请重新导入", AxiosError.ERR_CANCELED, req);
           }
+          req.baseURL = destination;
           req.__aiSessionScope = scope;
           req.__aiServerUrl = serverUrl;
           const authorization = scopedAuthorization(scope);
@@ -78766,11 +78766,11 @@ System.register("./__monkey.entry-DYWbTcKo.js", [], (function (exports, module) 
         }
         async getRenderComponent() {
           if (this.curUrl.includes("www.zhipin.com/web/geek/chat")) {
-            let promise = __vitePreload(() => module.import('./BossMessage-Caqdqhyg-Cgpnv7eu.js'), void 0 );
+            let promise = __vitePreload(() => module.import('./BossMessage-D0VZINa5-C0pRr8eb.js'), void 0 );
             return promise.then((item) => item.default);
           }
           if (this.curUrl.includes("www.zhipin.com/web/geek/job") || this.curUrl.includes("overseas")) {
-            let promise = __vitePreload(() => module.import('./BossJobList-C0TA0tjL-CtjbLYeo.js'), void 0 );
+            let promise = __vitePreload(() => module.import('./BossJobList-a8JUyXXx-PSyrZ6vD.js'), void 0 );
             return promise.then((item) => item.default);
           }
         }
@@ -81730,7 +81730,7 @@ System.register("./__monkey.entry-DYWbTcKo.js", [], (function (exports, module) 
   };
 }));
 
-System.register("./BossMessage-Caqdqhyg-Cgpnv7eu.js", ['./__monkey.entry-DYWbTcKo.js'], (function (exports, module) {
+System.register("./BossMessage-D0VZINa5-C0pRr8eb.js", ['./__monkey.entry-C3RLgAjA.js'], (function (exports, module) {
   'use strict';
   var _export_sfc, defineComponent, UserStore, ref, computed, onMounted, onUnmounted, openBlock, createElementBlock, createBaseVNode, createVNode, withCtx, normalizeClass, createTextVNode, toDisplayString, createBlock, createCommentVNode, Fragment, ConversationPauseRegistry, AiPower, parseAiSeatRuntimeStatus, getAiSeatStatusRevision, rememberAiSeatStatus, ElMessage, ElTag, ElButton, pushScopeId, popScopeId, BossOption;
   return {
@@ -81907,7 +81907,7 @@ System.register("./BossMessage-Caqdqhyg-Cgpnv7eu.js", ['./__monkey.entry-DYWbTcK
   };
 }));
 
-System.register("./BossJobList-C0TA0tjL-CtjbLYeo.js", ['./__monkey.entry-DYWbTcKo.js'], (function (exports, module) {
+System.register("./BossJobList-a8JUyXXx-PSyrZ6vD.js", ['./__monkey.entry-C3RLgAjA.js'], (function (exports, module) {
   'use strict';
   var defineComponent, openBlock, createBlock, _export_sfc, shallowRef, createElementBlock, createVNode, withCtx, Fragment, renderList, unref, createTextVNode, toDisplayString, createBaseVNode, resolveDynamicComponent, ElMenuItem, ElMenu, inject, ServerStore, ref, PushStatus, LogRecorder, LoginStore, pushResultCount, UserStore, watch, onUnmounted, isProdEnv, createCommentVNode, withDirectives, vShow, CircleCloseFilled, normalizeClass, reactive, Tools, onMounted, logger$1, isRef, userRemoteLoad, ElNotification, ElMessage, waitForBossIdentity, userSessionScope, axios, fetchWithGM_request, applicationResponseError, isUserConfigReady, resumeImportErrorNotice, loginInterceptor, serializeAiSeatStatus, rememberAiSeatStatus, shouldApplyAiSeatRollback, ElText, ElBadge, ElTag, ElButton, ElIcon, ElTooltip, ElButtonGroup$1, ElInput, ElCard, ElInputNumber, ElSwitch, applyPersonalPreferenceDefaults, ElFormItem, ElCheckbox, ElOption, ElSelect, ElUpload, ElRadioButton, ElRadioGroup, ElForm, ElCol, ElTimePicker, ElRow, ElTableColumn, ElEmpty, ElTable, ElPagination, pushScopeId, popScopeId, userSnapshotStorageKey, TampermonkeyApi, createStaticVNode;
   return {

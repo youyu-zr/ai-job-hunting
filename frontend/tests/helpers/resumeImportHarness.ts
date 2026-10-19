@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {createRequire} from "node:module";
-import {fileURLToPath} from "node:url";
+import {pathToFileURL} from "node:url";
 import {runInNewContext} from "node:vm";
 import axios, {AxiosError, AxiosHeaders} from "axios";
 import * as axiosModule from "axios";
@@ -22,7 +22,7 @@ export function deferred<T>() {
     return {promise, resolve, reject};
 }
 
-export function applicationHarness() {
+export function applicationHarness(implementation: typeof axiosModule = axiosModule) {
     const page = {uid: "synthetic-account", token: "synthetic-proof"};
     const storage = new Map<string, string>();
     const memoryStorage = {
@@ -51,7 +51,7 @@ export function applicationHarness() {
     const notify = (notice: any) => notices.push(notice);
     const stores = {LoginStore: () => login, ProductStore: () => ({setShowProduct() {}})};
     const dependencies: Record<string, unknown> = {
-        axios: axiosModule,
+        axios: implementation,
         "./utils/tools": {ElMessage: notify},
         "./types": {BizCodeEnum: {PRODUCT_NOT_AUTHORIZED: 5001}},
         "./stores": stores,
@@ -66,34 +66,40 @@ export function applicationHarness() {
                 session.clearScopedAuthorization(scope, proof, memoryStorage),
         },
     };
-    const compiled = ts.transpileModule(readFileSync(axiosUrl, "utf8"), {
-        compilerOptions: {target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS},
-    }).outputText;
-    const module = {exports: {} as any};
-    runInNewContext(compiled, {
-        module,
-        exports: module.exports,
-        require: (name: string) => {
-            if (name in dependencies) return dependencies[name];
-            return require(fileURLToPath(new URL(`${name}.ts`, axiosUrl)));
-        },
-    });
-    const client = module.exports.default as ReturnType<typeof axios.create>;
+    const modules = new Map<string, any>();
+    const loadModule = (url: URL): any => {
+        if (modules.has(url.href)) return modules.get(url.href);
+        const module = {exports: {} as any};
+        modules.set(url.href, module.exports);
+        const compiled = ts.transpileModule(readFileSync(url, "utf8"), {
+            compilerOptions: {target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS},
+        }).outputText;
+        runInNewContext(compiled, {
+            module,
+            exports: module.exports,
+            require: (name: string) => {
+                if (name in dependencies) return dependencies[name];
+                return loadModule(new URL(`${name}.ts`, url));
+            },
+        });
+        return module.exports;
+    };
+    const client = loadModule(axiosUrl).default as ReturnType<typeof axios.create>;
     const requests: any[] = [];
     let respond = async (_config: any): Promise<any> => ({code: 200, data: {email: "synthetic@example.invalid"}});
     client.defaults.adapter = async config => {
         requests.push(config);
         const data = await respond(config);
-        return {status: 200, statusText: "OK", headers: new AxiosHeaders(), config, data};
+        return {status: 200, statusText: "OK", headers: new implementation.AxiosHeaders(), config, data};
     };
     return {
         client, page, server, login, notices, notify, requests, memoryStorage,
+        errorHelpers: loadModule(new URL("../../src/utils/resumeImportError.ts", import.meta.url)),
         respondWith: (callback: typeof respond) => { respond = callback; },
     };
 }
 
-export function importHarness() {
-    const app = applicationHarness();
+export function importHarness(app = applicationHarness()) {
     const userStore = {user: {resumeId: "old-resume", aiSeatStatus: false}};
     const logs: unknown[][] = [];
     const lookups: any[] = [];
@@ -129,12 +135,7 @@ export function importHarness() {
         logger: {warn: (...args: unknown[]) => logs.push(args), error: (...args: unknown[]) => logs.push(args)},
         Blob, FormData, ArrayBuffer,
     };
-    const helperPath = new URL("../../src/utils/resumeImportError.ts", import.meta.url);
-    try {
-        Object.assign(globals, require(fileURLToPath(helperPath)));
-    } catch (error: any) {
-        if (error.code !== "MODULE_NOT_FOUND") throw error;
-    }
+    Object.assign(globals, app.errorHelpers);
     const vue = readFileSync(new URL("../../src/components/ui/AiJob.vue", import.meta.url), "utf8");
     const script = vue.slice(vue.indexOf('<script setup lang="ts">') + '<script setup lang="ts">'.length, vue.indexOf("</script>"));
     const source = ts.createSourceFile("AiJob.ts", script, ts.ScriptTarget.Latest, true);
@@ -153,6 +154,61 @@ export function importHarness() {
         identityWith: (callback: typeof identity) => { identity = callback; },
         refreshWith: (callback: typeof refresh) => { refresh = callback; },
     };
+}
+
+export function browserImportHarness() {
+    const location = new URL("https://www.zhipin.com/web/geek/jobs");
+    const xhrInstances: any[] = [];
+    const xhrCalls: Array<{method: string; rawUrl: string; url: string; headers: Map<string, string>; data: any}> = [];
+    class MemoryXMLHttpRequest {
+        method = "";
+        rawUrl = "";
+        responseURL = "";
+        headers = new Map<string, string>();
+        status = 200;
+        statusText = "OK";
+        responseText = JSON.stringify({code: 200, data: {email: "synthetic@example.invalid"}});
+        onloadend: (() => void) | null = null;
+        upload = {addEventListener() {}};
+        constructor() { xhrInstances.push(this); }
+        open(method: string, url: string) {
+            this.method = method;
+            this.rawUrl = url;
+            this.responseURL = new URL(url, location).href;
+        }
+        setRequestHeader(name: string, value: string) { this.headers.set(name.toLowerCase(), value); }
+        getAllResponseHeaders() { return "Content-Type: application/json\r\n"; }
+        addEventListener() {}
+        abort() {}
+        send(data: any) {
+            xhrCalls.push({method: this.method, rawUrl: this.rawUrl, url: this.responseURL, headers: this.headers, data});
+            queueMicrotask(() => this.onloadend?.());
+        }
+    }
+    const document = {
+        cookie: "",
+        createElement: () => ({
+            setAttribute(_name: string, value: string) {
+                const parsed = new URL(value, location);
+                for (const key of ["href", "protocol", "host", "search", "hash", "hostname", "port", "pathname"] as const) {
+                    (this as any)[key] = parsed[key];
+                }
+            },
+        }),
+    };
+    const module = {exports: {} as any};
+    const bundleUrl = new URL("./dist/browser/axios.cjs", pathToFileURL(require.resolve("axios/package.json")));
+    runInNewContext(readFileSync(bundleUrl, "utf8"), {
+        module, exports: module.exports,
+        XMLHttpRequest: MemoryXMLHttpRequest,
+        window: {location}, document, navigator: {userAgent: "synthetic-browser"},
+        FormData, Blob, URL, URLSearchParams, ArrayBuffer,
+        setTimeout, clearTimeout, queueMicrotask, btoa,
+    });
+    const browserAxios = module.exports;
+    const app = applicationHarness({...browserAxios, default: browserAxios});
+    app.client.defaults.adapter = "xhr";
+    return {...importHarness(app), xhrInstances, xhrCalls};
 }
 
 export function httpFailure(config: any, status: number, data: any, headers: Record<string, string> = {}) {
