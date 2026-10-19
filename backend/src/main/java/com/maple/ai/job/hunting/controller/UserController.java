@@ -5,6 +5,7 @@ import com.maple.ai.job.hunting.frame.exp.ApplicationException;
 import com.maple.ai.job.hunting.model.common.Response;
 import com.maple.ai.job.hunting.model.vo.UserInfoVO;
 import com.maple.ai.job.hunting.service.biz.UserService;
+import com.maple.ai.job.hunting.utils.BossTokenHeaders;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -36,7 +37,9 @@ public class UserController {
      */
     @PostMapping("/import/resume")
     public Response<UserInfoVO> importResume(MultipartFile file, String uniqueId, String resumeId,
-                                            @RequestHeader(value = "Zp_token", required = false) String bossToken) throws Exception {
+                                            @RequestHeader(value = BossTokenHeaders.CANONICAL_HEADER, required = false) String canonicalBossToken,
+                                            @RequestHeader(value = BossTokenHeaders.LEGACY_HEADER, required = false) String legacyBossToken) throws Exception {
+        String bossToken = BossTokenHeaders.resolve(canonicalBossToken, legacyBossToken);
         if (file == null) {
             throw new ApplicationException(BizCodeEnum.PARAM_ERROR);
         }
@@ -57,8 +60,10 @@ public class UserController {
      */
     @PostMapping("/silently/login")
     public Response<String> loginSilently(@RequestParam(required = false) String uniqueId,
-                                         @RequestHeader(value = "Zp_token", required = false) String bossToken) {
-        return Response.success(userService.loginSilently(uniqueId, bossToken));
+                                         @RequestHeader(value = BossTokenHeaders.CANONICAL_HEADER, required = false) String canonicalBossToken,
+                                         @RequestHeader(value = BossTokenHeaders.LEGACY_HEADER, required = false) String legacyBossToken) {
+        return Response.success(userService.loginSilently(uniqueId,
+                BossTokenHeaders.resolve(canonicalBossToken, legacyBossToken)));
     }
 
     @PostMapping("/userinfo")
