@@ -138,8 +138,11 @@ import {ElNotification} from "element-plus";
 import {LogRecorder} from "../../logging/record";
 import {getLatestPushLogs, getRecordLevelClass} from "../../logging/queries";
 import {serializeAiSeatStatus, shouldApplyAiSeatRollback} from "../../stores/seatState";
-import {rememberAiSeatStatus, userRemoteLoad} from "../../stores/remote";
-import {storeScopedAuthorization, userSessionScope} from "../../utils/sessionContext";
+import {isUserConfigReady, rememberAiSeatStatus, userRemoteLoad} from "../../stores/remote";
+import {waitForBossIdentity} from "../../utils/bossIdentity";
+import type {BossIdentity} from "../../utils/bossIdentity";
+import {applicationResponseError, resumeImportErrorNotice} from "../../utils/resumeImportError";
+import type {ResumeImportStage} from "../../utils/resumeImportError";
 
 declare const GM_info: any;
 declare const __APP_VERSION__: string;
@@ -291,49 +294,46 @@ const scrollToTop = () => {
 
 // --------------------------------------------------事件处理-------------------------------------------------------------
 const handlerImport = async () => {
-    resumeImportAttempted = true;
-    resumeImportStatus.value = '未成功导入简历';
-
-    if (!loginInterceptor()) {
+    if (importResumeLoading.value) {
         return;
     }
-    const token = Tools.window?._PAGE?.token;
-    let bossUserId = Tools.window?._PAGE?.uid
-    if (!bossUserId) {
-        ElMessage({
-            message: "未获取到Boss userId 请刷新页面重试",
-            type: 'error',
-            duration: 3000
-        })
-        return;
-    }
-    const requestedAccountId = String(bossUserId).trim();
-    const requestedServerUrl = serverStore.baseUrl;
-    const requestedScope = userSessionScope(requestedAccountId, requestedServerUrl);
-    if (!requestedScope) {
-        ElMessage({message: "当前账号或服务地址无效，请刷新后重试", type: 'error', duration: 3000});
-        return;
-    }
-    const contextIsCurrent = () =>
-        String(Tools.window?._PAGE?.uid ?? "").trim() === requestedAccountId
-        && serverStore.baseUrl === requestedServerUrl;
-
     importResumeLoading.value = true;
+    const expectedAccountId = String(Tools.window?._PAGE?.uid ?? "").trim();
+    const requestedServerUrl = serverStore.baseUrl;
+    let identity: BossIdentity | undefined;
+    let stage: ResumeImportStage = "identity";
+    const contextIsCurrent = () =>
+        serverStore.baseUrl === requestedServerUrl
+        && (!identity
+            ? !expectedAccountId || String(Tools.window?._PAGE?.uid ?? "").trim() === expectedAccountId
+            : String(Tools.window?._PAGE?.uid ?? "").trim() === identity.accountId
+                && String(Tools.window?._PAGE?.token ?? "").trim() === identity.token);
+
     try {
+        identity = await waitForBossIdentity(() => Tools.window?._PAGE, expectedAccountId);
+        if (!contextIsCurrent()) {
+            return;
+        }
+        const {accountId: bossUserId, token} = identity;
+        resumeImportAttempted = true;
+        resumeImportStatus.value = '未成功导入简历';
+        stage = "lookup";
         const resumeInfoResp = await axiosOriginal.get("https://www.zhipin.com/wapi/zpgeek/resume/sidebar.json", {headers: {"Zp_token": token}} as {});
         if (!contextIsCurrent()) {
             return;
         }
-        const zpData = resumeInfoResp.data.zpData;
-        if (!zpData.attachmentList || zpData.attachmentList.length === 0) {
-            ElMessage({
-                message: "请先在BOSS个人中心上传附件简历；作为AI坐席定制化回复的基础",
-                type: 'error',
-                duration: 3000
-            });
-            return;
+        const zpData = resumeInfoResp.data?.zpData;
+        if (!Array.isArray(zpData?.attachmentList)) {
+            throw new Error("附件列表响应无效");
         }
-        const resumeId = zpData.attachmentList[0].resumeId;
+        if (zpData.attachmentList.length === 0) {
+            throw Object.assign(new Error("未找到附件简历"), {code: "RESUME_ATTACHMENT_MISSING"});
+        }
+        const resumeId = String(zpData.attachmentList[0]?.resumeId ?? "").trim();
+        if (!resumeId) {
+            throw new Error("附件简历标识无效");
+        }
+        stage = "download";
         const resumeFileResp: any = await fetchWithGM_request(
             "https://docdownload.zhipin.com/wflow/zpgeek/download/download4geek?resumeId=" + resumeId,
             {headers: {"Zp_token": token}, responseType: 'arraybuffer'} as {},
@@ -341,36 +341,32 @@ const handlerImport = async () => {
         if (!contextIsCurrent()) {
             return;
         }
+        if (resumeFileResp?.status !== 200
+            || Object.prototype.toString.call(resumeFileResp.response) !== "[object ArrayBuffer]"
+            || resumeFileResp.response.byteLength === 0) {
+            throw Object.assign(new Error("附件下载未返回有效文件"), {status: resumeFileResp?.status});
+        }
         const fileBlob = new Blob([resumeFileResp.response], {type: 'application/pdf'});
         const formData = new FormData();
         formData.append("file", fileBlob);
         formData.append("resumeId", resumeId);
         formData.append("uniqueId", bossUserId);
-        const importResp = await axios.post("/api/user/import/resume", formData, {headers: {'Content-Type': "multipart/form-data", "Zp_token": token}});
+        stage = "upload";
+        const importResp = await axios.post("/api/user/import/resume", formData, {
+            timeout: 120000,
+            headers: {'Content-Type': "multipart/form-data", "Zp_token": token},
+            bossIdentityContext: {...identity, serverUrl: requestedServerUrl},
+        });
         if (!contextIsCurrent()) {
             return;
         }
         if (importResp.data.code !== 200) {
-            ElMessage({
-                message: "导入简历失败：" + (importResp.data?.message || '请稍后重试'),
-                type: 'error',
-                duration: 3000
-            });
-            return;
+            throw applicationResponseError(importResp);
         }
         let loginSessionReady = false;
         try {
-            const loginResp = await axios.post("/api/user/silently/login?uniqueId=" + encodeURIComponent(requestedAccountId), null, {headers: {"Zp_token": token}});
-            if (!contextIsCurrent()) {
-                return;
-            }
-            if (loginResp.data?.code !== 200 || !loginResp.data?.data) {
-                throw new Error("登录状态刷新失败");
-            }
-            storeScopedAuthorization(loginResp.data.data, requestedScope);
-            loginStore.loginSuccess(requestedAccountId, requestedScope);
-            loginSessionReady = true;
             await userRemoteLoad();
+            loginSessionReady = isUserConfigReady() && String(userStore.user.resumeId ?? "") === resumeId;
         } catch {
             logger.warn('简历已保存，但登录状态刷新失败');
         }
@@ -392,13 +388,21 @@ const handlerImport = async () => {
             duration: 3000
         });
     } catch (error: any) {
+        if (!contextIsCurrent()) {
+            return;
+        }
         resumeImportStatus.value = '未成功导入简历';
-        logger.error('导入简历失败', error?.message || error);
-        ElMessage({
-            message: "导入简历失败，请确认BOSS附件简历和网络连接后重试",
-            type: 'error',
-            duration: 3000
-        });
+        const httpStatus = Number.isInteger(error?.response?.status) ? error.response.status : undefined;
+        const businessCode = Number.isInteger(error?.response?.data?.code) ? error.response.data.code : undefined;
+        logger.error('导入简历失败', stage, httpStatus, businessCode);
+        const message = resumeImportErrorNotice(error, stage);
+        if (message) {
+            ElMessage({
+                message,
+                type: 'error',
+                duration: 5000
+            });
+        }
     } finally {
         importResumeLoading.value = false;
     }

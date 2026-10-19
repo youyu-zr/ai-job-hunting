@@ -12,14 +12,14 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 const readSource = (relativePath: string): string =>
     readFileSync(path.join(projectRoot, relativePath), 'utf-8');
 
-const identityEndpoints = [
+const silentLoginEndpoints = [
     {file: 'src/utils/tools.ts', label: 'tools.ts'},
-    {file: 'src/components/ui/AiJob.vue', label: 'AiJob.vue'},
 ];
 const resumeImportEndpoint = {file: 'src/components/ui/AiJob.vue', label: 'AiJob.vue'};
+const identityEndpoints = [...silentLoginEndpoints, resumeImportEndpoint];
 
 test('every silently/login call sends the BOSS token', () => {
-    for (const {file, label} of identityEndpoints) {
+    for (const {file, label} of silentLoginEndpoints) {
         const source = readSource(file);
         const calls = source.split('/api/user/silently/login').slice(1);
         assert.ok(calls.length > 0, `${label} should call silently/login`);
