@@ -138,7 +138,12 @@ import {ElNotification} from "element-plus";
 import {LogRecorder} from "../../logging/record";
 import {getLatestPushLogs, getRecordLevelClass} from "../../logging/queries";
 import {serializeAiSeatStatus, shouldApplyAiSeatRollback} from "../../stores/seatState";
-import {isUserConfigReady, rememberAiSeatStatus, userRemoteLoad} from "../../stores/remote";
+import {
+    isApplicationSessionReady,
+    isUserConfigReady,
+    rememberAiSeatStatus,
+    userRemoteLoad
+} from "../../stores/remote";
 import {waitForBossIdentity} from "../../utils/bossIdentity";
 import type {BossIdentity} from "../../utils/bossIdentity";
 import {userSessionScope} from "../../utils/sessionContext";
@@ -303,21 +308,38 @@ const handlerImport = async () => {
     const requestedServerUrl = serverStore.baseUrl;
     let identity: BossIdentity | undefined;
     let stage: ResumeImportStage = "identity";
+    const currentBossToken = () =>
+        String(Tools.getCookieValue("bst") ?? "").trim();
     const contextIsCurrent = () =>
         serverStore.baseUrl === requestedServerUrl
         && (!identity
             ? !expectedAccountId || String(Tools.window?._PAGE?.uid ?? "").trim() === expectedAccountId
             : String(Tools.window?._PAGE?.uid ?? "").trim() === identity.accountId
-                && String(Tools.window?._PAGE?.token ?? "").trim() === identity.token);
+                && currentBossToken() === identity.token);
 
     try {
-        identity = await waitForBossIdentity(() => Tools.window?._PAGE, expectedAccountId);
+        identity = await waitForBossIdentity(
+            () => Tools.window?._PAGE,
+            expectedAccountId,
+            240,
+            250,
+            currentBossToken,
+        );
         if (!contextIsCurrent()) {
             return;
         }
         const {accountId: bossUserId, token} = identity;
         if (!userSessionScope(bossUserId, requestedServerUrl)) {
             throw Object.assign(new Error("当前账号或服务器地址无效"), {code: "RESUME_SCOPE_INVALID"});
+        }
+        if (!isApplicationSessionReady(token)) {
+            await userRemoteLoad();
+        }
+        if (!isApplicationSessionReady(token)) {
+            throw Object.assign(new Error("AI 工作猎手账号尚未连接完成"), {code: "APP_SESSION_NOT_READY"});
+        }
+        if (!contextIsCurrent()) {
+            return;
         }
         resumeImportAttempted = true;
         resumeImportStatus.value = '未成功导入简历';
@@ -354,11 +376,10 @@ const handlerImport = async () => {
         const formData = new FormData();
         formData.append("file", fileBlob);
         formData.append("resumeId", resumeId);
-        formData.append("uniqueId", bossUserId);
         stage = "upload";
         const importResp = await axios.post("/api/user/import/resume", formData, {
             timeout: 120000,
-            headers: {'Content-Type': "multipart/form-data", "Zp_token": token},
+            headers: {'Content-Type': "multipart/form-data"},
             bossIdentityContext: {...identity, serverUrl: requestedServerUrl},
         });
         if (!contextIsCurrent()) {

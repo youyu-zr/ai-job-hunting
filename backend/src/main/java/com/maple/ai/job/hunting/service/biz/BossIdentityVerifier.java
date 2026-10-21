@@ -14,8 +14,8 @@ import org.springframework.stereotype.Service;
 /**
  * Verifies that a caller really owns the BOSS account it claims.
  *
- * <p>The userscript runs inside the logged-in BOSS page, so it can read the page token
- * ({@code _PAGE.token}) that BOSS issues. We replay that token against a BOSS endpoint and
+ * <p>The userscript runs inside the logged-in BOSS page, so it can read the current {@code bst}
+ * cookie that BOSS issues. We replay that token against a BOSS endpoint and
  * require the uid BOSS reports to equal the uid the caller claimed. Without this check a caller
  * only needed an enumerable BOSS uid to obtain somebody else's session.
  *
@@ -120,6 +120,8 @@ public class BossIdentityVerifier {
     JSONObject fetchUserInfo(String bossToken) {
         try (HttpResponse response = HttpRequest.get(BOSS_UID_ENDPOINT)
                 .header("Zp_token", bossToken)
+                .header("Cookie", "bst=" + bossToken)
+                .header("Referer", "https://www.zhipin.com/")
                 .header("User-Agent", "Mozilla/5.0")
                 .timeout(TIMEOUT_MILLIS)
                 .execute()) {

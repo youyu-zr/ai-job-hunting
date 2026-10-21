@@ -92,6 +92,11 @@ public class LoginFilter implements Filter {
 
 
     private boolean freeLoginUri(String uri) {
+        // Resume import writes into the logged-in application's user row. Keep this
+        // protected even when an older deployment still lists it as public.
+        if ("/api/user/import/resume".equals(uri)) {
+            return false;
+        }
         for (String configUri : freeLoginList) {
             if (antPathMatcher.match(configUri, uri)) {
                 return true;

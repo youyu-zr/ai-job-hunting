@@ -120,6 +120,7 @@ test('adversarial: a packet sender mismatch cannot enter the HR message path', (
     assert.match(handler, /markMessageCompletedWithoutReply/);
 });
 
+
 test('adversarial: unread recovery confirms account-level seat status before reading contacts', async () => {
     const source = readFileSync(new URL('../src/platform/bossPlatform.ts', import.meta.url), 'utf8');
     const scanStart = source.indexOf('private static async scanUnreadConversationOnce');

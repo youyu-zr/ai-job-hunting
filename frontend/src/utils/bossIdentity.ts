@@ -8,18 +8,21 @@ type BossPageIdentity = {
     token?: string | null;
 } | null | undefined;
 
+type BossTokenReader = () => string | null | undefined;
+
 export async function waitForBossIdentity(
     readPage: () => BossPageIdentity,
     expectedAccountId?: string,
     attempts = 240,
-    intervalMs = 250
+    intervalMs = 250,
+    readToken?: BossTokenReader
 ): Promise<BossIdentity> {
     const expected = String(expectedAccountId ?? "").trim();
 
     for (let attempt = 0; attempt < attempts; attempt += 1) {
         const page = readPage();
         const accountId = String(page?.uid ?? "").trim();
-        const token = String(page?.token ?? "").trim();
+        const token = String(readToken ? readToken() ?? "" : page?.token ?? "").trim();
 
         if (accountId && expected && accountId !== expected) {
             throw new Error("BOSS账号已切换，请刷新页面后重试");

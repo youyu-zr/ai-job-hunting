@@ -23,7 +23,7 @@ export function deferred<T>() {
 }
 
 export function applicationHarness(implementation: typeof axiosModule = axiosModule) {
-    const page = {uid: "synthetic-account", token: "synthetic-proof"};
+    const page = {uid: "synthetic-account", token: "synthetic-proof", cookieToken: "synthetic-proof"};
     const storage = new Map<string, string>();
     const memoryStorage = {
         getItem: (key: string) => storage.get(key) ?? null,
@@ -37,6 +37,7 @@ export function applicationHarness(implementation: typeof axiosModule = axiosMod
     const login = {
         login: true,
         accountScope: session.userSessionScope(page.uid, server.baseUrl),
+        bossToken: page.cookieToken,
         loginFailStatus: false,
         loginSuccess(accountId: string, scope: string) {
             this.login = true;
@@ -56,7 +57,10 @@ export function applicationHarness(implementation: typeof axiosModule = axiosMod
         "./types": {BizCodeEnum: {PRODUCT_NOT_AUTHORIZED: 5001}},
         "./stores": stores,
         "./stores/server": {ServerStore: () => server, DEFAULT_SERVER_URL: server.baseUrl},
-        "./platform/utils": {Tools: {window: {_PAGE: page}}},
+        "./platform/utils": {Tools: {
+            window: {_PAGE: page},
+            getCookieValue: (key: string) => key === "bst" ? page.cookieToken : null,
+        }},
         "./utils/sessionContext": {
             ...session,
             scopedAuthorization: (scope: string) => session.scopedAuthorization(scope, memoryStorage),
@@ -111,10 +115,21 @@ export function importHarness(app = applicationHarness()) {
         status: 200,
         response: new TextEncoder().encode("%PDF-synthetic").buffer,
     });
-    let identity = () => waitForBossIdentity(() => app.page, app.page.uid, 2, 0);
+    let identity = () => waitForBossIdentity(
+        () => app.page,
+        app.page.uid,
+        2,
+        0,
+        () => app.page.cookieToken,
+    );
     let refresh = async () => { userStore.user.resumeId = "new-resume"; };
     const globals: any = {
-        Tools: {window: {_PAGE: app.page}},
+        Tools: {
+            window: {_PAGE: app.page},
+            getCookieValue: (key: string) => key === "bst"
+                ? app.page.cookieToken
+                : null,
+        },
         serverStore: app.server,
         userStore,
         loginStore: app.login,
@@ -126,8 +141,22 @@ export function importHarness(app = applicationHarness()) {
         userSessionScope: session.userSessionScope,
         storeScopedAuthorization: (proof: string, scope: string) =>
             session.storeScopedAuthorization(proof, scope, app.memoryStorage),
-        userRemoteLoad: () => refresh(),
-        isUserConfigReady: () => app.login.login && !app.login.loginFailStatus,
+        userRemoteLoad: async () => {
+            const scope = session.userSessionScope(app.page.uid, app.server.baseUrl);
+            if (scope && !app.login.loginFailStatus && app.login.accountScope !== scope) {
+                app.login.login = true;
+                app.login.accountScope = scope;
+                session.storeScopedAuthorization("synthetic-session", scope, app.memoryStorage);
+            }
+            await refresh();
+            app.login.bossToken = app.page.cookieToken;
+        },
+        isApplicationSessionReady: (expectedBossToken?: string) => app.login.login && !app.login.loginFailStatus
+            && app.login.bossToken === expectedBossToken
+            && Boolean(session.scopedAuthorization(
+                session.userSessionScope(app.page.uid, app.server.baseUrl),
+                app.memoryStorage,
+            )),
         axios: app.client,
         axiosOriginal: {get: (...args: any[]) => { lookups.push(args); return lookup(); }},
         fetchWithGM_request: (...args: any[]) => { downloads.push(args); return download(); },

@@ -37,6 +37,7 @@ export function parseAiSeatRuntimeStatus(value: unknown): AiSeatRuntimeStatus | 
     };
 }
 
+
 export type AiSeatTurnDeliveryInput = {
     aiSeatEnabled: boolean;
     turnSeatRevision: number;

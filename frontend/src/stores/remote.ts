@@ -27,6 +27,10 @@ const userConfigReadiness = createScopedReadiness();
 let identityRetryTimer: ReturnType<typeof setTimeout> | undefined;
 let identityRetryCount = 0;
 
+function currentBossToken(): string {
+    return String(Tools.getCookieValue("bst") ?? "").trim();
+}
+
 export function isUserConfigReady(): boolean {
     const scope = currentSessionScope();
     const loginStore = LoginStore();
@@ -34,7 +38,19 @@ export function isUserConfigReady(): boolean {
         && userConfigReadiness.isReady(scope)
         && loginStore.login
         && loginStore.accountScope === scope
+        && loginStore.bossToken === currentBossToken()
         && !loginStore.loginFailStatus);
+}
+
+export function isApplicationSessionReady(expectedBossToken: string): boolean {
+    const scope = currentSessionScope();
+    const loginStore = LoginStore();
+    return Boolean(scope
+        && loginStore.login
+        && loginStore.accountScope === scope
+        && !loginStore.loginFailStatus
+        && loginStore.bossToken === expectedBossToken
+        && scopedAuthorization(scope));
 }
 
 export function waitForUserConfigReady(timeoutMs = 12000): Promise<boolean> {
@@ -168,7 +184,7 @@ export async function userRemoteLoad(options: UserRemoteLoadOptions = {}): Promi
     const requestedServerUrl = serverStore.baseUrl;
     let identity: BossIdentity;
     try {
-        identity = await waitForBossIdentity(() => Tools.window?._PAGE);
+        identity = await waitForBossIdentity(() => Tools.window?._PAGE, "", 240, 250, currentBossToken);
         identityRetryCount = 0;
         if (identityRetryTimer) {
             clearTimeout(identityRetryTimer);

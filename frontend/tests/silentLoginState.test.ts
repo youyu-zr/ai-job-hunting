@@ -62,8 +62,25 @@ test("silent login deduplication distinguishes BOSS token generations", () => {
     const tools = ui("utils/tools.ts");
     assert.match(tools, /Map<string, Map<string, Promise<SilentLoginOutcome>>>/);
     assert.match(tools, /scopedRequests\?\.get\(identity\.token\)/);
+    assert.match(tools, /bossToken.*token|token.*bossToken/);
     assert.match(tools, /pageToken === token/);
     assert.match(tools, /clearScopedAuthorization\(sessionScope, token\)/);
+});
+
+test("resume import session readiness is bound to the verified BOSS token", () => {
+    const remote = ui("stores/remote.ts");
+    const aiJob = ui("components/ui/AiJob.vue");
+    assert.match(remote, /isApplicationSessionReady\(\s*expectedBossToken/);
+    assert.match(aiJob, /isApplicationSessionReady\(token\)/);
+});
+
+test("stale BOSS cookie invalidates the current user-config readiness", () => {
+    const remote = ui("stores/remote.ts");
+    const readyCheck = remote.slice(
+        remote.indexOf("export function isUserConfigReady"),
+        remote.indexOf("export function isApplicationSessionReady"),
+    );
+    assert.match(readyCheck, /loginStore\.bossToken === currentBossToken\(\)/);
 });
 
 test("changing servers resets the account profile before starting a fresh session", () => {
@@ -81,6 +98,8 @@ test("token polling is bounded and network errors preserve the original error", 
     assert.match(tools, /waitForBossIdentity/);
     assert.match(identityWait, /attempt < attempts/);
     assert.match(identityWait, /intervalMs/);
+    assert.match(tools, /getCookieValue\("bst"\)/);
+    assert.match(identityWait, /readToken \? readToken\(\) \?\? "" : page\?\.token/);
     assert.match(networkError, /return Promise\.reject\(error\)/);
     assert.doesNotMatch(networkError, /Promise\.reject\(\(\) =>/);
 });
