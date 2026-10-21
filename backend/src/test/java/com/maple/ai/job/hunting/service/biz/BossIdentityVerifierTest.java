@@ -14,7 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Covers the identity-forgery guard protecting /api/user/silently/login and /api/user/import/resume.
+ * Covers the BOSS identity-forgery guard used when issuing /api/user/silently/login sessions.
+ * Resume import separately requires that server-issued application session.
  *
  * <p>The network call is stubbed by overriding the single fetch hook, so the real decision table in
  * the production verifier is what gets exercised.
