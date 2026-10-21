@@ -30,25 +30,18 @@ public class UserController {
      * 导入简历
      *
      * @param file     简历文件
-     * @param uniqueId boss平台的用户id
      * @param resumeId boss平台的简历id
      * @return {@link Response }<{@link UserInfoVO }>
      * @throws Exception 例外
      */
     @PostMapping("/import/resume")
-    public Response<UserInfoVO> importResume(MultipartFile file, String uniqueId, String resumeId,
-                                            @RequestHeader(value = BossTokenHeaders.CANONICAL_HEADER, required = false) String canonicalBossToken,
-                                            @RequestHeader(value = BossTokenHeaders.LEGACY_HEADER, required = false) String legacyBossToken) throws Exception {
-        String bossToken = BossTokenHeaders.resolve(canonicalBossToken, legacyBossToken);
+    public Response<UserInfoVO> importResume(MultipartFile file, String resumeId) throws Exception {
         if (file == null) {
             throw new ApplicationException(BizCodeEnum.PARAM_ERROR);
         }
         InputStream resumeFileStream = file.getInputStream();
-        if (uniqueId == null) {
-            throw new ApplicationException(BizCodeEnum.PARAM_ERROR);
-        }
 
-        return Response.success(userService.importResume(resumeFileStream, uniqueId, resumeId, bossToken));
+        return Response.success(userService.importResume(resumeFileStream, resumeId));
     }
 
 

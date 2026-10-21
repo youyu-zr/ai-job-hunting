@@ -1,7 +1,7 @@
 {
   "name": "ai-job-hunting",
   "private": true,
-  "version": "0.0.119-beta-resume-import",
+  "version": "0.0.120-beta-resume-auth",
   "type": "module",
   "scripts": {
     "dev": "vite",

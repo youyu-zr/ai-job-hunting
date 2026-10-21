@@ -80,11 +80,11 @@ for (const change of ["account", "server", "token"] as const) {
         const app = applicationHarness();
         const config = {
             headers: {Zp_token: app.page.token},
-            bossIdentityContext: {accountId: app.page.uid, token: app.page.token, serverUrl: app.server.baseUrl},
+            bossIdentityContext: {accountId: app.page.uid, token: app.page.cookieToken, serverUrl: app.server.baseUrl},
         };
         if (change === "account") app.page.uid = "other-account";
         if (change === "server") app.server.baseUrl = "https://other.invalid/";
-        if (change === "token") app.page.token = "other-proof";
+        if (change === "token") app.page.cookieToken = "other-proof";
         await assert.rejects(app.client.post("/api/user/import/resume", null, config));
         assert.equal(app.requests.length, 0);
         assert.equal(app.notices.length, 0);
@@ -132,7 +132,7 @@ for (const serverUrl of ["/", "relative/backend", ""]) {
         app.server.baseUrl = serverUrl;
         await assert.rejects(app.client.post("/api/user/import/resume", null, {
             headers: {Zp_token: app.page.token},
-            bossIdentityContext: {accountId: app.page.uid, token: app.page.token, serverUrl},
+            bossIdentityContext: {accountId: app.page.uid, token: app.page.cookieToken, serverUrl},
         }), (error: any) => {
             assert.equal(error.code, "RESUME_SCOPE_INVALID");
             assert.match(error.message, /服务器|服务地址/);
@@ -148,7 +148,7 @@ test("identity-context request rejects a null account scope before its adapter",
     app.page.uid = "";
     await assert.rejects(app.client.post("/api/user/import/resume", null, {
         headers: {"X-Boss-Token": app.page.token},
-        bossIdentityContext: {accountId: "", token: app.page.token, serverUrl: app.server.baseUrl},
+        bossIdentityContext: {accountId: "", token: app.page.cookieToken, serverUrl: app.server.baseUrl},
     }), (error: any) => {
         assert.equal(error.code, "RESUME_SCOPE_INVALID");
         return true;
@@ -162,7 +162,7 @@ for (const malformed of ["https:application.invalid/", "https:/application.inval
         app.server.baseUrl = malformed;
         await assert.rejects(app.client.post("/api/user/import/resume", null, {
             headers: {Zp_token: app.page.token},
-            bossIdentityContext: {accountId: app.page.uid, token: app.page.token, serverUrl: malformed},
+            bossIdentityContext: {accountId: app.page.uid, token: app.page.cookieToken, serverUrl: malformed},
         }), (error: any) => error.code === "RESUME_SCOPE_INVALID");
         assert.equal(app.xhrInstances.length, 0);
         assert.equal(app.xhrCalls.length, 0);
@@ -171,7 +171,7 @@ for (const malformed of ["https:application.invalid/", "https:/application.inval
 
 test("browser normalization does not bypass a captured raw-server context change", async () => {
     const app = browserImportHarness();
-    const context = {accountId: app.page.uid, token: app.page.token, serverUrl: app.server.baseUrl};
+    const context = {accountId: app.page.uid, token: app.page.cookieToken, serverUrl: app.server.baseUrl};
     app.server.baseUrl = "https://APPLICATION.invalid:443";
     await assert.rejects(app.client.post("/api/user/import/resume", null, {
         headers: {Zp_token: app.page.token},

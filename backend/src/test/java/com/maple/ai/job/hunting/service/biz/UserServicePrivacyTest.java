@@ -2,8 +2,11 @@ package com.maple.ai.job.hunting.service.biz;
 
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import com.maple.ai.job.hunting.common.Header;
+import com.maple.ai.job.hunting.common.HeaderContext;
 import com.maple.ai.job.hunting.config.BetaAccessConfig;
 import com.maple.ai.job.hunting.consts.RePatternConstant;
+import com.maple.ai.job.hunting.emums.BizCodeEnum;
 import com.maple.ai.job.hunting.frame.exp.ApplicationException;
 import com.maple.ai.job.hunting.mapper.UserInfoMapper;
 import com.maple.ai.job.hunting.mapper.UserResumeMapper;
@@ -11,6 +14,7 @@ import com.maple.ai.job.hunting.mapper.UserProductMapper;
 import com.maple.ai.job.hunting.model.bo.UserInfoDO;
 import com.maple.ai.job.hunting.model.bo.UserProductDO;
 import com.maple.ai.job.hunting.model.bo.UserResumeDO;
+import com.maple.ai.job.hunting.model.vo.UserInfoVO;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
@@ -68,14 +72,17 @@ class UserServicePrivacyTest {
         AtomicInteger persistenceStage = new AtomicInteger();
         RecordingTransactionManager transactionManager = new RecordingTransactionManager();
         List<UserProductDO> grantedProducts = new ArrayList<>();
+        UserInfoDO authenticatedUser = new UserInfoDO();
+        authenticatedUser.setId(42L);
+        authenticatedUser.setUniqueId("boss-user");
         UserInfoMapper userInfoMapper = (UserInfoMapper) Proxy.newProxyInstance(
                 getClass().getClassLoader(),
                 new Class[]{UserInfoMapper.class},
                 (proxy, method, args) -> switch (method.getName()) {
-                    case "selectByUniqueId" -> null;
-                    case "insert" -> {
-                        ((UserInfoDO) args[0]).setId(42L);
-                        persistenceStage.set(1);
+                    case "selectById" -> authenticatedUser;
+                    case "update" -> {
+                        assertEquals(1, persistenceStage.get());
+                        persistenceStage.set(2);
                         yield 1;
                     }
                     case "toString" -> "RecordingUserInfoMapper";
@@ -86,8 +93,10 @@ class UserServicePrivacyTest {
                 new Class[]{UserResumeMapper.class},
                 (proxy, method, args) -> switch (method.getName()) {
                     case "saveLatestResume" -> {
-                        assertEquals(1, persistenceStage.get());
-                        persistenceStage.set(2);
+                        UserResumeDO saved = (UserResumeDO) args[0];
+                        assertEquals(42L, saved.getUserId());
+                        assertEquals("resume-1", saved.getResumeId());
+                        persistenceStage.set(1);
                         yield 1;
                     }
                     case "toString" -> "RecordingUserResumeMapper";
@@ -118,15 +127,24 @@ class UserServicePrivacyTest {
                 productService,
                 new BetaAccessConfig("2026-12-30T23:59:59.999+08:00"));
         UserService userService = new UserService();
-        byte[] resume = "A".repeat(120).getBytes(StandardCharsets.UTF_8);
+        byte[] resume = ("candidate@example.com 13800138000 " + "A".repeat(120))
+                .getBytes(StandardCharsets.UTF_8);
 
-        ReflectionTestUtils.setField(userService, "bossIdentityVerifier", verifiedBossIdentityVerifier());
         ReflectionTestUtils.setField(userService, "userInfoMapper", userInfoMapper);
         ReflectionTestUtils.setField(userService, "userResumeMapper", userResumeMapper);
         ReflectionTestUtils.setField(userService, "betaAccessService", betaAccessService);
         ReflectionTestUtils.setField(userService, "transactionTemplate", new TransactionTemplate(transactionManager));
+        MapperBuilderAssistant mapperBuilderAssistant = new MapperBuilderAssistant(
+                new MybatisConfiguration(), "user-info-contact-update-test");
+        mapperBuilderAssistant.setCurrentNamespace(UserInfoMapper.class.getName());
+        TableInfoHelper.initTableInfo(mapperBuilderAssistant, UserInfoDO.class);
 
-        userService.importResume(new ByteArrayInputStream(resume), "boss-user", "resume-1", "token");
+        setAuthenticatedUser(42L);
+        try {
+            userService.importResume(new ByteArrayInputStream(resume), "resume-1");
+        } finally {
+            HeaderContext.clear();
+        }
 
         assertEquals(3, persistenceStage.get());
         assertEquals(1, grantedProducts.size());
@@ -140,15 +158,14 @@ class UserServicePrivacyTest {
     void failedResumeWriteDoesNotGrantBetaAccess() {
         AtomicInteger entitlementQueries = new AtomicInteger();
         RecordingTransactionManager transactionManager = new RecordingTransactionManager();
+        UserInfoDO authenticatedUser = new UserInfoDO();
+        authenticatedUser.setId(42L);
+        authenticatedUser.setUniqueId("boss-user");
         UserInfoMapper userInfoMapper = (UserInfoMapper) Proxy.newProxyInstance(
                 getClass().getClassLoader(),
                 new Class[]{UserInfoMapper.class},
                 (proxy, method, args) -> switch (method.getName()) {
-                    case "selectByUniqueId" -> null;
-                    case "insert" -> {
-                        ((UserInfoDO) args[0]).setId(42L);
-                        yield 1;
-                    }
+                    case "selectById" -> authenticatedUser;
                     case "toString" -> "RecordingUserInfoMapper";
                     default -> throw new UnsupportedOperationException(method.getName());
                 });
@@ -156,7 +173,7 @@ class UserServicePrivacyTest {
                 getClass().getClassLoader(),
                 new Class[]{UserResumeMapper.class},
                 (proxy, method, args) -> switch (method.getName()) {
-                    case "saveLatestResume" -> 0;
+                    case "saveLatestResume" -> throw new IllegalStateException("synthetic resume write failure");
                     case "toString" -> "FailingUserResumeMapper";
                     default -> throw new UnsupportedOperationException(method.getName());
                 });
@@ -179,7 +196,6 @@ class UserServicePrivacyTest {
             }
         };
         UserService userService = new UserService();
-        ReflectionTestUtils.setField(userService, "bossIdentityVerifier", verifiedBossIdentityVerifier());
         ReflectionTestUtils.setField(userService, "userInfoMapper", userInfoMapper);
         ReflectionTestUtils.setField(userService, "userResumeMapper", userResumeMapper);
         ReflectionTestUtils.setField(userService, "transactionTemplate", new TransactionTemplate(transactionManager));
@@ -189,12 +205,31 @@ class UserServicePrivacyTest {
                 new BetaAccessConfig("2026-12-30T23:59:59.999+08:00")));
         byte[] resume = "A".repeat(120).getBytes(StandardCharsets.UTF_8);
 
-        assertThrows(ApplicationException.class, () -> userService.importResume(
-                new ByteArrayInputStream(resume), "boss-user", "resume-1", "token"));
+        setAuthenticatedUser(42L);
+        try {
+            assertThrows(IllegalStateException.class, () -> userService.importResume(
+                    new ByteArrayInputStream(resume), "resume-1"));
+        } finally {
+            HeaderContext.clear();
+        }
 
         assertEquals(0, entitlementQueries.get());
         assertEquals(0, transactionManager.commits.get());
         assertEquals(1, transactionManager.rollbacks.get());
+    }
+
+    @Test
+    void resumeImportRejectsMissingApplicationSessionBeforeReadingResume() {
+        HeaderContext.clear();
+        UserService userService = new UserService();
+        try {
+            ApplicationException failure = assertThrows(ApplicationException.class,
+                    () -> userService.importResume(new ByteArrayInputStream(new byte[]{1, 2, 3}), "resume-1"));
+
+            assertEquals(BizCodeEnum.NOT_LOGIN.getCode(), failure.getBizCode());
+        } finally {
+            HeaderContext.clear();
+        }
     }
 
     @Test
@@ -211,7 +246,7 @@ class UserServicePrivacyTest {
                 getClass().getClassLoader(),
                 new Class[]{UserInfoMapper.class},
                 (proxy, method, args) -> switch (method.getName()) {
-                    case "selectByUniqueId" -> existingUser;
+                    case "selectById" -> existingUser;
                     case "update" -> 1;
                     case "toString" -> "ExistingUserInfoMapper";
                     default -> throw new UnsupportedOperationException(method.getName());
@@ -248,7 +283,6 @@ class UserServicePrivacyTest {
             }
         };
         UserService userService = new UserService();
-        ReflectionTestUtils.setField(userService, "bossIdentityVerifier", verifiedBossIdentityVerifier());
         ReflectionTestUtils.setField(userService, "userInfoMapper", userInfoMapper);
         ReflectionTestUtils.setField(userService, "userResumeMapper", userResumeMapper);
         ReflectionTestUtils.setField(userService, "transactionTemplate",
@@ -259,18 +293,22 @@ class UserServicePrivacyTest {
                 new BetaAccessConfig("2026-12-30T23:59:59.999+08:00")));
 
         byte[] resume = "replacement resume ".repeat(8).getBytes(StandardCharsets.UTF_8);
-        userService.importResume(new ByteArrayInputStream(resume), "boss-user", "resume-2", "token");
+        setAuthenticatedUser(42L);
+        try {
+            userService.importResume(new ByteArrayInputStream(resume), "resume-2");
+        } finally {
+            HeaderContext.clear();
+        }
 
         assertEquals(1, resumeUpserts.get());
     }
 
-    private static BossIdentityVerifier verifiedBossIdentityVerifier() {
-        return new BossIdentityVerifier() {
-            @Override
-            JSONObject fetchUserInfo(String bossToken) {
-                return JSONUtil.parseObj("{\"code\":0,\"zpData\":{\"uid\":\"boss-user\"}}");
-            }
-        };
+    private static void setAuthenticatedUser(Long userId) {
+        UserInfoVO sessionUser = new UserInfoVO();
+        sessionUser.setId(userId);
+        Header header = new Header();
+        header.setUserInfoVO(sessionUser);
+        HeaderContext.setHeader(header);
     }
 
     private static final class RecordingTransactionManager implements PlatformTransactionManager {

@@ -17,6 +17,10 @@ import {BossIdentity, waitForBossIdentity} from "./bossIdentity";
 const logRecorder = new LogRecorder();
 const silentLoginRequests = new Map<string, Map<string, Promise<SilentLoginOutcome>>>();
 
+function currentBossToken(): string {
+    return String(Tools.getCookieValue("bst") ?? "").trim();
+}
+
 export async function silentlyLogin(
     bossUserId = "",
     bossToken?: string
@@ -26,7 +30,7 @@ export async function silentlyLogin(
             accountId: String(bossUserId || "").trim(),
             token: bossToken
         }
-        : await waitForBossIdentity(() => Tools.window?._PAGE, bossUserId);
+        : await waitForBossIdentity(() => Tools.window?._PAGE, bossUserId, 240, 250, currentBossToken);
     const requestedAccountId = identity.accountId;
     const requestedServerUrl = ServerStore().baseUrl;
     const scope = userSessionScope(requestedAccountId, requestedServerUrl);
@@ -69,7 +73,7 @@ async function performSilentLogin(
     const contextIsCurrent = () => {
         const page = Tools.window?._PAGE;
         const pageAccountId = String(page?.uid ?? "").trim();
-        const pageToken = String(page?.token ?? "").trim();
+        const pageToken = currentBossToken();
         return ServerStore().baseUrl === requestedServerUrl
             && pageAccountId === requestedAccountId
             && pageToken === token;
@@ -81,7 +85,8 @@ async function performSilentLogin(
         }
         if (loginStore.login
             && loginStore.accountScope === sessionScope
-            && scopedAuthorization(sessionScope)) {
+            && scopedAuthorization(sessionScope)
+            && loginStore.bossToken === token) {
             return "authenticated";
         }
         if (loginStore.accountScope !== sessionScope) {
@@ -117,7 +122,7 @@ async function performSilentLogin(
         }
 
         storeScopedAuthorization(resp.data.data, sessionScope);
-        loginStore.loginSuccess(requestedAccountId, sessionScope)
+        loginStore.loginSuccess(requestedAccountId, sessionScope, token)
         logRecorder.info("静默登录成功")
         return outcome;
     } catch (e: any) {
@@ -192,7 +197,7 @@ export async function fetchWithGM_request(url: string, options: any) {
 
 
 export const loginInterceptor = (): boolean => {
-    const token = Tools.window?._PAGE?.token;
+    const token = currentBossToken();
     if (!token) {
         ElMessage({
             message: "请先登录Boss",

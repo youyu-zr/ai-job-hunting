@@ -61,7 +61,7 @@ public class RequestRateLimitFilter implements Filter {
                 ? BossTokenHeaders.resolve(request.getHeader(BossTokenHeaders.CANONICAL_HEADER),
                         request.getHeader(BossTokenHeaders.LEGACY_HEADER))
                 : null;
-        if (rule.anonymousIdentity
+        if (rule.globalPermitsPerSecond > 0
                 && !tryAcquire("route|" + request.getRequestURI(), rule.globalPermitsPerSecond)) {
             reject(response, rule.globalPermitsPerSecond);
             return;
@@ -117,7 +117,7 @@ public class RequestRateLimitFilter implements Filter {
     private static Rule ruleFor(String uri) {
         return switch (uri) {
             case "/api/user/silently/login" -> new Rule(0.2, 10.0, true, true);
-            case "/api/user/import/resume" -> new Rule(0.1, 2.0, true, true);
+            case "/api/user/import/resume" -> new Rule(0.1, 2.0, false, true);
             case "/api/user/ai/config/test" -> new Rule(0.1, 0, false, true);
             case "/api/job/filter/one",
                  "/api/job/ai/assistant/generate/greeting" -> new Rule(2.0, 0, false, true);

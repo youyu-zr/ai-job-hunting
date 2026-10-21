@@ -96,9 +96,15 @@ public class UserService {
     private static final ThreadPoolExecutor THREAD_POOL_EXECUTOR = new ThreadPoolExecutor(2, 2,
             60L, TimeUnit.MINUTES, new java.util.concurrent.LinkedBlockingQueue<>(500));
 
-    public UserInfoVO importResume(InputStream resumeFileStream, String uniqueId, String resumeId, String bossToken) throws Exception {
-        String normalizedUniqueId = StringUtils.trimToEmpty(uniqueId);
-        bossIdentityVerifier.requireOwnership(normalizedUniqueId, bossToken);
+    public UserInfoVO importResume(InputStream resumeFileStream, String resumeId) throws Exception {
+        Long userId = HeaderContext.getHeader().getUserId();
+        if (userId == null || userId <= 0) {
+            throw new ApplicationException(BizCodeEnum.NOT_LOGIN);
+        }
+        UserInfoDO authenticatedUser = userInfoMapper.selectById(userId);
+        if (authenticatedUser == null || StringUtils.isBlank(authenticatedUser.getUniqueId())) {
+            throw new ApplicationException(BizCodeEnum.NOT_LOGIN);
+        }
         byte[] bytes = resumeFileStream.readAllBytes();
         InputStream inputStream1 = new ByteArrayInputStream(bytes);
         InputStream inputStream2 = new ByteArrayInputStream(bytes);
@@ -126,10 +132,10 @@ public class UserService {
 
         // 3. 保存用户信息
         watch.start("保存用户信息");
-        String ossFileName = "简历-" + normalizedUniqueId + "-" + DateUtil.formatDate(new Date()) + "." + FileTypeDetector.detectFileType(bytes);
+        String ossFileName = "简历-" + userId + "-" + DateUtil.formatDate(new Date()) + "." + FileTypeDetector.detectFileType(bytes);
         String resumeSummary = summarize;
         transactionTemplate.execute(status -> {
-            Long userId = saveUserInfo(normalizedUniqueId, resumeId, result, resumeSummary, ossFileName);
+            saveUserInfo(userId, resumeId, result, resumeSummary, ossFileName);
             betaAccessService.ensureAutoGrant(userId);
             return userId;
         });
@@ -137,33 +143,25 @@ public class UserService {
         return new UserInfoVO(result.getPhone(), result.getEmail());
     }
 
-    private Long saveUserInfo(String uniqueId, String resumeId, UserInfoVO result, String summarize, String ossFileName) {
-        UserInfoDO dbUserInfo = userInfoMapper.selectByUniqueId(uniqueId);
+    private void saveUserInfo(Long userId, String resumeId, UserInfoVO result, String summarize, String ossFileName) {
+        UserInfoDO dbUserInfo = userInfoMapper.selectById(userId);
         if (dbUserInfo == null) {
-            UserInfoDO userInfoDO = new UserInfoDO(result.getPhone(), result.getEmail(), uniqueId);
-            if (userInfoMapper.insert(userInfoDO) <= 0) {
-                throw new ApplicationException("用户信息保存失败，请重试");
-            }
-            if (userResumeMapper.saveLatestResume(new UserResumeDO(
-                    userInfoDO.getId(), summarize, ossFileName, resumeId)) <= 0) {
-                throw new ApplicationException("简历保存失败，请重试");
-            }
-            return userInfoDO.getId();
-        } else {
-            // A duplicate-key upsert may return 0 when the stored values are unchanged.
-            userResumeMapper.saveLatestResume(new UserResumeDO(
-                    dbUserInfo.getId(), summarize, ossFileName, resumeId));
-            LambdaUpdateWrapper<UserInfoDO> updateWrapper = new LambdaUpdateWrapper<UserInfoDO>()
-                    .eq(UserInfoDO::getId, dbUserInfo.getId())
-                    .set(UserInfoDO::getUniqueId, uniqueId);
-            if (StringUtils.isNotBlank(result.getEmail())) {
-                updateWrapper.set(UserInfoDO::getEmail, result.getEmail());
-            }
-            if (StringUtils.isNotBlank(result.getPhone())) {
-                updateWrapper.set(UserInfoDO::getPhone, result.getPhone());
-            }
+            throw new ApplicationException("用户信息不存在，请重新登录");
+        }
+        // The authenticated application session owns the row. Client supplied BOSS IDs and
+        // proof headers are deliberately not accepted as a second ownership source.
+        userResumeMapper.saveLatestResume(new UserResumeDO(
+                dbUserInfo.getId(), summarize, ossFileName, resumeId));
+        LambdaUpdateWrapper<UserInfoDO> updateWrapper = new LambdaUpdateWrapper<UserInfoDO>()
+                .eq(UserInfoDO::getId, dbUserInfo.getId());
+        if (StringUtils.isNotBlank(result.getEmail())) {
+            updateWrapper.set(UserInfoDO::getEmail, result.getEmail());
+        }
+        if (StringUtils.isNotBlank(result.getPhone())) {
+            updateWrapper.set(UserInfoDO::getPhone, result.getPhone());
+        }
+        if (StringUtils.isNotBlank(result.getEmail()) || StringUtils.isNotBlank(result.getPhone())) {
             userInfoMapper.update(new UserInfoDO(), updateWrapper);
-            return dbUserInfo.getId();
         }
     }
 

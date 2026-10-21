@@ -3,8 +3,11 @@ package com.maple.ai.job.hunting.frame.filter;
 import cn.hutool.json.JSONUtil;
 import com.google.common.cache.Cache;
 import com.google.common.util.concurrent.RateLimiter;
+import com.maple.ai.job.hunting.common.Header;
+import com.maple.ai.job.hunting.common.HeaderContext;
 import com.maple.ai.job.hunting.emums.BizCodeEnum;
 import com.maple.ai.job.hunting.frame.exp.ApplicationException;
+import com.maple.ai.job.hunting.model.vo.UserInfoVO;
 import jakarta.servlet.ServletException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -54,10 +57,7 @@ class RequestRateLimitFilterTest {
     }
 
     @ParameterizedTest
-    @CsvSource({
-            "/api/user/silently/login,5",
-            "/api/user/import/resume,10"
-    })
+    @CsvSource({"/api/user/silently/login,5"})
     void canonicalAndLegacyNamesShareTheSameIdentityQuota(String uri, String retrySeconds) throws Exception {
         RequestRateLimitFilter filter = new RequestRateLimitFilter();
         keepGlobalQuotaAvailable(filter, uri);
@@ -118,12 +118,42 @@ class RequestRateLimitFilterTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"/api/user/silently/login", "/api/user/import/resume"})
-    void globalQuotaRejectionAdvertisesAtLeastOneSecond(String uri) throws Exception {
+    @CsvSource({
+            "/api/user/silently/login,1",
+            "/api/user/import/resume,1"
+    })
+    void globalQuotaRejectionAdvertisesAtLeastOneSecond(String uri, String retrySeconds) throws Exception {
         RequestRateLimitFilter filter = new RequestRateLimitFilter();
         exhaustGlobalQuota(filter, uri);
 
-        assertRateRejection(send(filter, request(uri, "synthetic-proof", null)), "1");
+        if ("/api/user/import/resume".equals(uri)) {
+            setAuthenticatedUser(77L);
+        }
+        try {
+            assertRateRejection(send(filter, request(uri, "synthetic-proof", null)), retrySeconds);
+        } finally {
+            HeaderContext.clear();
+        }
+    }
+
+    @Test
+    void authenticatedResumeImportSharesQuotaByApplicationUserNotIpOrBossProof() throws Exception {
+        RequestRateLimitFilter filter = new RequestRateLimitFilter();
+        UserInfoVO user = new UserInfoVO();
+        user.setId(77L);
+        Header header = new Header();
+        header.setUserInfoVO(user);
+        HeaderContext.setHeader(header);
+        try {
+            keepGlobalQuotaAvailable(filter, "/api/user/import/resume");
+            assertEquals(200, send(filter, request("/api/user/import/resume", null, null)).getStatus());
+
+            MockHttpServletRequest second = request("/api/user/import/resume", null, "untrusted-extra-proof");
+            second.setRemoteAddr("192.0.2.99");
+            assertRateRejection(send(filter, second), "10");
+        } finally {
+            HeaderContext.clear();
+        }
     }
 
     @ParameterizedTest
@@ -165,6 +195,14 @@ class RequestRateLimitFilterTest {
             request.addHeader("Zp_token", legacy);
         }
         return request;
+    }
+
+    private static void setAuthenticatedUser(Long userId) {
+        UserInfoVO user = new UserInfoVO();
+        user.setId(userId);
+        Header header = new Header();
+        header.setUserInfoVO(user);
+        HeaderContext.setHeader(header);
     }
 
     private MockHttpServletResponse send(RequestRateLimitFilter filter, MockHttpServletRequest request) throws Exception {
