@@ -26,7 +26,7 @@
 !function(t){function e(t){t.registerRegistry=Object.create(null),t.namedRegisterAliases=Object.create(null)}var r=t.System;e(r);var i,s,n=r.constructor.prototype,l=r.constructor,a=function(){l.call(this),e(this)};a.prototype=n,r.constructor=a;var o=n.register;n.register=function(t,e,r,n){if("string"!=typeof t)return o.apply(this,arguments);var l=[e,r,n];return this.registerRegistry[t]=l,i||(i=l,s=t),Promise.resolve().then((function(){i=null,s=null})),o.apply(this,[e,r,n])};var u=n.resolve;n.resolve=function(t,e){try{return u.call(this,t,e)}catch(r){if(t in this.registerRegistry)return this.namedRegisterAliases[t]||t;throw r}};var c=n.instantiate;n.instantiate=function(t,e,r){var i=this.registerRegistry[t];return i?(this.registerRegistry[t]=null,i):c.call(this,t,e,r)};var g=n.getRegister;n.getRegister=function(t){var e=g.call(this,t);s&&t&&(this.namedRegisterAliases[s]=t);var r=i||e;return i=null,s=null,r}}("undefined"!=typeof self?self:global);
 ;(typeof System!='undefined')&&(System=new System.constructor());
 
-System.register("./__entry.js", ['./__monkey.entry-CI7m07ZF.js'], (function (exports, module) {
+System.register("./__entry.js", ['./__monkey.entry-B2HwTzJQ.js'], (function (exports, module) {
 	'use strict';
 	return {
 		setters: [null],
@@ -38,7 +38,7 @@ System.register("./__entry.js", ['./__monkey.entry-CI7m07ZF.js'], (function (exp
 	};
 }));
 
-System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) {
+System.register("./__monkey.entry-B2HwTzJQ.js", [], (function (exports, module) {
   'use strict';
   return {
     execute: (function () {
@@ -83,10 +83,10 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         z: resolveDynamicComponent
       });
 
-      var __defProp2 = Object.defineProperty;
-      var __defNormalProp2 = (obj, key, value) => key in obj ? __defProp2(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+      var __defProp = Object.defineProperty;
+      var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
       var __publicField = (obj, key, value) => {
-        __defNormalProp2(obj, typeof key !== "symbol" ? key + "" : key, value);
+        __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
         return value;
       };
       /**
@@ -8840,11 +8840,11 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           if (!modules) {
             return EMPTY_OBJ;
           }
-          const mod2 = modules[name];
-          if (!mod2) {
+          const mod = modules[name];
+          if (!mod) {
             return EMPTY_OBJ;
           }
-          return mod2;
+          return mod;
         }
       }
       const positionMap = /* @__PURE__ */ new WeakMap();
@@ -10957,18 +10957,18 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           }
         },
         ondirmodifier(start, end3) {
-          const mod2 = getSlice(start, end3);
+          const mod = getSlice(start, end3);
           if (inVPre) {
-            currentProp.name += "." + mod2;
+            currentProp.name += "." + mod;
             setLocEnd(currentProp.nameLoc, end3);
           } else if (currentProp.name === "slot") {
             const arg = currentProp.arg;
             if (arg) {
-              arg.content += "." + mod2;
+              arg.content += "." + mod;
               setLocEnd(arg.loc, end3);
             }
           } else {
-            currentProp.modifiers.push(mod2);
+            currentProp.modifiers.push(mod);
           }
         },
         onattribdata(start, end3) {
@@ -15695,7 +15695,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
       function isFlatArray(arr) {
         return utils$1.isArray(arr) && !arr.some(isVisitable);
       }
-      const predicates = utils$1.toFlatObject(utils$1, {}, null, function filter2(prop) {
+      const predicates = utils$1.toFlatObject(utils$1, {}, null, function filter(prop) {
         return /^is[A-Z]/.test(prop);
       });
       function toFormData$1(obj, formData, options) {
@@ -15812,7 +15812,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
       prototype.append = function append(name, value) {
         this._pairs.push([name, value]);
       };
-      prototype.toString = function toString2(encoder) {
+      prototype.toString = function toString(encoder) {
         const _encode = encoder ? function(value) {
           return encoder.call(this, value, encode$1);
         } : encode$1;
@@ -16201,7 +16201,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           });
         });
       }
-      let AxiosHeaders$1 = class AxiosHeaders2 {
+      let AxiosHeaders$1 = class AxiosHeaders {
         constructor(headers) {
           headers && this.set(headers);
         }
@@ -16917,7 +16917,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         validators: validators$2
       };
       const validators$1 = validator.validators;
-      let Axios$1 = class Axios2 {
+      let Axios$1 = class Axios {
         constructor(instanceConfig) {
           this.defaults = instanceConfig;
           this.interceptors = {
@@ -17074,7 +17074,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         Axios$1.prototype[method4 + "Form"] = generateHTTPMethod(true);
       });
       const Axios$2 = Axios$1;
-      let CancelToken$1 = class CancelToken2 {
+      let CancelToken$1 = class CancelToken {
         constructor(executor) {
           if (typeof executor !== "function") {
             throw new TypeError("executor must be a function.");
@@ -17152,7 +17152,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
          */
         static source() {
           let cancel;
-          const token = new CancelToken2(function executor(c2) {
+          const token = new CancelToken(function executor(c2) {
             cancel = c2;
           });
           return {
@@ -17258,7 +17258,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
       axios.toFormData = toFormData$1;
       axios.AxiosError = AxiosError$1;
       axios.Cancel = axios.CanceledError;
-      axios.all = function all2(promises) {
+      axios.all = function all(promises) {
         return Promise.all(promises);
       };
       axios.spread = spread$1;
@@ -17270,18 +17270,18 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
       axios.HttpStatusCode = HttpStatusCode$2;
       axios.default = axios;
       const {
-        Axios,
+        Axios: Axios2,
         AxiosError,
         CanceledError,
         isCancel,
-        CancelToken,
+        CancelToken: CancelToken2,
         VERSION,
-        all,
+        all: all2,
         Cancel,
         isAxiosError,
         spread,
         toFormData,
-        AxiosHeaders,
+        AxiosHeaders: AxiosHeaders2,
         HttpStatusCode,
         formToJSON,
         getAdapter,
@@ -17303,6 +17303,32 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
       var commonjsGlobal = typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : {};
       function getDefaultExportFromCjs(x2) {
         return x2 && x2.__esModule && Object.prototype.hasOwnProperty.call(x2, "default") ? x2["default"] : x2;
+      }
+      function getAugmentedNamespace(n) {
+        if (n.__esModule)
+          return n;
+        var f2 = n.default;
+        if (typeof f2 == "function") {
+          var a2 = function a3() {
+            if (this instanceof a3) {
+              return Reflect.construct(f2, arguments, this.constructor);
+            }
+            return f2.apply(this, arguments);
+          };
+          a2.prototype = f2.prototype;
+        } else
+          a2 = {};
+        Object.defineProperty(a2, "__esModule", { value: true });
+        Object.keys(n).forEach(function(k) {
+          var d2 = Object.getOwnPropertyDescriptor(n, k);
+          Object.defineProperty(a2, k, d2.get ? d2 : {
+            enumerable: true,
+            get: function() {
+              return n[k];
+            }
+          });
+        });
+        return a2;
       }
       var src = { exports: {} };
       var indexLight = { exports: {} };
@@ -17434,9 +17460,9 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
       })(base64$1);
       var eventemitter = EventEmitter;
       function EventEmitter() {
-        this._listeners = {};
+        this._listeners = /* @__PURE__ */ Object.create(null);
       }
-      EventEmitter.prototype.on = function on2(evt, fn2, ctx) {
+      EventEmitter.prototype.on = function on(evt, fn2, ctx) {
         (this._listeners[evt] || (this._listeners[evt] = [])).push({
           fn: fn2,
           ctx: ctx || this
@@ -17445,12 +17471,14 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
       };
       EventEmitter.prototype.off = function off(evt, fn2) {
         if (evt === void 0)
-          this._listeners = {};
+          this._listeners = /* @__PURE__ */ Object.create(null);
         else {
           if (fn2 === void 0)
             this._listeners[evt] = [];
           else {
             var listeners = this._listeners[evt];
+            if (!listeners)
+              return this;
             for (var i = 0; i < listeners.length; )
               if (listeners[i].fn === fn2)
                 listeners.splice(i, 1);
@@ -17662,19 +17690,9 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
       function readUintBE(buf, pos) {
         return (buf[pos] << 24 | buf[pos + 1] << 16 | buf[pos + 2] << 8 | buf[pos + 3]) >>> 0;
       }
-      var inquire_1 = inquire$1;
-      function inquire$1(moduleName) {
-        try {
-          var mod = eval("quire".replace(/^/, "re"))(moduleName);
-          if (mod && (mod.length || Object.keys(mod).length))
-            return mod;
-        } catch (e) {
-        }
-        return null;
-      }
       var utf8$2 = {};
       (function(exports2) {
-        var utf82 = exports2;
+        var utf82 = exports2, replacementCharCode = 65533;
         utf82.length = function utf8_length(string3) {
           var len = 0, c2 = 0;
           for (var i = 0; i < string3.length; ++i) {
@@ -17692,24 +17710,31 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           return len;
         };
         utf82.read = function utf8_read(buffer2, start, end3) {
-          var len = end3 - start;
-          if (len < 1)
+          if (end3 - start < 1)
             return "";
-          var parts = null, chunk = [], i = 0, t;
+          var parts = null, chunk = [], i = 0, t, t2, c2, c3;
           while (start < end3) {
             t = buffer2[start++];
-            if (t < 128)
+            if (t <= 127) {
               chunk[i++] = t;
-            else if (t > 191 && t < 224)
-              chunk[i++] = (t & 31) << 6 | buffer2[start++] & 63;
-            else if (t > 239 && t < 365) {
-              t = ((t & 7) << 18 | (buffer2[start++] & 63) << 12 | (buffer2[start++] & 63) << 6 | buffer2[start++] & 63) - 65536;
-              chunk[i++] = 55296 + (t >> 10);
-              chunk[i++] = 56320 + (t & 1023);
-            } else
-              chunk[i++] = (t & 15) << 12 | (buffer2[start++] & 63) << 6 | buffer2[start++] & 63;
+            } else if (t >= 192 && t < 224) {
+              c2 = (t & 31) << 6 | buffer2[start++] & 63;
+              chunk[i++] = c2 >= 128 ? c2 : replacementCharCode;
+            } else if (t >= 224 && t < 240) {
+              c3 = (t & 15) << 12 | (buffer2[start++] & 63) << 6 | buffer2[start++] & 63;
+              chunk[i++] = c3 >= 2048 ? c3 : replacementCharCode;
+            } else if (t >= 240) {
+              t2 = (t & 7) << 18 | (buffer2[start++] & 63) << 12 | (buffer2[start++] & 63) << 6 | buffer2[start++] & 63;
+              if (t2 < 65536 || t2 > 1114111)
+                chunk[i++] = replacementCharCode;
+              else {
+                t2 -= 65536;
+                chunk[i++] = 55296 + (t2 >> 10);
+                chunk[i++] = 56320 + (t2 & 1023);
+              }
+            }
             if (i > 8191) {
-              (parts || (parts = [])).push(String.fromCharCode.apply(String, chunk));
+              (parts || (parts = [])).push(String.fromCharCode.apply(String, chunk.slice(0, i)));
               i = 0;
             }
           }
@@ -17867,6 +17892,1065 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         };
         return longbits;
       }
+      var umd = { exports: {} };
+      var hasRequiredUmd;
+      function requireUmd() {
+        if (hasRequiredUmd)
+          return umd.exports;
+        hasRequiredUmd = 1;
+        (function(module2, exports2) {
+          (function(global2, factory2) {
+            function preferDefault(exports3) {
+              return exports3.default || exports3;
+            }
+            {
+              factory2(exports2);
+              module2.exports = preferDefault(exports2);
+            }
+          })(
+            typeof globalThis !== "undefined" ? globalThis : typeof self !== "undefined" ? self : commonjsGlobal,
+            function(_exports) {
+              Object.defineProperty(_exports, "__esModule", {
+                value: true
+              });
+              _exports.default = void 0;
+              /**
+               * @license
+               * Copyright 2009 The Closure Library Authors
+               * Copyright 2020 Daniel Wirtz / The long.js Authors.
+               *
+               * Licensed under the Apache License, Version 2.0 (the "License");
+               * you may not use this file except in compliance with the License.
+               * You may obtain a copy of the License at
+               *
+               *     http://www.apache.org/licenses/LICENSE-2.0
+               *
+               * Unless required by applicable law or agreed to in writing, software
+               * distributed under the License is distributed on an "AS IS" BASIS,
+               * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+               * See the License for the specific language governing permissions and
+               * limitations under the License.
+               *
+               * SPDX-License-Identifier: Apache-2.0
+               */
+              var wasm = null;
+              try {
+                wasm = new WebAssembly.Instance(
+                  new WebAssembly.Module(
+                    new Uint8Array([
+                      // \0asm
+                      0,
+                      97,
+                      115,
+                      109,
+                      // version 1
+                      1,
+                      0,
+                      0,
+                      0,
+                      // section "type"
+                      1,
+                      13,
+                      2,
+                      // 0, () => i32
+                      96,
+                      0,
+                      1,
+                      127,
+                      // 1, (i32, i32, i32, i32) => i32
+                      96,
+                      4,
+                      127,
+                      127,
+                      127,
+                      127,
+                      1,
+                      127,
+                      // section "function"
+                      3,
+                      7,
+                      6,
+                      // 0, type 0
+                      0,
+                      // 1, type 1
+                      1,
+                      // 2, type 1
+                      1,
+                      // 3, type 1
+                      1,
+                      // 4, type 1
+                      1,
+                      // 5, type 1
+                      1,
+                      // section "global"
+                      6,
+                      6,
+                      1,
+                      // 0, "high", mutable i32
+                      127,
+                      1,
+                      65,
+                      0,
+                      11,
+                      // section "export"
+                      7,
+                      50,
+                      6,
+                      // 0, "mul"
+                      3,
+                      109,
+                      117,
+                      108,
+                      0,
+                      1,
+                      // 1, "div_s"
+                      5,
+                      100,
+                      105,
+                      118,
+                      95,
+                      115,
+                      0,
+                      2,
+                      // 2, "div_u"
+                      5,
+                      100,
+                      105,
+                      118,
+                      95,
+                      117,
+                      0,
+                      3,
+                      // 3, "rem_s"
+                      5,
+                      114,
+                      101,
+                      109,
+                      95,
+                      115,
+                      0,
+                      4,
+                      // 4, "rem_u"
+                      5,
+                      114,
+                      101,
+                      109,
+                      95,
+                      117,
+                      0,
+                      5,
+                      // 5, "get_high"
+                      8,
+                      103,
+                      101,
+                      116,
+                      95,
+                      104,
+                      105,
+                      103,
+                      104,
+                      0,
+                      0,
+                      // section "code"
+                      10,
+                      191,
+                      1,
+                      6,
+                      // 0, "get_high"
+                      4,
+                      0,
+                      35,
+                      0,
+                      11,
+                      // 1, "mul"
+                      36,
+                      1,
+                      1,
+                      126,
+                      32,
+                      0,
+                      173,
+                      32,
+                      1,
+                      173,
+                      66,
+                      32,
+                      134,
+                      132,
+                      32,
+                      2,
+                      173,
+                      32,
+                      3,
+                      173,
+                      66,
+                      32,
+                      134,
+                      132,
+                      126,
+                      34,
+                      4,
+                      66,
+                      32,
+                      135,
+                      167,
+                      36,
+                      0,
+                      32,
+                      4,
+                      167,
+                      11,
+                      // 2, "div_s"
+                      36,
+                      1,
+                      1,
+                      126,
+                      32,
+                      0,
+                      173,
+                      32,
+                      1,
+                      173,
+                      66,
+                      32,
+                      134,
+                      132,
+                      32,
+                      2,
+                      173,
+                      32,
+                      3,
+                      173,
+                      66,
+                      32,
+                      134,
+                      132,
+                      127,
+                      34,
+                      4,
+                      66,
+                      32,
+                      135,
+                      167,
+                      36,
+                      0,
+                      32,
+                      4,
+                      167,
+                      11,
+                      // 3, "div_u"
+                      36,
+                      1,
+                      1,
+                      126,
+                      32,
+                      0,
+                      173,
+                      32,
+                      1,
+                      173,
+                      66,
+                      32,
+                      134,
+                      132,
+                      32,
+                      2,
+                      173,
+                      32,
+                      3,
+                      173,
+                      66,
+                      32,
+                      134,
+                      132,
+                      128,
+                      34,
+                      4,
+                      66,
+                      32,
+                      135,
+                      167,
+                      36,
+                      0,
+                      32,
+                      4,
+                      167,
+                      11,
+                      // 4, "rem_s"
+                      36,
+                      1,
+                      1,
+                      126,
+                      32,
+                      0,
+                      173,
+                      32,
+                      1,
+                      173,
+                      66,
+                      32,
+                      134,
+                      132,
+                      32,
+                      2,
+                      173,
+                      32,
+                      3,
+                      173,
+                      66,
+                      32,
+                      134,
+                      132,
+                      129,
+                      34,
+                      4,
+                      66,
+                      32,
+                      135,
+                      167,
+                      36,
+                      0,
+                      32,
+                      4,
+                      167,
+                      11,
+                      // 5, "rem_u"
+                      36,
+                      1,
+                      1,
+                      126,
+                      32,
+                      0,
+                      173,
+                      32,
+                      1,
+                      173,
+                      66,
+                      32,
+                      134,
+                      132,
+                      32,
+                      2,
+                      173,
+                      32,
+                      3,
+                      173,
+                      66,
+                      32,
+                      134,
+                      132,
+                      130,
+                      34,
+                      4,
+                      66,
+                      32,
+                      135,
+                      167,
+                      36,
+                      0,
+                      32,
+                      4,
+                      167,
+                      11
+                    ])
+                  ),
+                  {}
+                ).exports;
+              } catch {
+              }
+              function Long(low, high, unsigned) {
+                this.low = low | 0;
+                this.high = high | 0;
+                this.unsigned = !!unsigned;
+              }
+              Long.prototype.__isLong__;
+              Object.defineProperty(Long.prototype, "__isLong__", {
+                value: true
+              });
+              function isLong(obj) {
+                return (obj && obj["__isLong__"]) === true;
+              }
+              function ctz32(value) {
+                var c2 = Math.clz32(value & -value);
+                return value ? 31 - c2 : c2;
+              }
+              Long.isLong = isLong;
+              var INT_CACHE = {};
+              var UINT_CACHE = {};
+              function fromInt(value, unsigned) {
+                var obj, cachedObj, cache2;
+                if (unsigned) {
+                  value >>>= 0;
+                  if (cache2 = 0 <= value && value < 256) {
+                    cachedObj = UINT_CACHE[value];
+                    if (cachedObj)
+                      return cachedObj;
+                  }
+                  obj = fromBits(value, 0, true);
+                  if (cache2)
+                    UINT_CACHE[value] = obj;
+                  return obj;
+                } else {
+                  value |= 0;
+                  if (cache2 = -128 <= value && value < 128) {
+                    cachedObj = INT_CACHE[value];
+                    if (cachedObj)
+                      return cachedObj;
+                  }
+                  obj = fromBits(value, value < 0 ? -1 : 0, false);
+                  if (cache2)
+                    INT_CACHE[value] = obj;
+                  return obj;
+                }
+              }
+              Long.fromInt = fromInt;
+              function fromNumber(value, unsigned) {
+                if (isNaN(value))
+                  return unsigned ? UZERO : ZERO;
+                if (unsigned) {
+                  if (value < 0)
+                    return UZERO;
+                  if (value >= TWO_PWR_64_DBL)
+                    return MAX_UNSIGNED_VALUE;
+                } else {
+                  if (value <= -TWO_PWR_63_DBL)
+                    return MIN_VALUE;
+                  if (value + 1 >= TWO_PWR_63_DBL)
+                    return MAX_VALUE;
+                }
+                if (value < 0)
+                  return fromNumber(-value, unsigned).neg();
+                return fromBits(
+                  value % TWO_PWR_32_DBL | 0,
+                  value / TWO_PWR_32_DBL | 0,
+                  unsigned
+                );
+              }
+              Long.fromNumber = fromNumber;
+              function fromBits(lowBits, highBits, unsigned) {
+                return new Long(lowBits, highBits, unsigned);
+              }
+              Long.fromBits = fromBits;
+              var pow_dbl = Math.pow;
+              function fromString(str, unsigned, radix) {
+                if (str.length === 0)
+                  throw Error("empty string");
+                if (typeof unsigned === "number") {
+                  radix = unsigned;
+                  unsigned = false;
+                } else {
+                  unsigned = !!unsigned;
+                }
+                if (str === "NaN" || str === "Infinity" || str === "+Infinity" || str === "-Infinity")
+                  return unsigned ? UZERO : ZERO;
+                radix = radix || 10;
+                if (radix < 2 || 36 < radix)
+                  throw RangeError("radix");
+                var p2;
+                if ((p2 = str.indexOf("-")) > 0)
+                  throw Error("interior hyphen");
+                else if (p2 === 0) {
+                  return fromString(str.substring(1), unsigned, radix).neg();
+                }
+                var radixToPower = fromNumber(pow_dbl(radix, 8));
+                var result = ZERO;
+                for (var i = 0; i < str.length; i += 8) {
+                  var size2 = Math.min(8, str.length - i), value = parseInt(str.substring(i, i + size2), radix);
+                  if (size2 < 8) {
+                    var power = fromNumber(pow_dbl(radix, size2));
+                    result = result.mul(power).add(fromNumber(value));
+                  } else {
+                    result = result.mul(radixToPower);
+                    result = result.add(fromNumber(value));
+                  }
+                }
+                result.unsigned = unsigned;
+                return result;
+              }
+              Long.fromString = fromString;
+              function fromValue(val, unsigned) {
+                if (typeof val === "number")
+                  return fromNumber(val, unsigned);
+                if (typeof val === "string")
+                  return fromString(val, unsigned);
+                return fromBits(
+                  val.low,
+                  val.high,
+                  typeof unsigned === "boolean" ? unsigned : val.unsigned
+                );
+              }
+              Long.fromValue = fromValue;
+              var TWO_PWR_16_DBL = 1 << 16;
+              var TWO_PWR_24_DBL = 1 << 24;
+              var TWO_PWR_32_DBL = TWO_PWR_16_DBL * TWO_PWR_16_DBL;
+              var TWO_PWR_64_DBL = TWO_PWR_32_DBL * TWO_PWR_32_DBL;
+              var TWO_PWR_63_DBL = TWO_PWR_64_DBL / 2;
+              var TWO_PWR_24 = fromInt(TWO_PWR_24_DBL);
+              var ZERO = fromInt(0);
+              Long.ZERO = ZERO;
+              var UZERO = fromInt(0, true);
+              Long.UZERO = UZERO;
+              var ONE = fromInt(1);
+              Long.ONE = ONE;
+              var UONE = fromInt(1, true);
+              Long.UONE = UONE;
+              var NEG_ONE = fromInt(-1);
+              Long.NEG_ONE = NEG_ONE;
+              var MAX_VALUE = fromBits(4294967295 | 0, 2147483647 | 0, false);
+              Long.MAX_VALUE = MAX_VALUE;
+              var MAX_UNSIGNED_VALUE = fromBits(4294967295 | 0, 4294967295 | 0, true);
+              Long.MAX_UNSIGNED_VALUE = MAX_UNSIGNED_VALUE;
+              var MIN_VALUE = fromBits(0, 2147483648 | 0, false);
+              Long.MIN_VALUE = MIN_VALUE;
+              var LongPrototype = Long.prototype;
+              LongPrototype.toInt = function toInt() {
+                return this.unsigned ? this.low >>> 0 : this.low;
+              };
+              LongPrototype.toNumber = function toNumber2() {
+                if (this.unsigned)
+                  return (this.high >>> 0) * TWO_PWR_32_DBL + (this.low >>> 0);
+                return this.high * TWO_PWR_32_DBL + (this.low >>> 0);
+              };
+              LongPrototype.toString = function toString3(radix) {
+                radix = radix || 10;
+                if (radix < 2 || 36 < radix)
+                  throw RangeError("radix");
+                if (this.isZero())
+                  return "0";
+                if (this.isNegative()) {
+                  if (this.eq(MIN_VALUE)) {
+                    var radixLong = fromNumber(radix), div = this.div(radixLong), rem1 = div.mul(radixLong).sub(this);
+                    return div.toString(radix) + rem1.toInt().toString(radix);
+                  } else
+                    return "-" + this.neg().toString(radix);
+                }
+                var radixToPower = fromNumber(pow_dbl(radix, 6), this.unsigned), rem = this;
+                var result = "";
+                while (true) {
+                  var remDiv = rem.div(radixToPower), intval = rem.sub(remDiv.mul(radixToPower)).toInt() >>> 0, digits = intval.toString(radix);
+                  rem = remDiv;
+                  if (rem.isZero())
+                    return digits + result;
+                  else {
+                    while (digits.length < 6)
+                      digits = "0" + digits;
+                    result = "" + digits + result;
+                  }
+                }
+              };
+              LongPrototype.getHighBits = function getHighBits() {
+                return this.high;
+              };
+              LongPrototype.getHighBitsUnsigned = function getHighBitsUnsigned() {
+                return this.high >>> 0;
+              };
+              LongPrototype.getLowBits = function getLowBits() {
+                return this.low;
+              };
+              LongPrototype.getLowBitsUnsigned = function getLowBitsUnsigned() {
+                return this.low >>> 0;
+              };
+              LongPrototype.getNumBitsAbs = function getNumBitsAbs() {
+                if (this.isNegative())
+                  return this.eq(MIN_VALUE) ? 64 : this.neg().getNumBitsAbs();
+                var val = this.high != 0 ? this.high : this.low;
+                for (var bit = 31; bit > 0; bit--)
+                  if ((val & 1 << bit) != 0)
+                    break;
+                return this.high != 0 ? bit + 33 : bit + 1;
+              };
+              LongPrototype.isSafeInteger = function isSafeInteger() {
+                var top11Bits = this.high >> 21;
+                if (!top11Bits)
+                  return true;
+                if (this.unsigned)
+                  return false;
+                return top11Bits === -1 && !(this.low === 0 && this.high === -2097152);
+              };
+              LongPrototype.isZero = function isZero() {
+                return this.high === 0 && this.low === 0;
+              };
+              LongPrototype.eqz = LongPrototype.isZero;
+              LongPrototype.isNegative = function isNegative() {
+                return !this.unsigned && this.high < 0;
+              };
+              LongPrototype.isPositive = function isPositive() {
+                return this.unsigned || this.high >= 0;
+              };
+              LongPrototype.isOdd = function isOdd() {
+                return (this.low & 1) === 1;
+              };
+              LongPrototype.isEven = function isEven() {
+                return (this.low & 1) === 0;
+              };
+              LongPrototype.equals = function equals(other) {
+                if (!isLong(other))
+                  other = fromValue(other);
+                if (this.unsigned !== other.unsigned && this.high >>> 31 === 1 && other.high >>> 31 === 1)
+                  return false;
+                return this.high === other.high && this.low === other.low;
+              };
+              LongPrototype.eq = LongPrototype.equals;
+              LongPrototype.notEquals = function notEquals(other) {
+                return !this.eq(
+                  /* validates */
+                  other
+                );
+              };
+              LongPrototype.neq = LongPrototype.notEquals;
+              LongPrototype.ne = LongPrototype.notEquals;
+              LongPrototype.lessThan = function lessThan(other) {
+                return this.comp(
+                  /* validates */
+                  other
+                ) < 0;
+              };
+              LongPrototype.lt = LongPrototype.lessThan;
+              LongPrototype.lessThanOrEqual = function lessThanOrEqual(other) {
+                return this.comp(
+                  /* validates */
+                  other
+                ) <= 0;
+              };
+              LongPrototype.lte = LongPrototype.lessThanOrEqual;
+              LongPrototype.le = LongPrototype.lessThanOrEqual;
+              LongPrototype.greaterThan = function greaterThan(other) {
+                return this.comp(
+                  /* validates */
+                  other
+                ) > 0;
+              };
+              LongPrototype.gt = LongPrototype.greaterThan;
+              LongPrototype.greaterThanOrEqual = function greaterThanOrEqual(other) {
+                return this.comp(
+                  /* validates */
+                  other
+                ) >= 0;
+              };
+              LongPrototype.gte = LongPrototype.greaterThanOrEqual;
+              LongPrototype.ge = LongPrototype.greaterThanOrEqual;
+              LongPrototype.compare = function compare(other) {
+                if (!isLong(other))
+                  other = fromValue(other);
+                if (this.eq(other))
+                  return 0;
+                var thisNeg = this.isNegative(), otherNeg = other.isNegative();
+                if (thisNeg && !otherNeg)
+                  return -1;
+                if (!thisNeg && otherNeg)
+                  return 1;
+                if (!this.unsigned)
+                  return this.sub(other).isNegative() ? -1 : 1;
+                return other.high >>> 0 > this.high >>> 0 || other.high === this.high && other.low >>> 0 > this.low >>> 0 ? -1 : 1;
+              };
+              LongPrototype.comp = LongPrototype.compare;
+              LongPrototype.negate = function negate() {
+                if (!this.unsigned && this.eq(MIN_VALUE))
+                  return MIN_VALUE;
+                return this.not().add(ONE);
+              };
+              LongPrototype.neg = LongPrototype.negate;
+              LongPrototype.add = function add2(addend) {
+                if (!isLong(addend))
+                  addend = fromValue(addend);
+                var a48 = this.high >>> 16;
+                var a32 = this.high & 65535;
+                var a16 = this.low >>> 16;
+                var a00 = this.low & 65535;
+                var b48 = addend.high >>> 16;
+                var b32 = addend.high & 65535;
+                var b16 = addend.low >>> 16;
+                var b00 = addend.low & 65535;
+                var c48 = 0, c32 = 0, c16 = 0, c00 = 0;
+                c00 += a00 + b00;
+                c16 += c00 >>> 16;
+                c00 &= 65535;
+                c16 += a16 + b16;
+                c32 += c16 >>> 16;
+                c16 &= 65535;
+                c32 += a32 + b32;
+                c48 += c32 >>> 16;
+                c32 &= 65535;
+                c48 += a48 + b48;
+                c48 &= 65535;
+                return fromBits(c16 << 16 | c00, c48 << 16 | c32, this.unsigned);
+              };
+              LongPrototype.subtract = function subtract(subtrahend) {
+                if (!isLong(subtrahend))
+                  subtrahend = fromValue(subtrahend);
+                return this.add(subtrahend.neg());
+              };
+              LongPrototype.sub = LongPrototype.subtract;
+              LongPrototype.multiply = function multiply(multiplier) {
+                if (this.isZero())
+                  return this;
+                if (!isLong(multiplier))
+                  multiplier = fromValue(multiplier);
+                if (wasm) {
+                  var low = wasm["mul"](
+                    this.low,
+                    this.high,
+                    multiplier.low,
+                    multiplier.high
+                  );
+                  return fromBits(low, wasm["get_high"](), this.unsigned);
+                }
+                if (multiplier.isZero())
+                  return this.unsigned ? UZERO : ZERO;
+                if (this.eq(MIN_VALUE))
+                  return multiplier.isOdd() ? MIN_VALUE : ZERO;
+                if (multiplier.eq(MIN_VALUE))
+                  return this.isOdd() ? MIN_VALUE : ZERO;
+                if (this.isNegative()) {
+                  if (multiplier.isNegative())
+                    return this.neg().mul(multiplier.neg());
+                  else
+                    return this.neg().mul(multiplier).neg();
+                } else if (multiplier.isNegative())
+                  return this.mul(multiplier.neg()).neg();
+                if (this.lt(TWO_PWR_24) && multiplier.lt(TWO_PWR_24))
+                  return fromNumber(
+                    this.toNumber() * multiplier.toNumber(),
+                    this.unsigned
+                  );
+                var a48 = this.high >>> 16;
+                var a32 = this.high & 65535;
+                var a16 = this.low >>> 16;
+                var a00 = this.low & 65535;
+                var b48 = multiplier.high >>> 16;
+                var b32 = multiplier.high & 65535;
+                var b16 = multiplier.low >>> 16;
+                var b00 = multiplier.low & 65535;
+                var c48 = 0, c32 = 0, c16 = 0, c00 = 0;
+                c00 += a00 * b00;
+                c16 += c00 >>> 16;
+                c00 &= 65535;
+                c16 += a16 * b00;
+                c32 += c16 >>> 16;
+                c16 &= 65535;
+                c16 += a00 * b16;
+                c32 += c16 >>> 16;
+                c16 &= 65535;
+                c32 += a32 * b00;
+                c48 += c32 >>> 16;
+                c32 &= 65535;
+                c32 += a16 * b16;
+                c48 += c32 >>> 16;
+                c32 &= 65535;
+                c32 += a00 * b32;
+                c48 += c32 >>> 16;
+                c32 &= 65535;
+                c48 += a48 * b00 + a32 * b16 + a16 * b32 + a00 * b48;
+                c48 &= 65535;
+                return fromBits(c16 << 16 | c00, c48 << 16 | c32, this.unsigned);
+              };
+              LongPrototype.mul = LongPrototype.multiply;
+              LongPrototype.divide = function divide(divisor) {
+                if (!isLong(divisor))
+                  divisor = fromValue(divisor);
+                if (divisor.isZero())
+                  throw Error("division by zero");
+                if (wasm) {
+                  if (!this.unsigned && this.high === -2147483648 && divisor.low === -1 && divisor.high === -1) {
+                    return this;
+                  }
+                  var low = (this.unsigned ? wasm["div_u"] : wasm["div_s"])(
+                    this.low,
+                    this.high,
+                    divisor.low,
+                    divisor.high
+                  );
+                  return fromBits(low, wasm["get_high"](), this.unsigned);
+                }
+                if (this.isZero())
+                  return this.unsigned ? UZERO : ZERO;
+                var approx, rem, res;
+                if (!this.unsigned) {
+                  if (this.eq(MIN_VALUE)) {
+                    if (divisor.eq(ONE) || divisor.eq(NEG_ONE))
+                      return MIN_VALUE;
+                    else if (divisor.eq(MIN_VALUE))
+                      return ONE;
+                    else {
+                      var halfThis = this.shr(1);
+                      approx = halfThis.div(divisor).shl(1);
+                      if (approx.eq(ZERO)) {
+                        return divisor.isNegative() ? ONE : NEG_ONE;
+                      } else {
+                        rem = this.sub(divisor.mul(approx));
+                        res = approx.add(rem.div(divisor));
+                        return res;
+                      }
+                    }
+                  } else if (divisor.eq(MIN_VALUE))
+                    return this.unsigned ? UZERO : ZERO;
+                  if (this.isNegative()) {
+                    if (divisor.isNegative())
+                      return this.neg().div(divisor.neg());
+                    return this.neg().div(divisor).neg();
+                  } else if (divisor.isNegative())
+                    return this.div(divisor.neg()).neg();
+                  res = ZERO;
+                } else {
+                  if (!divisor.unsigned)
+                    divisor = divisor.toUnsigned();
+                  if (divisor.gt(this))
+                    return UZERO;
+                  if (divisor.gt(this.shru(1)))
+                    return UONE;
+                  res = UZERO;
+                }
+                rem = this;
+                while (rem.gte(divisor)) {
+                  approx = Math.max(1, Math.floor(rem.toNumber() / divisor.toNumber()));
+                  var log2 = Math.ceil(Math.log(approx) / Math.LN2), delta = log2 <= 48 ? 1 : pow_dbl(2, log2 - 48), approxRes = fromNumber(approx), approxRem = approxRes.mul(divisor);
+                  while (approxRem.isNegative() || approxRem.gt(rem)) {
+                    approx -= delta;
+                    approxRes = fromNumber(approx, this.unsigned);
+                    approxRem = approxRes.mul(divisor);
+                  }
+                  if (approxRes.isZero())
+                    approxRes = ONE;
+                  res = res.add(approxRes);
+                  rem = rem.sub(approxRem);
+                }
+                return res;
+              };
+              LongPrototype.div = LongPrototype.divide;
+              LongPrototype.modulo = function modulo(divisor) {
+                if (!isLong(divisor))
+                  divisor = fromValue(divisor);
+                if (wasm) {
+                  var low = (this.unsigned ? wasm["rem_u"] : wasm["rem_s"])(
+                    this.low,
+                    this.high,
+                    divisor.low,
+                    divisor.high
+                  );
+                  return fromBits(low, wasm["get_high"](), this.unsigned);
+                }
+                return this.sub(this.div(divisor).mul(divisor));
+              };
+              LongPrototype.mod = LongPrototype.modulo;
+              LongPrototype.rem = LongPrototype.modulo;
+              LongPrototype.not = function not() {
+                return fromBits(~this.low, ~this.high, this.unsigned);
+              };
+              LongPrototype.countLeadingZeros = function countLeadingZeros() {
+                return this.high ? Math.clz32(this.high) : Math.clz32(this.low) + 32;
+              };
+              LongPrototype.clz = LongPrototype.countLeadingZeros;
+              LongPrototype.countTrailingZeros = function countTrailingZeros() {
+                return this.low ? ctz32(this.low) : ctz32(this.high) + 32;
+              };
+              LongPrototype.ctz = LongPrototype.countTrailingZeros;
+              LongPrototype.and = function and(other) {
+                if (!isLong(other))
+                  other = fromValue(other);
+                return fromBits(
+                  this.low & other.low,
+                  this.high & other.high,
+                  this.unsigned
+                );
+              };
+              LongPrototype.or = function or(other) {
+                if (!isLong(other))
+                  other = fromValue(other);
+                return fromBits(
+                  this.low | other.low,
+                  this.high | other.high,
+                  this.unsigned
+                );
+              };
+              LongPrototype.xor = function xor(other) {
+                if (!isLong(other))
+                  other = fromValue(other);
+                return fromBits(
+                  this.low ^ other.low,
+                  this.high ^ other.high,
+                  this.unsigned
+                );
+              };
+              LongPrototype.shiftLeft = function shiftLeft(numBits) {
+                if (isLong(numBits))
+                  numBits = numBits.toInt();
+                if ((numBits &= 63) === 0)
+                  return this;
+                else if (numBits < 32)
+                  return fromBits(
+                    this.low << numBits,
+                    this.high << numBits | this.low >>> 32 - numBits,
+                    this.unsigned
+                  );
+                else
+                  return fromBits(0, this.low << numBits - 32, this.unsigned);
+              };
+              LongPrototype.shl = LongPrototype.shiftLeft;
+              LongPrototype.shiftRight = function shiftRight(numBits) {
+                if (isLong(numBits))
+                  numBits = numBits.toInt();
+                if ((numBits &= 63) === 0)
+                  return this;
+                else if (numBits < 32)
+                  return fromBits(
+                    this.low >>> numBits | this.high << 32 - numBits,
+                    this.high >> numBits,
+                    this.unsigned
+                  );
+                else
+                  return fromBits(
+                    this.high >> numBits - 32,
+                    this.high >= 0 ? 0 : -1,
+                    this.unsigned
+                  );
+              };
+              LongPrototype.shr = LongPrototype.shiftRight;
+              LongPrototype.shiftRightUnsigned = function shiftRightUnsigned(numBits) {
+                if (isLong(numBits))
+                  numBits = numBits.toInt();
+                if ((numBits &= 63) === 0)
+                  return this;
+                if (numBits < 32)
+                  return fromBits(
+                    this.low >>> numBits | this.high << 32 - numBits,
+                    this.high >>> numBits,
+                    this.unsigned
+                  );
+                if (numBits === 32)
+                  return fromBits(this.high, 0, this.unsigned);
+                return fromBits(this.high >>> numBits - 32, 0, this.unsigned);
+              };
+              LongPrototype.shru = LongPrototype.shiftRightUnsigned;
+              LongPrototype.shr_u = LongPrototype.shiftRightUnsigned;
+              LongPrototype.rotateLeft = function rotateLeft(numBits) {
+                var b2;
+                if (isLong(numBits))
+                  numBits = numBits.toInt();
+                if ((numBits &= 63) === 0)
+                  return this;
+                if (numBits === 32)
+                  return fromBits(this.high, this.low, this.unsigned);
+                if (numBits < 32) {
+                  b2 = 32 - numBits;
+                  return fromBits(
+                    this.low << numBits | this.high >>> b2,
+                    this.high << numBits | this.low >>> b2,
+                    this.unsigned
+                  );
+                }
+                numBits -= 32;
+                b2 = 32 - numBits;
+                return fromBits(
+                  this.high << numBits | this.low >>> b2,
+                  this.low << numBits | this.high >>> b2,
+                  this.unsigned
+                );
+              };
+              LongPrototype.rotl = LongPrototype.rotateLeft;
+              LongPrototype.rotateRight = function rotateRight(numBits) {
+                var b2;
+                if (isLong(numBits))
+                  numBits = numBits.toInt();
+                if ((numBits &= 63) === 0)
+                  return this;
+                if (numBits === 32)
+                  return fromBits(this.high, this.low, this.unsigned);
+                if (numBits < 32) {
+                  b2 = 32 - numBits;
+                  return fromBits(
+                    this.high << b2 | this.low >>> numBits,
+                    this.low << b2 | this.high >>> numBits,
+                    this.unsigned
+                  );
+                }
+                numBits -= 32;
+                b2 = 32 - numBits;
+                return fromBits(
+                  this.low << b2 | this.high >>> numBits,
+                  this.high << b2 | this.low >>> numBits,
+                  this.unsigned
+                );
+              };
+              LongPrototype.rotr = LongPrototype.rotateRight;
+              LongPrototype.toSigned = function toSigned() {
+                if (!this.unsigned)
+                  return this;
+                return fromBits(this.low, this.high, false);
+              };
+              LongPrototype.toUnsigned = function toUnsigned() {
+                if (this.unsigned)
+                  return this;
+                return fromBits(this.low, this.high, true);
+              };
+              LongPrototype.toBytes = function toBytes(le) {
+                return le ? this.toBytesLE() : this.toBytesBE();
+              };
+              LongPrototype.toBytesLE = function toBytesLE() {
+                var hi = this.high, lo = this.low;
+                return [
+                  lo & 255,
+                  lo >>> 8 & 255,
+                  lo >>> 16 & 255,
+                  lo >>> 24,
+                  hi & 255,
+                  hi >>> 8 & 255,
+                  hi >>> 16 & 255,
+                  hi >>> 24
+                ];
+              };
+              LongPrototype.toBytesBE = function toBytesBE() {
+                var hi = this.high, lo = this.low;
+                return [
+                  hi >>> 24,
+                  hi >>> 16 & 255,
+                  hi >>> 8 & 255,
+                  hi & 255,
+                  lo >>> 24,
+                  lo >>> 16 & 255,
+                  lo >>> 8 & 255,
+                  lo & 255
+                ];
+              };
+              Long.fromBytes = function fromBytes(bytes, unsigned, le) {
+                return le ? Long.fromBytesLE(bytes, unsigned) : Long.fromBytesBE(bytes, unsigned);
+              };
+              Long.fromBytesLE = function fromBytesLE(bytes, unsigned) {
+                return new Long(
+                  bytes[0] | bytes[1] << 8 | bytes[2] << 16 | bytes[3] << 24,
+                  bytes[4] | bytes[5] << 8 | bytes[6] << 16 | bytes[7] << 24,
+                  unsigned
+                );
+              };
+              Long.fromBytesBE = function fromBytesBE(bytes, unsigned) {
+                return new Long(
+                  bytes[4] << 24 | bytes[5] << 16 | bytes[6] << 8 | bytes[7],
+                  bytes[0] << 24 | bytes[1] << 16 | bytes[2] << 8 | bytes[3],
+                  unsigned
+                );
+              };
+              if (typeof BigInt === "function") {
+                Long.fromBigInt = function fromBigInt(value, unsigned) {
+                  var lowBits = Number(BigInt.asIntN(32, value));
+                  var highBits = Number(BigInt.asIntN(32, value >> BigInt(32)));
+                  return fromBits(lowBits, highBits, unsigned);
+                };
+                Long.fromValue = function fromValueWithBigInt(value, unsigned) {
+                  if (typeof value === "bigint")
+                    return Long.fromBigInt(value, unsigned);
+                  return fromValue(value, unsigned);
+                };
+                LongPrototype.toBigInt = function toBigInt() {
+                  var lowBigInt = BigInt(this.low >>> 0);
+                  var highBigInt = BigInt(this.unsigned ? this.high >>> 0 : this.high);
+                  return highBigInt << BigInt(32) | lowBigInt;
+                };
+              }
+              _exports.default = Long;
+            }
+          );
+        })(umd, umd.exports);
+        return umd.exports;
+      }
       var hasRequiredMinimal;
       function requireMinimal() {
         if (hasRequiredMinimal)
@@ -17878,10 +18962,13 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           util2.base64 = base64$1;
           util2.EventEmitter = eventemitter;
           util2.float = float;
-          util2.inquire = inquire_1;
           util2.utf8 = utf8$2;
           util2.pool = pool_1;
           util2.LongBits = requireLongbits();
+          function isUnsafeProperty(key) {
+            return key === "__proto__" || key === "prototype" || key === "constructor";
+          }
+          util2.isUnsafeProperty = isUnsafeProperty;
           util2.isNode = Boolean(typeof commonjsGlobal !== "undefined" && commonjsGlobal && commonjsGlobal.process && commonjsGlobal.process.versions && commonjsGlobal.process.versions.node);
           util2.global = util2.isNode && commonjsGlobal || typeof window !== "undefined" && window || typeof self !== "undefined" && self || commonjsGlobal;
           util2.emptyArray = Object.freeze ? Object.freeze([]) : (
@@ -17910,13 +18997,13 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
            */
           util2.isSet = function isSet2(obj, prop) {
             var value = obj[prop];
-            if (value != null && obj.hasOwnProperty(prop))
+            if (value != null && Object.hasOwnProperty.call(obj, prop))
               return typeof value !== "object" || (Array.isArray(value) ? value.length : Object.keys(value).length) > 0;
             return false;
           };
           util2.Buffer = function() {
             try {
-              var Buffer2 = util2.inquire("buffer").Buffer;
+              var Buffer2 = util2.global.Buffer;
               return Buffer2.prototype.utf8Write ? Buffer2 : (
                 /* istanbul ignore next */
                 null
@@ -17934,7 +19021,14 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           util2.Long = /* istanbul ignore next */
           util2.global.dcodeIO && /* istanbul ignore next */
           util2.global.dcodeIO.Long || /* istanbul ignore next */
-          util2.global.Long || util2.inquire("long");
+          util2.global.Long || function() {
+            try {
+              var Long = requireUmd();
+              return Long && Long.isLong ? Long : null;
+            } catch (e) {
+              return null;
+            }
+          }();
           util2.key2Re = /^true|false|0|1$/;
           util2.key32Re = /^-?(?:0|[1-9][0-9]*)$/;
           util2.key64Re = /^(?:[\\x00-\\xff]{8}|-?(?:0|[1-9][0-9]*))$/;
@@ -17947,13 +19041,29 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
               return util2.Long.fromBits(bits.lo, bits.hi, unsigned);
             return bits.toNumber(Boolean(unsigned));
           };
-          function merge2(dst, src2, ifNotSet) {
-            for (var keys2 = Object.keys(src2), i = 0; i < keys2.length; ++i)
-              if (dst[keys2[i]] === void 0 || !ifNotSet)
-                dst[keys2[i]] = src2[keys2[i]];
+          function merge2(dst) {
+            var ifNotSet = typeof arguments[arguments.length - 1] === "boolean", limit = ifNotSet ? arguments.length - 1 : arguments.length;
+            ifNotSet = ifNotSet && arguments[arguments.length - 1];
+            for (var a2 = 1; a2 < limit; ++a2) {
+              var src2 = arguments[a2];
+              if (!src2)
+                continue;
+              for (var keys2 = Object.keys(src2), i = 0; i < keys2.length; ++i)
+                if (!isUnsafeProperty(keys2[i]) && (dst[keys2[i]] === void 0 || !ifNotSet))
+                  dst[keys2[i]] = src2[keys2[i]];
+            }
             return dst;
           }
           util2.merge = merge2;
+          util2.nestingLimit = 32;
+          util2.recursionLimit = 100;
+          util2.makeProp = function makeProp(obj, key) {
+            Object.defineProperty(obj, key, {
+              enumerable: true,
+              configurable: true,
+              writable: true
+            });
+          };
           util2.lcFirst = function lcFirst(str) {
             return str.charAt(0).toLowerCase() + str.substring(1);
           };
@@ -18068,7 +19178,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         this.tail = this.head;
         this.states = null;
       }
-      var create$1 = function create2() {
+      var create$1 = function create() {
         return util$7.Buffer ? function create_buffer_setup() {
           return (Writer$1.create = function create_buffer() {
             return new BufferWriter$1();
@@ -18113,22 +19223,23 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         return this;
       };
       Writer$1.prototype.int32 = function write_int32(value) {
-        return value < 0 ? this._push(writeVarint64, 10, LongBits$1.fromNumber(value)) : this.uint32(value);
+        return (value |= 0) < 0 ? this._push(writeVarint64, 10, LongBits$1.fromNumber(value)) : this.uint32(value);
       };
       Writer$1.prototype.sint32 = function write_sint32(value) {
         return this.uint32((value << 1 ^ value >> 31) >>> 0);
       };
       function writeVarint64(val, buf, pos) {
-        while (val.hi) {
-          buf[pos++] = val.lo & 127 | 128;
-          val.lo = (val.lo >>> 7 | val.hi << 25) >>> 0;
-          val.hi >>>= 7;
+        var lo = val.lo, hi = val.hi;
+        while (hi) {
+          buf[pos++] = lo & 127 | 128;
+          lo = (lo >>> 7 | hi << 25) >>> 0;
+          hi >>>= 7;
         }
-        while (val.lo > 127) {
-          buf[pos++] = val.lo & 127 | 128;
-          val.lo = val.lo >>> 7;
+        while (lo > 127) {
+          buf[pos++] = lo & 127 | 128;
+          lo = lo >>> 7;
         }
-        buf[pos++] = val.lo;
+        buf[pos++] = lo;
       }
       Writer$1.prototype.uint64 = function write_uint64(value) {
         var bits = LongBits$1.from(value);
@@ -18291,19 +19402,37 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           return new Reader$1(buffer2);
         throw Error("illegal buffer");
       };
-      var create = function create3() {
+      var create2 = function create3() {
         return util$5.Buffer ? function create_buffer_setup(buffer2) {
           return (Reader$1.create = function create_buffer(buffer3) {
             return util$5.Buffer.isBuffer(buffer3) ? new BufferReader$1(buffer3) : create_array(buffer3);
           })(buffer2);
         } : create_array;
       };
-      Reader$1.create = create();
+      Reader$1.create = create2();
       Reader$1.prototype._slice = util$5.Array.prototype.subarray || /* istanbul ignore next */
       util$5.Array.prototype.slice;
+      function readVarint32NearEnd(reader2) {
+        var value = 0;
+        for (var i = 0; i < 4; ++i) {
+          if (reader2.pos >= reader2.len)
+            throw indexOutOfRange(reader2);
+          var b2 = reader2.buf[reader2.pos++];
+          value = (value | (b2 & 127) << i * 7) >>> 0;
+          if (b2 < 128)
+            return value;
+        }
+        throw indexOutOfRange(reader2);
+      }
       Reader$1.prototype.uint32 = /* @__PURE__ */ function read_uint32_setup() {
         var value = 4294967295;
         return function read_uint32() {
+          if (this.len - this.pos < 5) {
+            if (this.pos >= this.len)
+              throw indexOutOfRange(this);
+            if (this.buf[this.pos] >= 128)
+              return readVarint32NearEnd(this);
+          }
           value = (this.buf[this.pos] & 127) >>> 0;
           if (this.buf[this.pos++] < 128)
             return value;
@@ -18440,7 +19569,12 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         }
         return this;
       };
-      Reader$1.prototype.skipType = function(wireType) {
+      Reader$1.recursionLimit = util$5.recursionLimit;
+      Reader$1.prototype.skipType = function(wireType, depth) {
+        if (depth === void 0)
+          depth = 0;
+        if (depth > Reader$1.recursionLimit)
+          throw Error("maximum nesting depth exceeded");
         switch (wireType) {
           case 0:
             this.skip();
@@ -18453,7 +19587,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
             break;
           case 3:
             while ((wireType = this.uint32() & 7) !== 4) {
-              this.skipType(wireType);
+              this.skipType(wireType, depth + 1);
             }
             break;
           case 5:
@@ -18466,7 +19600,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
       };
       Reader$1._configure = function(BufferReader_) {
         BufferReader$1 = BufferReader_;
-        Reader$1.create = create();
+        Reader$1.create = create2();
         BufferReader$1._configure();
         var fn2 = util$5.Long ? "toLong" : (
           /* istanbul ignore next */
@@ -18566,7 +19700,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           return void 0;
         }
       };
-      Service$1.prototype.end = function end2(endedByRPC) {
+      Service$1.prototype.end = function end(endedByRPC) {
         if (this.rpcImpl) {
           if (!endedByRPC)
             this.rpcImpl(null, null, null);
@@ -18579,7 +19713,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         var rpc2 = exports2;
         rpc2.Service = service$1;
       })(rpc);
-      var roots = {};
+      var roots = /* @__PURE__ */ Object.create(null);
       (function(exports2) {
         var protobuf2 = exports2;
         protobuf2.build = "minimal";
@@ -18598,8 +19732,10 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         }
         configure();
       })(indexMinimal);
+      var types$2 = {};
       var util$2 = { exports: {} };
       var codegen_1 = codegen;
+      var reservedRe = /^(?:do|if|in|for|let|new|try|var|case|else|enum|eval|false|null|this|true|void|with|break|catch|class|const|super|throw|while|yield|delete|export|import|public|return|static|switch|typeof|default|extends|finally|package|private|continue|debugger|function|arguments|interface|protected|implements|instanceof)$/;
       function codegen(functionParams, functionName) {
         if (typeof functionParams === "string") {
           functionName = functionParams;
@@ -18648,15 +19784,38 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           return Codegen;
         }
         function toString3(functionNameOverride) {
-          return "function " + (functionNameOverride || functionName || "") + "(" + (functionParams && functionParams.join(",") || "") + "){\n  " + body.join("\n  ") + "\n}";
+          return "function " + safeFunctionName(functionNameOverride || functionName) + "(" + (functionParams && functionParams.join(",") || "") + "){\n  " + body.join("\n  ") + "\n}";
         }
         Codegen.toString = toString3;
         return Codegen;
       }
       codegen.verbose = false;
+      function safeFunctionName(name) {
+        if (!name)
+          return "";
+        name = String(name).replace(/[^\w$]/g, "");
+        if (!name)
+          return "";
+        if (/^\d/.test(name))
+          name = "_" + name;
+        return reservedRe.test(name) ? name + "_" : name;
+      }
+      const __viteBrowserExternal = {};
+      const __viteBrowserExternal$1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+        __proto__: null,
+        default: __viteBrowserExternal
+      }, Symbol.toStringTag, { value: "Module" }));
+      const require$$0 = /* @__PURE__ */ getAugmentedNamespace(__viteBrowserExternal$1);
+      var fs$2 = null;
+      try {
+        fs$2 = require$$0;
+        if (!fs$2 || !fs$2.readFile || !fs$2.readFileSync)
+          fs$2 = null;
+      } catch (e) {
+      }
+      var fs_1$1 = fs$2;
       var fetch_1 = fetch$1;
-      var asPromise = aspromise, inquire = inquire_1;
-      var fs = inquire("fs");
+      var asPromise = aspromise, fs$1 = fs_1$1;
       function fetch$1(filename, options, callback) {
         if (typeof options === "function") {
           callback = options;
@@ -18665,8 +19824,8 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           options = {};
         if (!callback)
           return asPromise(fetch$1, this, filename, options);
-        if (!options.xhr && fs && fs.readFile)
-          return fs.readFile(filename, function fetchReadFileCallback(err, contents) {
+        if (!options.xhr && fs$1 && fs$1.readFile)
+          return fs$1.readFile(filename, function fetchReadFileCallback(err, contents) {
             return err && typeof XMLHttpRequest !== "undefined" ? fetch$1.xhr(filename, options, callback) : err ? callback(err) : callback(null, options.binary ? contents : contents.toString("utf8"));
           });
         return fetch$1.xhr(filename, options, callback);
@@ -18747,7 +19906,1749 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           return (originPath = originPath.replace(/(?:\/|^)[^/]+$/, "")).length ? normalize(originPath + "/" + includePath) : includePath;
         };
       })(path);
-      var types$2 = {};
+      var patterns = {};
+      (function(exports2) {
+        var patterns2 = exports2;
+        patterns2.numberRe = /^(?![eE])[0-9]*(?:\.[0-9]*)?(?:[eE][+-]?[0-9]+)?$/;
+        patterns2.typeRefRe = /^(?:\.?[a-zA-Z_][a-zA-Z_0-9]*)(?:\.[a-zA-Z_][a-zA-Z_0-9]*)*$/;
+        patterns2.reservedRe = /^(?:do|if|in|for|let|new|try|var|case|else|enum|eval|false|null|this|true|void|with|break|catch|class|const|super|throw|while|yield|delete|export|import|public|return|static|switch|typeof|default|extends|finally|package|private|continue|debugger|function|arguments|interface|protected|implements|instanceof)$/;
+      })(patterns);
+      var fs = null;
+      try {
+        fs = require$$0;
+        if (!fs || !fs.readFile || !fs.readFileSync)
+          fs = null;
+      } catch (e) {
+      }
+      var fs_1 = fs;
+      var namespace;
+      var hasRequiredNamespace;
+      function requireNamespace() {
+        if (hasRequiredNamespace)
+          return namespace;
+        hasRequiredNamespace = 1;
+        namespace = Namespace;
+        var ReflectionObject2 = requireObject();
+        ((Namespace.prototype = Object.create(ReflectionObject2.prototype)).constructor = Namespace).className = "Namespace";
+        var Field2 = requireField(), util2 = requireUtil(), OneOf2 = requireOneof();
+        var Type2, Service2, Enum2;
+        Namespace.fromJSON = function fromJSON(name, json, depth) {
+          depth = util2.checkDepth(depth);
+          return new Namespace(name, json.options).addJSON(json.nested, depth);
+        };
+        function arrayToJSON(array4, toJSONOptions) {
+          if (!(array4 && array4.length))
+            return void 0;
+          var obj = {};
+          for (var i = 0; i < array4.length; ++i)
+            obj[array4[i].name] = array4[i].toJSON(toJSONOptions);
+          return obj;
+        }
+        Namespace.arrayToJSON = arrayToJSON;
+        Namespace.isReservedId = function isReservedId(reserved, id) {
+          if (reserved) {
+            for (var i = 0; i < reserved.length; ++i)
+              if (typeof reserved[i] !== "string" && reserved[i][0] <= id && reserved[i][1] > id)
+                return true;
+          }
+          return false;
+        };
+        Namespace.isReservedName = function isReservedName(reserved, name) {
+          if (reserved) {
+            for (var i = 0; i < reserved.length; ++i)
+              if (reserved[i] === name)
+                return true;
+          }
+          return false;
+        };
+        function Namespace(name, options) {
+          ReflectionObject2.call(this, name, options);
+          this.nested = void 0;
+          this._nestedArray = null;
+          this._lookupCache = /* @__PURE__ */ Object.create(null);
+          this._needsRecursiveFeatureResolution = true;
+          this._needsRecursiveResolve = true;
+        }
+        function clearCache(namespace2) {
+          namespace2._nestedArray = null;
+          namespace2._lookupCache = /* @__PURE__ */ Object.create(null);
+          var parent2 = namespace2;
+          while (parent2 = parent2.parent) {
+            parent2._lookupCache = /* @__PURE__ */ Object.create(null);
+          }
+          return namespace2;
+        }
+        Object.defineProperty(Namespace.prototype, "nestedArray", {
+          get: function() {
+            return this._nestedArray || (this._nestedArray = util2.toArray(this.nested));
+          }
+        });
+        Namespace.prototype.toJSON = function toJSON3(toJSONOptions) {
+          return util2.toObject([
+            "options",
+            this.options,
+            "nested",
+            arrayToJSON(this.nestedArray, toJSONOptions)
+          ]);
+        };
+        Namespace.prototype.addJSON = function addJSON(nestedJson, depth) {
+          depth = util2.checkDepth(depth);
+          var ns = this;
+          if (nestedJson) {
+            for (var names2 = Object.keys(nestedJson), i = 0, nested; i < names2.length; ++i) {
+              nested = nestedJson[names2[i]];
+              ns.add(
+                // most to least likely
+                (nested.fields !== void 0 ? Type2.fromJSON : nested.values !== void 0 ? Enum2.fromJSON : nested.methods !== void 0 ? Service2.fromJSON : nested.id !== void 0 ? Field2.fromJSON : Namespace.fromJSON)(names2[i], nested, depth + 1)
+              );
+            }
+          }
+          return this;
+        };
+        Namespace.prototype.get = function get3(name) {
+          return this.nested && Object.prototype.hasOwnProperty.call(this.nested, name) ? this.nested[name] : null;
+        };
+        Namespace.prototype.getEnum = function getEnum(name) {
+          if (this.nested && Object.prototype.hasOwnProperty.call(this.nested, name) && this.nested[name] instanceof Enum2)
+            return this.nested[name].values;
+          throw Error("no such enum: " + name);
+        };
+        Namespace.prototype.add = function add2(object4) {
+          if (!(object4 instanceof Field2 && object4.extend !== void 0 || object4 instanceof Type2 || object4 instanceof OneOf2 || object4 instanceof Enum2 || object4 instanceof Service2 || object4 instanceof Namespace))
+            throw TypeError("object must be a valid nested object");
+          if (object4.name === "__proto__")
+            return this;
+          if (!this.nested)
+            this.nested = {};
+          else {
+            var prev = this.get(object4.name);
+            if (prev) {
+              if (prev instanceof Namespace && object4 instanceof Namespace && !(prev instanceof Type2 || prev instanceof Service2)) {
+                var nested = prev.nestedArray;
+                for (var i = 0; i < nested.length; ++i)
+                  object4.add(nested[i]);
+                this.remove(prev);
+                if (!this.nested)
+                  this.nested = {};
+                object4.setOptions(prev.options, true);
+              } else
+                throw Error("duplicate name '" + object4.name + "' in " + this);
+            }
+          }
+          this.nested[object4.name] = object4;
+          if (!(this instanceof Type2 || this instanceof Service2 || this instanceof Enum2 || this instanceof Field2)) {
+            if (!object4._edition) {
+              object4._edition = object4._defaultEdition;
+            }
+          }
+          this._needsRecursiveFeatureResolution = true;
+          this._needsRecursiveResolve = true;
+          var parent2 = this;
+          while (parent2 = parent2.parent) {
+            parent2._needsRecursiveFeatureResolution = true;
+            parent2._needsRecursiveResolve = true;
+          }
+          object4.onAdd(this);
+          return clearCache(this);
+        };
+        Namespace.prototype.remove = function remove2(object4) {
+          if (!(object4 instanceof ReflectionObject2))
+            throw TypeError("object must be a ReflectionObject");
+          if (object4.parent !== this)
+            throw Error(object4 + " is not a member of " + this);
+          delete this.nested[object4.name];
+          if (!Object.keys(this.nested).length)
+            this.nested = void 0;
+          object4.onRemove(this);
+          return clearCache(this);
+        };
+        Namespace.prototype.define = function define(path2, json) {
+          if (util2.isString(path2))
+            path2 = path2.split(".");
+          else if (!Array.isArray(path2))
+            throw TypeError("illegal path");
+          if (path2 && path2.length && path2[0] === "")
+            throw Error("path must be relative");
+          if (path2.length > util2.recursionLimit)
+            throw Error("max depth exceeded");
+          var ptr = this;
+          while (path2.length > 0) {
+            var part = path2.shift();
+            if (ptr.nested && ptr.nested[part]) {
+              ptr = ptr.nested[part];
+              if (!(ptr instanceof Namespace))
+                throw Error("path conflicts with non-namespace objects");
+            } else
+              ptr.add(ptr = new Namespace(part));
+          }
+          if (json)
+            ptr.addJSON(json);
+          return ptr;
+        };
+        Namespace.prototype.resolveAll = function resolveAll() {
+          if (!this._needsRecursiveResolve)
+            return this;
+          this._resolveFeaturesRecursive(this._edition);
+          var nested = this.nestedArray, i = 0;
+          this.resolve();
+          while (i < nested.length)
+            if (nested[i] instanceof Namespace)
+              nested[i++].resolveAll();
+            else
+              nested[i++].resolve();
+          this._needsRecursiveResolve = false;
+          return this;
+        };
+        Namespace.prototype._resolveFeaturesRecursive = function _resolveFeaturesRecursive(edition) {
+          if (!this._needsRecursiveFeatureResolution)
+            return this;
+          this._needsRecursiveFeatureResolution = false;
+          edition = this._edition || edition;
+          ReflectionObject2.prototype._resolveFeaturesRecursive.call(this, edition);
+          this.nestedArray.forEach((nested) => {
+            nested._resolveFeaturesRecursive(edition);
+          });
+          return this;
+        };
+        Namespace.prototype.lookup = function lookup(path2, filterTypes, parentAlreadyChecked) {
+          if (typeof filterTypes === "boolean") {
+            parentAlreadyChecked = filterTypes;
+            filterTypes = void 0;
+          } else if (filterTypes && !Array.isArray(filterTypes))
+            filterTypes = [filterTypes];
+          if (util2.isString(path2) && path2.length) {
+            if (path2 === ".")
+              return this.root;
+            path2 = path2.split(".");
+          } else if (!path2.length)
+            return this;
+          var flatPath = path2.join(".");
+          if (path2[0] === "")
+            return this.root.lookup(path2.slice(1), filterTypes);
+          var found = this.root._fullyQualifiedObjects && this.root._fullyQualifiedObjects["." + flatPath];
+          if (found && (!filterTypes || filterTypes.indexOf(found.constructor) > -1)) {
+            return found;
+          }
+          found = this._lookupImpl(path2, flatPath);
+          if (found && (!filterTypes || filterTypes.indexOf(found.constructor) > -1)) {
+            return found;
+          }
+          if (parentAlreadyChecked)
+            return null;
+          var current = this;
+          while (current.parent) {
+            found = current.parent._lookupImpl(path2, flatPath);
+            if (found && (!filterTypes || filterTypes.indexOf(found.constructor) > -1)) {
+              return found;
+            }
+            current = current.parent;
+          }
+          return null;
+        };
+        Namespace.prototype._lookupImpl = function lookup(path2, flatPath) {
+          if (Object.prototype.hasOwnProperty.call(this._lookupCache, flatPath)) {
+            return this._lookupCache[flatPath];
+          }
+          var found = this.get(path2[0]);
+          var exact = null;
+          if (found) {
+            if (path2.length === 1) {
+              exact = found;
+            } else if (found instanceof Namespace) {
+              path2 = path2.slice(1);
+              exact = found._lookupImpl(path2, path2.join("."));
+            }
+          } else {
+            for (var i = 0; i < this.nestedArray.length; ++i)
+              if (this._nestedArray[i] instanceof Namespace && (found = this._nestedArray[i]._lookupImpl(path2, flatPath))) {
+                exact = found;
+                break;
+              }
+          }
+          this._lookupCache[flatPath] = exact;
+          return exact;
+        };
+        Namespace.prototype.lookupType = function lookupType(path2) {
+          var found = this.lookup(path2, [Type2]);
+          if (!found)
+            throw Error("no such type: " + path2);
+          return found;
+        };
+        Namespace.prototype.lookupEnum = function lookupEnum(path2) {
+          var found = this.lookup(path2, [Enum2]);
+          if (!found)
+            throw Error("no such Enum '" + path2 + "' in " + this);
+          return found;
+        };
+        Namespace.prototype.lookupTypeOrEnum = function lookupTypeOrEnum(path2) {
+          var found = this.lookup(path2, [Type2, Enum2]);
+          if (!found)
+            throw Error("no such Type or Enum '" + path2 + "' in " + this);
+          return found;
+        };
+        Namespace.prototype.lookupService = function lookupService(path2) {
+          var found = this.lookup(path2, [Service2]);
+          if (!found)
+            throw Error("no such Service '" + path2 + "' in " + this);
+          return found;
+        };
+        Namespace._configure = function(Type_, Service_, Enum_) {
+          Type2 = Type_;
+          Service2 = Service_;
+          Enum2 = Enum_;
+        };
+        return namespace;
+      }
+      var mapfield;
+      var hasRequiredMapfield;
+      function requireMapfield() {
+        if (hasRequiredMapfield)
+          return mapfield;
+        hasRequiredMapfield = 1;
+        mapfield = MapField2;
+        var Field2 = requireField();
+        ((MapField2.prototype = Object.create(Field2.prototype)).constructor = MapField2).className = "MapField";
+        var types2 = requireTypes(), util2 = requireUtil();
+        function MapField2(name, id, keyType, type4, options, comment) {
+          Field2.call(this, name, id, type4, void 0, void 0, options, comment);
+          if (!util2.isString(keyType))
+            throw TypeError("keyType must be a string");
+          this.keyType = keyType;
+          this.resolvedKeyType = null;
+          this.map = true;
+        }
+        MapField2.fromJSON = function fromJSON(name, json) {
+          return new MapField2(name, json.id, json.keyType, json.type, json.options, json.comment);
+        };
+        MapField2.prototype.toJSON = function toJSON3(toJSONOptions) {
+          var keepComments = toJSONOptions ? Boolean(toJSONOptions.keepComments) : false;
+          return util2.toObject([
+            "keyType",
+            this.keyType,
+            "type",
+            this.type,
+            "id",
+            this.id,
+            "extend",
+            this.extend,
+            "options",
+            this.options,
+            "comment",
+            keepComments ? this.comment : void 0
+          ]);
+        };
+        MapField2.prototype.resolve = function resolve2() {
+          if (this.resolved)
+            return this;
+          if (types2.mapKey[this.keyType] === void 0)
+            throw Error("invalid key type: " + this.keyType);
+          return Field2.prototype.resolve.call(this);
+        };
+        MapField2.d = function decorateMapField(fieldId, fieldKeyType, fieldValueType) {
+          if (typeof fieldValueType === "function")
+            fieldValueType = util2.decorateType(fieldValueType).name;
+          else if (fieldValueType && typeof fieldValueType === "object")
+            fieldValueType = util2.decorateEnum(fieldValueType).name;
+          return function mapFieldDecorator(prototype2, fieldName) {
+            util2.decorateType(prototype2.constructor).add(new MapField2(fieldName, fieldId, fieldKeyType, fieldValueType));
+          };
+        };
+        return mapfield;
+      }
+      var method;
+      var hasRequiredMethod;
+      function requireMethod() {
+        if (hasRequiredMethod)
+          return method;
+        hasRequiredMethod = 1;
+        method = Method2;
+        var ReflectionObject2 = requireObject();
+        ((Method2.prototype = Object.create(ReflectionObject2.prototype)).constructor = Method2).className = "Method";
+        var util2 = requireUtil();
+        function Method2(name, type4, requestType, responseType, requestStream, responseStream, options, comment, parsedOptions) {
+          if (util2.isObject(requestStream)) {
+            options = requestStream;
+            requestStream = responseStream = void 0;
+          } else if (util2.isObject(responseStream)) {
+            options = responseStream;
+            responseStream = void 0;
+          }
+          if (!(type4 === void 0 || util2.isString(type4)))
+            throw TypeError("type must be a string");
+          if (!util2.isString(requestType))
+            throw TypeError("requestType must be a string");
+          if (!util2.isString(responseType))
+            throw TypeError("responseType must be a string");
+          ReflectionObject2.call(this, name, options);
+          this.type = type4 || "rpc";
+          this.requestType = requestType;
+          this.requestStream = requestStream ? true : void 0;
+          this.responseType = responseType;
+          this.responseStream = responseStream ? true : void 0;
+          this.resolvedRequestType = null;
+          this.resolvedResponseType = null;
+          this.comment = comment;
+          this.parsedOptions = parsedOptions;
+        }
+        Method2.fromJSON = function fromJSON(name, json) {
+          return new Method2(name, json.type, json.requestType, json.responseType, json.requestStream, json.responseStream, json.options, json.comment, json.parsedOptions);
+        };
+        Method2.prototype.toJSON = function toJSON3(toJSONOptions) {
+          var keepComments = toJSONOptions ? Boolean(toJSONOptions.keepComments) : false;
+          return util2.toObject([
+            "type",
+            this.type !== "rpc" && /* istanbul ignore next */
+            this.type || void 0,
+            "requestType",
+            this.requestType,
+            "requestStream",
+            this.requestStream,
+            "responseType",
+            this.responseType,
+            "responseStream",
+            this.responseStream,
+            "options",
+            this.options,
+            "comment",
+            keepComments ? this.comment : void 0,
+            "parsedOptions",
+            this.parsedOptions
+          ]);
+        };
+        Method2.prototype.resolve = function resolve2() {
+          if (this.resolved)
+            return this;
+          this.resolvedRequestType = this.parent.lookupType(this.requestType);
+          this.resolvedResponseType = this.parent.lookupType(this.responseType);
+          return ReflectionObject2.prototype.resolve.call(this);
+        };
+        return method;
+      }
+      var service;
+      var hasRequiredService;
+      function requireService() {
+        if (hasRequiredService)
+          return service;
+        hasRequiredService = 1;
+        service = Service2;
+        var Namespace = requireNamespace();
+        ((Service2.prototype = Object.create(Namespace.prototype)).constructor = Service2).className = "Service";
+        var Method2 = requireMethod(), util2 = requireUtil(), rpc$1 = rpc;
+        function Service2(name, options) {
+          Namespace.call(this, name, options);
+          this.methods = {};
+          this._methodsArray = null;
+        }
+        Service2.fromJSON = function fromJSON(name, json, depth) {
+          depth = util2.checkDepth(depth);
+          var service2 = new Service2(name, json.options);
+          if (json.methods)
+            for (var names2 = Object.keys(json.methods), i = 0; i < names2.length; ++i)
+              service2.add(Method2.fromJSON(names2[i], json.methods[names2[i]]));
+          if (json.nested)
+            service2.addJSON(json.nested, depth);
+          if (json.edition)
+            service2._edition = json.edition;
+          service2.comment = json.comment;
+          service2._defaultEdition = "proto3";
+          return service2;
+        };
+        Service2.prototype.toJSON = function toJSON3(toJSONOptions) {
+          var inherited = Namespace.prototype.toJSON.call(this, toJSONOptions);
+          var keepComments = toJSONOptions ? Boolean(toJSONOptions.keepComments) : false;
+          return util2.toObject([
+            "edition",
+            this._editionToJSON(),
+            "options",
+            inherited && inherited.options || void 0,
+            "methods",
+            Namespace.arrayToJSON(this.methodsArray, toJSONOptions) || /* istanbul ignore next */
+            {},
+            "nested",
+            inherited && inherited.nested || void 0,
+            "comment",
+            keepComments ? this.comment : void 0
+          ]);
+        };
+        Object.defineProperty(Service2.prototype, "methodsArray", {
+          get: function() {
+            return this._methodsArray || (this._methodsArray = util2.toArray(this.methods));
+          }
+        });
+        function clearCache(service2) {
+          service2._methodsArray = null;
+          return service2;
+        }
+        Service2.prototype.get = function get3(name) {
+          return Object.prototype.hasOwnProperty.call(this.methods, name) ? this.methods[name] : Namespace.prototype.get.call(this, name);
+        };
+        Service2.prototype.resolveAll = function resolveAll() {
+          if (!this._needsRecursiveResolve)
+            return this;
+          Namespace.prototype.resolve.call(this);
+          var methods2 = this.methodsArray;
+          for (var i = 0; i < methods2.length; ++i)
+            methods2[i].resolve();
+          return this;
+        };
+        Service2.prototype._resolveFeaturesRecursive = function _resolveFeaturesRecursive(edition) {
+          if (!this._needsRecursiveFeatureResolution)
+            return this;
+          edition = this._edition || edition;
+          Namespace.prototype._resolveFeaturesRecursive.call(this, edition);
+          this.methodsArray.forEach((method4) => {
+            method4._resolveFeaturesRecursive(edition);
+          });
+          return this;
+        };
+        Service2.prototype.add = function add2(object4) {
+          if (this.get(object4.name))
+            throw Error("duplicate name '" + object4.name + "' in " + this);
+          if (object4 instanceof Method2) {
+            if (object4.name === "__proto__")
+              return this;
+            this.methods[object4.name] = object4;
+            object4.parent = this;
+            return clearCache(this);
+          }
+          return Namespace.prototype.add.call(this, object4);
+        };
+        Service2.prototype.remove = function remove2(object4) {
+          if (object4 instanceof Method2) {
+            if (this.methods[object4.name] !== object4)
+              throw Error(object4 + " is not a member of " + this);
+            delete this.methods[object4.name];
+            object4.parent = null;
+            return clearCache(this);
+          }
+          return Namespace.prototype.remove.call(this, object4);
+        };
+        Service2.prototype.create = function create5(rpcImpl, requestDelimited, responseDelimited) {
+          var rpcService = new rpc$1.Service(rpcImpl, requestDelimited, responseDelimited);
+          for (var i = 0, method4; i < /* initializes */
+          this.methodsArray.length; ++i) {
+            var methodName = util2.lcFirst((method4 = this._methodsArray[i]).resolve().name).replace(/[^$\w_]/g, "");
+            rpcService[methodName] = /* @__PURE__ */ function(method5, requestType, responseType) {
+              return function rpcMethod(request2, callback) {
+                return rpc$1.Service.prototype.rpcCall.call(this, method5, requestType, responseType, request2, callback);
+              };
+            }(method4, method4.resolvedRequestType.ctor, method4.resolvedResponseType.ctor);
+          }
+          return rpcService;
+        };
+        return service;
+      }
+      var message$1 = Message$1;
+      var util$1 = requireMinimal();
+      function Message$1(properties) {
+        if (properties)
+          for (var keys2 = Object.keys(properties), i = 0; i < keys2.length; ++i) {
+            var key = keys2[i];
+            if (key === "__proto__")
+              continue;
+            this[key] = properties[key];
+          }
+      }
+      Message$1.create = function create4(properties) {
+        return this.$type.create(properties);
+      };
+      Message$1.encode = function encode2(message2, writer2) {
+        return this.$type.encode(message2, writer2);
+      };
+      Message$1.encodeDelimited = function encodeDelimited(message2, writer2) {
+        return this.$type.encodeDelimited(message2, writer2);
+      };
+      Message$1.decode = function decode(reader2) {
+        return this.$type.decode(reader2);
+      };
+      Message$1.decodeDelimited = function decodeDelimited(reader2) {
+        return this.$type.decodeDelimited(reader2);
+      };
+      Message$1.verify = function verify(message2) {
+        return this.$type.verify(message2);
+      };
+      Message$1.fromObject = function fromObject(object4) {
+        return this.$type.fromObject(object4);
+      };
+      Message$1.toObject = function toObject(message2, options) {
+        return this.$type.toObject(message2, options);
+      };
+      Message$1.prototype.toJSON = function toJSON2() {
+        return this.$type.toObject(this, util$1.toJSONOptions);
+      };
+      var decoder_1;
+      var hasRequiredDecoder;
+      function requireDecoder() {
+        if (hasRequiredDecoder)
+          return decoder_1;
+        hasRequiredDecoder = 1;
+        decoder_1 = decoder2;
+        var Enum2 = require_enum(), types2 = requireTypes(), util2 = requireUtil();
+        function missing(field2) {
+          return "missing required '" + field2.name + "'";
+        }
+        function decoder2(mtype) {
+          var gen = util2.codegen(["r", "l", "e", "n"], mtype.name + "$decode")("if(!(r instanceof Reader))")("r=Reader.create(r)")("if(n===undefined)n=0")("if(n>Reader.recursionLimit)")('throw Error("maximum nesting depth exceeded")')("var c,m" + (mtype.fieldsArray.filter(function(field3) {
+            return field3.map;
+          }).length ? ",k,value" : ""))("if(l===undefined)")("c=r.len")("else{")("c=r.pos+l")("if(c>r.len)")('throw RangeError("index out of range")')("l=r.len")("r.len=c")("}")("m=new this.ctor")("while(r.pos<c){")("var t=r.uint32()")("if(t===e)")("break")("switch(t>>>3){");
+          var i = 0;
+          for (; i < /* initializes */
+          mtype.fieldsArray.length; ++i) {
+            var field2 = mtype._fieldsArray[i].resolve(), type4 = field2.resolvedType instanceof Enum2 ? "int32" : field2.type, ref2 = "m" + util2.safeProp(field2.name);
+            gen("case %i: {", field2.id);
+            if (field2.map) {
+              gen("if(%s===util.emptyObject)", ref2)("%s={}", ref2)("var c2=r.uint32()+r.pos")("if(c2>r.len)")('throw RangeError("index out of range")')("r.len=c2");
+              if (types2.defaults[field2.keyType] !== void 0)
+                gen("k=%j", types2.defaults[field2.keyType]);
+              else
+                gen("k=null");
+              if (types2.defaults[type4] !== void 0)
+                gen("value=%j", types2.defaults[type4]);
+              else
+                gen("value=null");
+              gen("while(r.pos<c2){")("var tag2=r.uint32()")("switch(tag2>>>3){")("case 1: k=r.%s(); break", field2.keyType)("case 2:");
+              if (types2.basic[type4] === void 0)
+                gen("value=types[%i].decode(r,r.uint32(),undefined,n+1)", i);
+              else
+                gen("value=r.%s()", type4);
+              gen("break")("default:")("r.skipType(tag2&7,n)")("break")("}")("}")("if(r.pos!==c2)")('throw RangeError("index out of range")')("r.len=c");
+              if (types2.long[field2.keyType] !== void 0)
+                gen('%s[typeof k==="object"?util.longToHash(k):k]=value', ref2);
+              else {
+                if (field2.keyType === "string")
+                  gen('if(k==="__proto__")')("util.makeProp(%s,k)", ref2);
+                gen("%s[k]=value", ref2);
+              }
+            } else if (field2.repeated) {
+              gen("if(!(%s&&%s.length))", ref2, ref2)("%s=[]", ref2);
+              if (types2.packed[type4] !== void 0)
+                gen("if((t&7)===2){")("var c2=r.uint32()+r.pos")("if(c2>r.len)")('throw RangeError("index out of range")')("r.len=c2")("while(r.pos<c2)")("%s.push(r.%s())", ref2, type4)("if(r.pos!==c2)")('throw RangeError("index out of range")')("r.len=c")("}else");
+              if (types2.basic[type4] === void 0)
+                gen(field2.delimited ? "%s.push(types[%i].decode(r,undefined,((t&~7)|4),n+1))" : "%s.push(types[%i].decode(r,r.uint32(),undefined,n+1))", ref2, i);
+              else
+                gen("%s.push(r.%s())", ref2, type4);
+            } else if (types2.basic[type4] === void 0)
+              gen(field2.delimited ? "%s=types[%i].decode(r,undefined,((t&~7)|4),n+1)" : "%s=types[%i].decode(r,r.uint32(),undefined,n+1)", ref2, i);
+            else
+              gen("%s=r.%s()", ref2, type4);
+            gen("break")("}");
+          }
+          gen("default:")("r.skipType(t&7,n)")("break")("}")("}");
+          gen("if(l!==undefined){")("if(r.pos!==c)")('throw RangeError("index out of range")')("r.len=l")("}");
+          for (i = 0; i < mtype._fieldsArray.length; ++i) {
+            var rfield = mtype._fieldsArray[i];
+            if (rfield.required)
+              gen("if(!Object.hasOwnProperty.call(m,%j))", rfield.name)("throw util.ProtocolError(%j,{instance:m})", missing(rfield));
+          }
+          return gen("return m");
+        }
+        return decoder_1;
+      }
+      var verifier_1;
+      var hasRequiredVerifier;
+      function requireVerifier() {
+        if (hasRequiredVerifier)
+          return verifier_1;
+        hasRequiredVerifier = 1;
+        verifier_1 = verifier;
+        var Enum2 = require_enum(), util2 = requireUtil();
+        function invalid(field2, expected) {
+          return field2.name + ": " + expected + (field2.repeated && expected !== "array" ? "[]" : field2.map && expected !== "object" ? "{k:" + field2.keyType + "}" : "") + " expected";
+        }
+        function genVerifyValue(gen, field2, fieldIndex, ref2) {
+          if (field2.resolvedType) {
+            if (field2.resolvedType instanceof Enum2) {
+              gen("switch(%s){", ref2)("default:")("return%j", invalid(field2, "enum value"));
+              for (var keys2 = Object.keys(field2.resolvedType.values), j = 0; j < keys2.length; ++j)
+                gen("case %i:", field2.resolvedType.values[keys2[j]]);
+              gen("break")("}");
+            } else {
+              gen("{")("var e=types[%i].verify(%s,n+1);", fieldIndex, ref2)("if(e)")("return%j+e", field2.name + ".")("}");
+            }
+          } else {
+            switch (field2.type) {
+              case "int32":
+              case "uint32":
+              case "sint32":
+              case "fixed32":
+              case "sfixed32":
+                gen("if(!util.isInteger(%s))", ref2)("return%j", invalid(field2, "integer"));
+                break;
+              case "int64":
+              case "uint64":
+              case "sint64":
+              case "fixed64":
+              case "sfixed64":
+                gen("if(!util.isInteger(%s)&&!(%s&&util.isInteger(%s.low)&&util.isInteger(%s.high)))", ref2, ref2, ref2, ref2)("return%j", invalid(field2, "integer|Long"));
+                break;
+              case "float":
+              case "double":
+                gen('if(typeof %s!=="number")', ref2)("return%j", invalid(field2, "number"));
+                break;
+              case "bool":
+                gen('if(typeof %s!=="boolean")', ref2)("return%j", invalid(field2, "boolean"));
+                break;
+              case "string":
+                gen("if(!util.isString(%s))", ref2)("return%j", invalid(field2, "string"));
+                break;
+              case "bytes":
+                gen('if(!(%s&&typeof %s.length==="number"||util.isString(%s)))', ref2, ref2, ref2)("return%j", invalid(field2, "buffer"));
+                break;
+            }
+          }
+          return gen;
+        }
+        function genVerifyKey(gen, field2, ref2) {
+          switch (field2.keyType) {
+            case "int32":
+            case "uint32":
+            case "sint32":
+            case "fixed32":
+            case "sfixed32":
+              gen("if(!util.key32Re.test(%s))", ref2)("return%j", invalid(field2, "integer key"));
+              break;
+            case "int64":
+            case "uint64":
+            case "sint64":
+            case "fixed64":
+            case "sfixed64":
+              gen("if(!util.key64Re.test(%s))", ref2)("return%j", invalid(field2, "integer|Long key"));
+              break;
+            case "bool":
+              gen("if(!util.key2Re.test(%s))", ref2)("return%j", invalid(field2, "boolean key"));
+              break;
+          }
+          return gen;
+        }
+        function verifier(mtype) {
+          var gen = util2.codegen(["m", "n"], mtype.name + "$verify")('if(typeof m!=="object"||m===null)')("return%j", "object expected")("if(n===undefined)n=0")("if(n>util.recursionLimit)")("return%j", "maximum nesting depth exceeded");
+          var oneofs = mtype.oneofsArray, seenFirstField = {};
+          if (oneofs.length)
+            gen("var p={}");
+          for (var i = 0; i < /* initializes */
+          mtype.fieldsArray.length; ++i) {
+            var field2 = mtype._fieldsArray[i].resolve(), ref2 = "m" + util2.safeProp(field2.name);
+            if (field2.optional)
+              gen("if(%s!=null&&Object.hasOwnProperty.call(m,%j)){", ref2, field2.name);
+            if (field2.map) {
+              gen("if(!util.isObject(%s))", ref2)("return%j", invalid(field2, "object"))("var k=Object.keys(%s)", ref2)("for(var i=0;i<k.length;++i){");
+              genVerifyKey(gen, field2, "k[i]");
+              genVerifyValue(gen, field2, i, ref2 + "[k[i]]")("}");
+            } else if (field2.repeated) {
+              gen("if(!Array.isArray(%s))", ref2)("return%j", invalid(field2, "array"))("for(var i=0;i<%s.length;++i){", ref2);
+              genVerifyValue(gen, field2, i, ref2 + "[i]")("}");
+            } else {
+              if (field2.partOf) {
+                var oneofProp = util2.safeProp(field2.partOf.name);
+                if (seenFirstField[field2.partOf.name] === 1)
+                  gen("if(p%s===1)", oneofProp)("return%j", field2.partOf.name + ": multiple values");
+                seenFirstField[field2.partOf.name] = 1;
+                gen("p%s=1", oneofProp);
+              }
+              genVerifyValue(gen, field2, i, ref2);
+            }
+            if (field2.optional)
+              gen("}");
+          }
+          return gen("return null");
+        }
+        return verifier_1;
+      }
+      var converter = {};
+      var hasRequiredConverter;
+      function requireConverter() {
+        if (hasRequiredConverter)
+          return converter;
+        hasRequiredConverter = 1;
+        (function(exports2) {
+          var converter2 = exports2;
+          var Enum2 = require_enum(), util2 = requireUtil();
+          function genValuePartial_fromObject(gen, field2, fieldIndex, prop) {
+            var defaultAlreadyEmitted = false;
+            if (field2.resolvedType) {
+              if (field2.resolvedType instanceof Enum2) {
+                gen("switch(d%s){", prop);
+                for (var values = field2.resolvedType.values, keys2 = Object.keys(values), i = 0; i < keys2.length; ++i) {
+                  if (values[keys2[i]] === field2.typeDefault && !defaultAlreadyEmitted) {
+                    gen("default:")('if(typeof(d%s)==="number"){m%s=d%s;break}', prop, prop, prop);
+                    if (!field2.repeated)
+                      gen("break");
+                    defaultAlreadyEmitted = true;
+                  }
+                  gen("case%j:", keys2[i])("case %i:", values[keys2[i]])("m%s=%j", prop, values[keys2[i]])("break");
+                }
+                gen("}");
+              } else
+                gen("if(!util.isObject(d%s))", prop)("throw TypeError(%j)", field2.fullName + ": object expected")("m%s=types[%i].fromObject(d%s,n+1)", prop, fieldIndex, prop);
+            } else {
+              var isUnsigned = false;
+              switch (field2.type) {
+                case "double":
+                case "float":
+                  gen("m%s=Number(d%s)", prop, prop);
+                  break;
+                case "uint32":
+                case "fixed32":
+                  gen("m%s=d%s>>>0", prop, prop);
+                  break;
+                case "int32":
+                case "sint32":
+                case "sfixed32":
+                  gen("m%s=d%s|0", prop, prop);
+                  break;
+                case "uint64":
+                case "fixed64":
+                  isUnsigned = true;
+                case "int64":
+                case "sint64":
+                case "sfixed64":
+                  gen("if(util.Long)")("m%s=util.Long.fromValue(d%s,%j)", prop, prop, isUnsigned)('else if(typeof d%s==="string")', prop)("m%s=parseInt(d%s,10)", prop, prop)('else if(typeof d%s==="number")', prop)("m%s=d%s", prop, prop)('else if(typeof d%s==="object")', prop)("m%s=new util.LongBits(d%s.low>>>0,d%s.high>>>0).toNumber(%s)", prop, prop, prop, isUnsigned ? "true" : "");
+                  break;
+                case "bytes":
+                  gen('if(typeof d%s==="string")', prop)("util.base64.decode(d%s,m%s=util.newBuffer(util.base64.length(d%s)),0)", prop, prop, prop)("else if(d%s.length >= 0)", prop)("m%s=d%s", prop, prop);
+                  break;
+                case "string":
+                  gen("m%s=String(d%s)", prop, prop);
+                  break;
+                case "bool":
+                  gen("m%s=Boolean(d%s)", prop, prop);
+                  break;
+              }
+            }
+            return gen;
+          }
+          converter2.fromObject = function fromObject2(mtype) {
+            var fields = mtype.fieldsArray;
+            var gen = util2.codegen(["d", "n"], mtype.name + "$fromObject")("if(d instanceof this.ctor)")("return d");
+            if (!fields.length)
+              return gen("return new this.ctor");
+            gen("if(!util.isObject(d))")("throw TypeError(%j)", mtype.fullName + ": object expected")("if(n===undefined)n=0")("if(n>util.recursionLimit)")('throw Error("maximum nesting depth exceeded")');
+            gen("var m=new this.ctor");
+            for (var i = 0; i < fields.length; ++i) {
+              var field2 = fields[i].resolve(), prop = util2.safeProp(field2.name);
+              if (field2.map) {
+                gen("if(d%s){", prop)("if(!util.isObject(d%s))", prop)("throw TypeError(%j)", field2.fullName + ": object expected")("m%s={}", prop)("for(var ks=Object.keys(d%s),i=0;i<ks.length;++i){", prop);
+                gen('if(ks[i]==="__proto__")')("util.makeProp(m%s,ks[i])", prop);
+                genValuePartial_fromObject(
+                  gen,
+                  field2,
+                  /* not sorted */
+                  i,
+                  prop + "[ks[i]]"
+                )("}")("}");
+              } else if (field2.repeated) {
+                gen("if(d%s){", prop)("if(!Array.isArray(d%s))", prop)("throw TypeError(%j)", field2.fullName + ": array expected")("m%s=[]", prop)("for(var i=0;i<d%s.length;++i){", prop);
+                genValuePartial_fromObject(
+                  gen,
+                  field2,
+                  /* not sorted */
+                  i,
+                  prop + "[i]"
+                )("}")("}");
+              } else {
+                if (!(field2.resolvedType instanceof Enum2))
+                  gen("if(d%s!=null){", prop);
+                genValuePartial_fromObject(
+                  gen,
+                  field2,
+                  /* not sorted */
+                  i,
+                  prop
+                );
+                if (!(field2.resolvedType instanceof Enum2))
+                  gen("}");
+              }
+            }
+            return gen("return m");
+          };
+          function genValuePartial_toObject(gen, field2, fieldIndex, prop) {
+            if (field2.resolvedType) {
+              if (field2.resolvedType instanceof Enum2)
+                gen("d%s=o.enums===String?(types[%i].values[m%s]===undefined?m%s:types[%i].values[m%s]):m%s", prop, fieldIndex, prop, prop, fieldIndex, prop, prop);
+              else
+                gen("d%s=types[%i].toObject(m%s,o,q+1)", prop, fieldIndex, prop);
+            } else {
+              var isUnsigned = false;
+              switch (field2.type) {
+                case "double":
+                case "float":
+                  gen("d%s=o.json&&!isFinite(m%s)?String(m%s):m%s", prop, prop, prop, prop);
+                  break;
+                case "uint64":
+                case "fixed64":
+                  isUnsigned = true;
+                case "int64":
+                case "sint64":
+                case "sfixed64":
+                  gen('if(typeof BigInt!=="undefined"&&o.longs===BigInt)')('d%s=typeof m%s==="number"?BigInt(m%s):util.Long.fromBits(m%s.low>>>0,m%s.high>>>0,%j).toBigInt()', prop, prop, prop, prop, prop, isUnsigned)('else if(typeof m%s==="number")', prop)("d%s=o.longs===String?String(m%s):m%s", prop, prop, prop)("else")("d%s=o.longs===String?util.Long.prototype.toString.call(m%s):o.longs===Number?new util.LongBits(m%s.low>>>0,m%s.high>>>0).toNumber(%s):m%s", prop, prop, prop, prop, isUnsigned ? "true" : "", prop);
+                  break;
+                case "bytes":
+                  gen("d%s=o.bytes===String?util.base64.encode(m%s,0,m%s.length):o.bytes===Array?Array.prototype.slice.call(m%s):m%s", prop, prop, prop, prop, prop);
+                  break;
+                default:
+                  gen("d%s=m%s", prop, prop);
+                  break;
+              }
+            }
+            return gen;
+          }
+          converter2.toObject = function toObject2(mtype) {
+            var fields = mtype.fieldsArray.slice().sort(util2.compareFieldsById);
+            if (!fields.length)
+              return util2.codegen()("return {}");
+            var gen = util2.codegen(["m", "o", "q"], mtype.name + "$toObject")("if(!o)")("o={}")("if(q===undefined)q=0")("if(q>util.recursionLimit)")('throw Error("max depth exceeded")')("var d={}");
+            var repeatedFields = [], mapFields = [], normalFields = [], i = 0;
+            for (; i < fields.length; ++i)
+              if (!fields[i].partOf)
+                (fields[i].resolve().repeated ? repeatedFields : fields[i].map ? mapFields : normalFields).push(fields[i]);
+            if (repeatedFields.length) {
+              gen("if(o.arrays||o.defaults){");
+              for (i = 0; i < repeatedFields.length; ++i)
+                gen("d%s=[]", util2.safeProp(repeatedFields[i].name));
+              gen("}");
+            }
+            if (mapFields.length) {
+              gen("if(o.objects||o.defaults){");
+              for (i = 0; i < mapFields.length; ++i)
+                gen("d%s={}", util2.safeProp(mapFields[i].name));
+              gen("}");
+            }
+            if (normalFields.length) {
+              gen("if(o.defaults){");
+              for (i = 0; i < normalFields.length; ++i) {
+                var field2 = normalFields[i], prop = util2.safeProp(field2.name);
+                if (field2.resolvedType instanceof Enum2)
+                  gen("d%s=o.enums===String?%j:%j", prop, field2.resolvedType.valuesById[field2.typeDefault], field2.typeDefault);
+                else if (field2.long)
+                  gen("if(util.Long){")("var n=new util.Long(%i,%i,%j)", field2.typeDefault.low, field2.typeDefault.high, field2.typeDefault.unsigned)('d%s=o.longs===String?n.toString():o.longs===Number?n.toNumber():typeof BigInt!=="undefined"&&o.longs===BigInt?n.toBigInt():n', prop)("}else")('d%s=o.longs===String?%j:typeof BigInt!=="undefined"&&o.longs===BigInt?BigInt(%j):%i', prop, field2.typeDefault.toString(), field2.typeDefault.toString(), field2.typeDefault.toNumber());
+                else if (field2.bytes) {
+                  var arrayDefault = Array.prototype.slice.call(field2.typeDefault);
+                  gen("if(o.bytes===String)d%s=%j", prop, String.fromCharCode.apply(String, field2.typeDefault))("else{")("d%s=%j", prop, arrayDefault)("if(o.bytes!==Array)d%s=util.newBuffer(d%s)", prop, prop)("}");
+                } else
+                  gen("d%s=%j", prop, field2.typeDefault);
+              }
+              gen("}");
+            }
+            var hasKs2 = false;
+            for (i = 0; i < fields.length; ++i) {
+              var field2 = fields[i], index = mtype._fieldsArray.indexOf(field2), prop = util2.safeProp(field2.name);
+              if (field2.map) {
+                if (!hasKs2) {
+                  hasKs2 = true;
+                  gen("var ks2");
+                }
+                gen("if(m%s&&(ks2=Object.keys(m%s)).length){", prop, prop)("d%s={}", prop)("for(var j=0;j<ks2.length;++j){");
+                gen('if(ks2[j]==="__proto__")')("util.makeProp(d%s,ks2[j])", prop);
+                genValuePartial_toObject(
+                  gen,
+                  field2,
+                  /* sorted */
+                  index,
+                  prop + "[ks2[j]]"
+                )("}");
+              } else if (field2.repeated) {
+                gen("if(m%s&&m%s.length){", prop, prop)("d%s=[]", prop)("for(var j=0;j<m%s.length;++j){", prop);
+                genValuePartial_toObject(
+                  gen,
+                  field2,
+                  /* sorted */
+                  index,
+                  prop + "[j]"
+                )("}");
+              } else {
+                gen("if(m%s!=null&&Object.hasOwnProperty.call(m,%j)){", prop, field2.name);
+                genValuePartial_toObject(
+                  gen,
+                  field2,
+                  /* sorted */
+                  index,
+                  prop
+                );
+                if (field2.partOf)
+                  gen("if(o.oneofs)")("d%s=%j", util2.safeProp(field2.partOf.name), field2.name);
+              }
+              gen("}");
+            }
+            return gen("return d");
+          };
+        })(converter);
+        return converter;
+      }
+      var wrappers = {};
+      (function(exports2) {
+        var wrappers2 = exports2;
+        var Message2 = message$1, util2 = requireMinimal();
+        wrappers2[".google.protobuf.Any"] = {
+          fromObject: function(object4, depth) {
+            if (depth === void 0)
+              depth = 0;
+            if (depth > util2.recursionLimit)
+              throw Error("max depth exceeded");
+            if (object4 && object4["@type"]) {
+              var name = object4["@type"].substring(object4["@type"].lastIndexOf("/") + 1);
+              var type4 = this.lookup(name);
+              if (type4) {
+                var type_url = object4["@type"].charAt(0) === "." ? object4["@type"].slice(1) : object4["@type"];
+                if (type_url.indexOf("/") === -1) {
+                  type_url = "/" + type_url;
+                }
+                return this.create({
+                  type_url,
+                  value: type4.encode(type4.fromObject(object4, depth + 1)).finish()
+                });
+              }
+            }
+            return this.fromObject(object4, depth);
+          },
+          toObject: function(message2, options, depth) {
+            if (depth === void 0)
+              depth = 0;
+            if (depth > util2.recursionLimit)
+              throw Error("max depth exceeded");
+            var googleApi = "type.googleapis.com/";
+            var prefix = "";
+            var name = "";
+            if (options && options.json && message2.type_url && message2.value) {
+              name = message2.type_url.substring(message2.type_url.lastIndexOf("/") + 1);
+              prefix = message2.type_url.substring(0, message2.type_url.lastIndexOf("/") + 1);
+              var type4 = this.lookup(name);
+              if (type4)
+                message2 = type4.decode(message2.value, void 0, void 0, depth + 1);
+            }
+            if (!(message2 instanceof this.ctor) && message2 instanceof Message2) {
+              var object4 = message2.$type.toObject(message2, options, depth + 1);
+              var messageName = message2.$type.fullName[0] === "." ? message2.$type.fullName.slice(1) : message2.$type.fullName;
+              if (prefix === "") {
+                prefix = googleApi;
+              }
+              name = prefix + messageName;
+              object4["@type"] = name;
+              return object4;
+            }
+            return this.toObject(message2, options, depth);
+          }
+        };
+      })(wrappers);
+      var type;
+      var hasRequiredType;
+      function requireType() {
+        if (hasRequiredType)
+          return type;
+        hasRequiredType = 1;
+        type = Type2;
+        var Namespace = requireNamespace();
+        ((Type2.prototype = Object.create(Namespace.prototype)).constructor = Type2).className = "Type";
+        var Enum2 = require_enum(), OneOf2 = requireOneof(), Field2 = requireField(), MapField2 = requireMapfield(), Service2 = requireService(), Message2 = message$1, Reader2 = reader, Writer2 = writer, util2 = requireUtil(), encoder = requireEncoder(), decoder2 = requireDecoder(), verifier = requireVerifier(), converter2 = requireConverter(), wrappers$1 = wrappers;
+        function Type2(name, options) {
+          name = name.replace(/\W/g, "");
+          Namespace.call(this, name, options);
+          this.fields = {};
+          this.oneofs = void 0;
+          this.extensions = void 0;
+          this.reserved = void 0;
+          this.group = void 0;
+          this._fieldsById = null;
+          this._fieldsArray = null;
+          this._oneofsArray = null;
+          this._ctor = null;
+        }
+        Object.defineProperties(Type2.prototype, {
+          /**
+           * Message fields by id.
+           * @name Type#fieldsById
+           * @type {Object.<number,Field>}
+           * @readonly
+           */
+          fieldsById: {
+            get: function() {
+              if (this._fieldsById)
+                return this._fieldsById;
+              this._fieldsById = {};
+              for (var names2 = Object.keys(this.fields), i = 0; i < names2.length; ++i) {
+                var field2 = this.fields[names2[i]], id = field2.id;
+                if (this._fieldsById[id])
+                  throw Error("duplicate id " + id + " in " + this);
+                this._fieldsById[id] = field2;
+              }
+              return this._fieldsById;
+            }
+          },
+          /**
+           * Fields of this message as an array for iteration.
+           * @name Type#fieldsArray
+           * @type {Field[]}
+           * @readonly
+           */
+          fieldsArray: {
+            get: function() {
+              return this._fieldsArray || (this._fieldsArray = util2.toArray(this.fields));
+            }
+          },
+          /**
+           * Oneofs of this message as an array for iteration.
+           * @name Type#oneofsArray
+           * @type {OneOf[]}
+           * @readonly
+           */
+          oneofsArray: {
+            get: function() {
+              return this._oneofsArray || (this._oneofsArray = util2.toArray(this.oneofs));
+            }
+          },
+          /**
+           * The registered constructor, if any registered, otherwise a generic constructor.
+           * Assigning a function replaces the internal constructor. If the function does not extend {@link Message} yet, its prototype will be setup accordingly and static methods will be populated. If it already extends {@link Message}, it will just replace the internal constructor.
+           * @name Type#ctor
+           * @type {Constructor<{}>}
+           */
+          ctor: {
+            get: function() {
+              return this._ctor || (this.ctor = Type2.generateConstructor(this)());
+            },
+            set: function(ctor) {
+              var prototype2 = ctor.prototype;
+              if (!(prototype2 instanceof Message2)) {
+                (ctor.prototype = new Message2()).constructor = ctor;
+                util2.merge(ctor.prototype, prototype2);
+              }
+              ctor.$type = ctor.prototype.$type = this;
+              util2.merge(ctor, Message2, true);
+              this._ctor = ctor;
+              var i = 0;
+              for (; i < /* initializes */
+              this.fieldsArray.length; ++i)
+                this._fieldsArray[i].resolve();
+              var ctorProperties = {};
+              for (i = 0; i < /* initializes */
+              this.oneofsArray.length; ++i)
+                ctorProperties[this._oneofsArray[i].resolve().name] = {
+                  get: util2.oneOfGetter(this._oneofsArray[i].oneof),
+                  set: util2.oneOfSetter(this._oneofsArray[i].oneof)
+                };
+              if (i)
+                Object.defineProperties(ctor.prototype, ctorProperties);
+            }
+          }
+        });
+        Type2.generateConstructor = function generateConstructor(mtype) {
+          var gen = util2.codegen(["p"], mtype.name);
+          for (var i = 0, field2; i < mtype.fieldsArray.length; ++i)
+            if ((field2 = mtype._fieldsArray[i]).map)
+              gen("this%s={}", util2.safeProp(field2.name));
+            else if (field2.repeated)
+              gen("this%s=[]", util2.safeProp(field2.name));
+          return gen('if(p)for(var ks=Object.keys(p),i=0;i<ks.length;++i)if(p[ks[i]]!=null&&ks[i]!=="__proto__")')("this[ks[i]]=p[ks[i]]");
+        };
+        function clearCache(type4) {
+          type4._fieldsById = type4._fieldsArray = type4._oneofsArray = null;
+          delete type4.encode;
+          delete type4.decode;
+          delete type4.verify;
+          return type4;
+        }
+        Type2.fromJSON = function fromJSON(name, json, depth) {
+          if (depth === void 0)
+            depth = 0;
+          if (depth > util2.nestingLimit)
+            throw Error("max depth exceeded");
+          var type4 = new Type2(name, json.options);
+          type4.extensions = json.extensions;
+          type4.reserved = json.reserved;
+          var names2 = Object.keys(json.fields), i = 0;
+          for (; i < names2.length; ++i)
+            type4.add(
+              (typeof json.fields[names2[i]].keyType !== "undefined" ? MapField2.fromJSON : Field2.fromJSON)(names2[i], json.fields[names2[i]])
+            );
+          if (json.oneofs)
+            for (names2 = Object.keys(json.oneofs), i = 0; i < names2.length; ++i)
+              type4.add(OneOf2.fromJSON(names2[i], json.oneofs[names2[i]]));
+          if (json.nested)
+            for (names2 = Object.keys(json.nested), i = 0; i < names2.length; ++i) {
+              var nested = json.nested[names2[i]];
+              type4.add(
+                // most to least likely
+                (nested.id !== void 0 ? Field2.fromJSON : nested.fields !== void 0 ? Type2.fromJSON : nested.values !== void 0 ? Enum2.fromJSON : nested.methods !== void 0 ? Service2.fromJSON : Namespace.fromJSON)(names2[i], nested, depth + 1)
+              );
+            }
+          if (json.extensions && json.extensions.length)
+            type4.extensions = json.extensions;
+          if (json.reserved && json.reserved.length)
+            type4.reserved = json.reserved;
+          if (json.group)
+            type4.group = true;
+          if (json.comment)
+            type4.comment = json.comment;
+          if (json.edition)
+            type4._edition = json.edition;
+          type4._defaultEdition = "proto3";
+          return type4;
+        };
+        Type2.prototype.toJSON = function toJSON3(toJSONOptions) {
+          var inherited = Namespace.prototype.toJSON.call(this, toJSONOptions);
+          var keepComments = toJSONOptions ? Boolean(toJSONOptions.keepComments) : false;
+          return util2.toObject([
+            "edition",
+            this._editionToJSON(),
+            "options",
+            inherited && inherited.options || void 0,
+            "oneofs",
+            Namespace.arrayToJSON(this.oneofsArray, toJSONOptions),
+            "fields",
+            Namespace.arrayToJSON(this.fieldsArray.filter(function(obj) {
+              return !obj.declaringField;
+            }), toJSONOptions) || {},
+            "extensions",
+            this.extensions && this.extensions.length ? this.extensions : void 0,
+            "reserved",
+            this.reserved && this.reserved.length ? this.reserved : void 0,
+            "group",
+            this.group || void 0,
+            "nested",
+            inherited && inherited.nested || void 0,
+            "comment",
+            keepComments ? this.comment : void 0
+          ]);
+        };
+        Type2.prototype.resolveAll = function resolveAll() {
+          if (!this._needsRecursiveResolve)
+            return this;
+          Namespace.prototype.resolveAll.call(this);
+          var oneofs = this.oneofsArray;
+          i = 0;
+          while (i < oneofs.length)
+            oneofs[i++].resolve();
+          var fields = this.fieldsArray, i = 0;
+          while (i < fields.length)
+            fields[i++].resolve();
+          return this;
+        };
+        Type2.prototype._resolveFeaturesRecursive = function _resolveFeaturesRecursive(edition) {
+          if (!this._needsRecursiveFeatureResolution)
+            return this;
+          edition = this._edition || edition;
+          Namespace.prototype._resolveFeaturesRecursive.call(this, edition);
+          this.oneofsArray.forEach((oneof2) => {
+            oneof2._resolveFeatures(edition);
+          });
+          this.fieldsArray.forEach((field2) => {
+            field2._resolveFeatures(edition);
+          });
+          return this;
+        };
+        Type2.prototype.get = function get3(name) {
+          if (Object.prototype.hasOwnProperty.call(this.fields, name))
+            return this.fields[name];
+          if (this.oneofs && Object.prototype.hasOwnProperty.call(this.oneofs, name))
+            return this.oneofs[name];
+          if (this.nested && Object.prototype.hasOwnProperty.call(this.nested, name))
+            return this.nested[name];
+          return null;
+        };
+        Type2.prototype.add = function add2(object4) {
+          if (this.get(object4.name))
+            throw Error("duplicate name '" + object4.name + "' in " + this);
+          if (object4 instanceof Field2 && object4.extend === void 0) {
+            if (this._fieldsById ? (
+              /* istanbul ignore next */
+              this._fieldsById[object4.id]
+            ) : this.fieldsById[object4.id])
+              throw Error("duplicate id " + object4.id + " in " + this);
+            if (this.isReservedId(object4.id))
+              throw Error("id " + object4.id + " is reserved in " + this);
+            if (this.isReservedName(object4.name) || object4.name.charAt(0) === "$")
+              throw Error("name '" + object4.name + "' is reserved in " + this);
+            if (object4.name === "__proto__")
+              return this;
+            if (object4.parent)
+              object4.parent.remove(object4);
+            this.fields[object4.name] = object4;
+            object4.message = this;
+            object4.onAdd(this);
+            return clearCache(this);
+          }
+          if (object4 instanceof OneOf2) {
+            if (object4.name.charAt(0) === "$")
+              throw Error("name '" + object4.name + "' is reserved in " + this);
+            if (object4.name === "__proto__")
+              return this;
+            if (!this.oneofs)
+              this.oneofs = {};
+            this.oneofs[object4.name] = object4;
+            object4.onAdd(this);
+            return clearCache(this);
+          }
+          return Namespace.prototype.add.call(this, object4);
+        };
+        Type2.prototype.remove = function remove2(object4) {
+          if (object4 instanceof Field2 && object4.extend === void 0) {
+            if (!this.fields || this.fields[object4.name] !== object4)
+              throw Error(object4 + " is not a member of " + this);
+            delete this.fields[object4.name];
+            object4.parent = null;
+            object4.onRemove(this);
+            return clearCache(this);
+          }
+          if (object4 instanceof OneOf2) {
+            if (!this.oneofs || this.oneofs[object4.name] !== object4)
+              throw Error(object4 + " is not a member of " + this);
+            delete this.oneofs[object4.name];
+            object4.parent = null;
+            object4.onRemove(this);
+            return clearCache(this);
+          }
+          return Namespace.prototype.remove.call(this, object4);
+        };
+        Type2.prototype.isReservedId = function isReservedId(id) {
+          return Namespace.isReservedId(this.reserved, id);
+        };
+        Type2.prototype.isReservedName = function isReservedName(name) {
+          return Namespace.isReservedName(this.reserved, name);
+        };
+        Type2.prototype.create = function create5(properties) {
+          return new this.ctor(properties);
+        };
+        Type2.prototype.setup = function setup() {
+          var fullName = this.fullName, types2 = [];
+          for (var i = 0; i < /* initializes */
+          this.fieldsArray.length; ++i)
+            types2.push(this._fieldsArray[i].resolve().resolvedType);
+          this.encode = encoder(this)({
+            Writer: Writer2,
+            types: types2,
+            util: util2
+          });
+          this.decode = decoder2(this)({
+            Reader: Reader2,
+            types: types2,
+            util: util2
+          });
+          this.verify = verifier(this)({
+            types: types2,
+            util: util2
+          });
+          this.fromObject = converter2.fromObject(this)({
+            types: types2,
+            util: util2
+          });
+          this.toObject = converter2.toObject(this)({
+            types: types2,
+            util: util2
+          });
+          var wrapper = wrappers$1[fullName];
+          if (wrapper) {
+            var originalThis = Object.create(this);
+            originalThis.fromObject = this.fromObject;
+            this.fromObject = wrapper.fromObject.bind(originalThis);
+            originalThis.toObject = this.toObject;
+            this.toObject = wrapper.toObject.bind(originalThis);
+          }
+          return this;
+        };
+        Type2.prototype.encode = function encode_setup(message2, writer2) {
+          return this.setup().encode.apply(this, arguments);
+        };
+        Type2.prototype.encodeDelimited = function encodeDelimited2(message2, writer2) {
+          return this.encode(message2, writer2 && writer2.len ? writer2.fork() : writer2).ldelim();
+        };
+        Type2.prototype.decode = function decode_setup(reader2, length, end3, depth) {
+          return this.setup().decode(reader2, length, end3, depth);
+        };
+        Type2.prototype.decodeDelimited = function decodeDelimited2(reader2) {
+          if (!(reader2 instanceof Reader2))
+            reader2 = Reader2.create(reader2);
+          return this.decode(reader2, reader2.uint32());
+        };
+        Type2.prototype.verify = function verify_setup(message2, depth) {
+          return this.setup().verify(message2, depth);
+        };
+        Type2.prototype.fromObject = function fromObject2(object4, depth) {
+          return this.setup().fromObject(object4, depth);
+        };
+        Type2.prototype.toObject = function toObject2(message2, options) {
+          return this.setup().toObject.apply(this, arguments);
+        };
+        Type2.d = function decorateType(typeName) {
+          return function typeDecorator(target) {
+            util2.decorateType(target, typeName);
+          };
+        };
+        return type;
+      }
+      var root$2;
+      var hasRequiredRoot;
+      function requireRoot() {
+        if (hasRequiredRoot)
+          return root$2;
+        hasRequiredRoot = 1;
+        root$2 = Root2;
+        var Namespace = requireNamespace();
+        ((Root2.prototype = Object.create(Namespace.prototype)).constructor = Root2).className = "Root";
+        var Field2 = requireField(), Enum2 = require_enum(), OneOf2 = requireOneof(), util2 = requireUtil();
+        var Type2, parse2, common2;
+        function Root2(options) {
+          Namespace.call(this, "", options);
+          this.deferred = [];
+          this.files = [];
+          this._edition = "proto2";
+          this._fullyQualifiedObjects = {};
+        }
+        Root2.fromJSON = function fromJSON(json, root2, depth) {
+          depth = util2.checkDepth(depth);
+          if (!root2)
+            root2 = new Root2();
+          if (json.options)
+            root2.setOptions(json.options);
+          return root2.addJSON(json.nested, depth).resolveAll();
+        };
+        Root2.prototype.resolvePath = util2.path.resolve;
+        Root2.prototype.fetch = util2.fetch;
+        function SYNC() {
+        }
+        Root2.prototype.load = function load2(filename, options, callback) {
+          if (typeof options === "function") {
+            callback = options;
+            options = void 0;
+          }
+          var self2 = this;
+          if (!callback) {
+            return util2.asPromise(load2, self2, filename, options);
+          }
+          var sync = callback === SYNC;
+          function finish2(err, root2) {
+            if (!callback) {
+              return;
+            }
+            if (sync) {
+              throw err;
+            }
+            if (root2) {
+              root2.resolveAll();
+            }
+            var cb = callback;
+            callback = null;
+            cb(err, root2);
+          }
+          function getBundledFileName(filename2) {
+            var idx = filename2.lastIndexOf("google/protobuf/");
+            if (idx > -1) {
+              var altname = filename2.substring(idx);
+              if (altname in common2)
+                return altname;
+            }
+            return null;
+          }
+          function process2(filename2, source, depth) {
+            if (depth === void 0)
+              depth = 0;
+            try {
+              if (depth > util2.recursionLimit)
+                throw Error("max depth exceeded");
+              if (util2.isString(source) && source.charAt(0) === "{")
+                source = JSON.parse(source);
+              if (!util2.isString(source))
+                self2.setOptions(source.options).addJSON(source.nested);
+              else {
+                parse2.filename = filename2;
+                var parsed = parse2(source, self2, options), resolved2, i2 = 0;
+                if (parsed.imports) {
+                  for (; i2 < parsed.imports.length; ++i2)
+                    if (resolved2 = getBundledFileName(parsed.imports[i2]) || self2.resolvePath(filename2, parsed.imports[i2]))
+                      fetch2(resolved2, false, depth + 1);
+                }
+                if (parsed.weakImports) {
+                  for (i2 = 0; i2 < parsed.weakImports.length; ++i2)
+                    if (resolved2 = getBundledFileName(parsed.weakImports[i2]) || self2.resolvePath(filename2, parsed.weakImports[i2]))
+                      fetch2(resolved2, true, depth + 1);
+                }
+              }
+            } catch (err) {
+              finish2(err);
+            }
+            if (!sync && !queued) {
+              finish2(null, self2);
+            }
+          }
+          function fetch2(filename2, weak, depth) {
+            if (depth === void 0)
+              depth = 0;
+            filename2 = getBundledFileName(filename2) || filename2;
+            if (self2.files.indexOf(filename2) > -1) {
+              return;
+            }
+            self2.files.push(filename2);
+            if (filename2 in common2) {
+              if (sync) {
+                process2(filename2, common2[filename2], depth);
+              } else {
+                ++queued;
+                setTimeout(function() {
+                  --queued;
+                  process2(filename2, common2[filename2], depth);
+                });
+              }
+              return;
+            }
+            if (sync) {
+              var source;
+              try {
+                source = util2.fs.readFileSync(filename2).toString("utf8");
+              } catch (err) {
+                if (!weak)
+                  finish2(err);
+                return;
+              }
+              process2(filename2, source, depth);
+            } else {
+              ++queued;
+              self2.fetch(filename2, function(err, source2) {
+                --queued;
+                if (!callback) {
+                  return;
+                }
+                if (err) {
+                  if (!weak)
+                    finish2(err);
+                  else if (!queued)
+                    finish2(null, self2);
+                  return;
+                }
+                process2(filename2, source2, depth);
+              });
+            }
+          }
+          var queued = 0;
+          if (util2.isString(filename)) {
+            filename = [filename];
+          }
+          for (var i = 0, resolved; i < filename.length; ++i)
+            if (resolved = self2.resolvePath("", filename[i]))
+              fetch2(resolved);
+          if (sync) {
+            self2.resolveAll();
+            return self2;
+          }
+          if (!queued) {
+            finish2(null, self2);
+          }
+          return self2;
+        };
+        Root2.prototype.loadSync = function loadSync2(filename, options) {
+          if (!util2.isNode)
+            throw Error("not supported");
+          return this.load(filename, options, SYNC);
+        };
+        Root2.prototype.resolveAll = function resolveAll() {
+          if (!this._needsRecursiveResolve)
+            return this;
+          if (this.deferred.length)
+            throw Error("unresolvable extensions: " + this.deferred.map(function(field2) {
+              return "'extend " + field2.extend + "' in " + field2.parent.fullName;
+            }).join(", "));
+          return Namespace.prototype.resolveAll.call(this);
+        };
+        var exposeRe = /^[A-Z]/;
+        function tryHandleExtension(root2, field2) {
+          var extendedType = field2.parent.lookup(field2.extend);
+          if (extendedType) {
+            var sisterField = new Field2(field2.fullName, field2.id, field2.type, field2.rule, void 0, field2.options);
+            if (extendedType.get(sisterField.name)) {
+              return true;
+            }
+            sisterField.declaringField = field2;
+            field2.extensionField = sisterField;
+            extendedType.add(sisterField);
+            return true;
+          }
+          return false;
+        }
+        Root2.prototype._handleAdd = function _handleAdd(object4) {
+          if (object4 instanceof Field2) {
+            if (
+              /* an extension field (implies not part of a oneof) */
+              object4.extend !== void 0 && /* not already handled */
+              !object4.extensionField
+            ) {
+              if (!tryHandleExtension(this, object4))
+                this.deferred.push(object4);
+            }
+          } else if (object4 instanceof Enum2) {
+            if (exposeRe.test(object4.name))
+              object4.parent[object4.name] = object4.values;
+          } else if (!(object4 instanceof OneOf2)) {
+            if (object4 instanceof Type2)
+              for (var i = 0; i < this.deferred.length; )
+                if (tryHandleExtension(this, this.deferred[i]))
+                  this.deferred.splice(i, 1);
+                else
+                  ++i;
+            for (var j = 0; j < /* initializes */
+            object4.nestedArray.length; ++j)
+              this._handleAdd(object4._nestedArray[j]);
+            if (exposeRe.test(object4.name))
+              object4.parent[object4.name] = object4;
+          }
+          if (object4 instanceof Type2 || object4 instanceof Enum2 || object4 instanceof Field2) {
+            this._fullyQualifiedObjects[object4.fullName] = object4;
+          }
+        };
+        Root2.prototype._handleRemove = function _handleRemove(object4) {
+          if (object4 instanceof Field2) {
+            if (
+              /* an extension field */
+              object4.extend !== void 0
+            ) {
+              if (
+                /* already handled */
+                object4.extensionField
+              ) {
+                object4.extensionField.parent.remove(object4.extensionField);
+                object4.extensionField = null;
+              } else {
+                var index = this.deferred.indexOf(object4);
+                if (index > -1)
+                  this.deferred.splice(index, 1);
+              }
+            }
+          } else if (object4 instanceof Enum2) {
+            if (exposeRe.test(object4.name))
+              delete object4.parent[object4.name];
+          } else if (object4 instanceof Namespace) {
+            for (var i = 0; i < /* initializes */
+            object4.nestedArray.length; ++i)
+              this._handleRemove(object4._nestedArray[i]);
+            if (exposeRe.test(object4.name))
+              delete object4.parent[object4.name];
+          }
+          delete this._fullyQualifiedObjects[object4.fullName];
+        };
+        Root2._configure = function(Type_, parse_, common_) {
+          Type2 = Type_;
+          parse2 = parse_;
+          common2 = common_;
+        };
+        return root$2;
+      }
+      var hasRequiredUtil;
+      function requireUtil() {
+        if (hasRequiredUtil)
+          return util$2.exports;
+        hasRequiredUtil = 1;
+        var util2 = util$2.exports = requireMinimal();
+        var roots$1 = roots;
+        var Type2, Enum2;
+        util2.codegen = codegen_1;
+        util2.fetch = fetch_1;
+        util2.path = path;
+        util2.patterns = patterns;
+        var reservedRe2 = util2.patterns.reservedRe;
+        util2.fs = fs_1;
+        util2.checkDepth = function checkDepth(depth) {
+          if (depth === void 0)
+            depth = 0;
+          if (depth > util2.recursionLimit)
+            throw Error("max depth exceeded");
+          return depth;
+        };
+        util2.toArray = function toArray2(object4) {
+          if (object4) {
+            var keys2 = Object.keys(object4), array4 = new Array(keys2.length), index = 0;
+            while (index < keys2.length)
+              array4[index] = object4[keys2[index++]];
+            return array4;
+          }
+          return [];
+        };
+        util2.toObject = function toObject2(array4) {
+          var object4 = {}, index = 0;
+          while (index < array4.length) {
+            var key = array4[index++], val = array4[index++];
+            if (val !== void 0)
+              object4[key] = val;
+          }
+          return object4;
+        };
+        util2.isReserved = function isReserved(name) {
+          return reservedRe2.test(name);
+        };
+        util2.safeProp = function safeProp(prop) {
+          if (!/^[$\w_]+$/.test(prop) || reservedRe2.test(prop))
+            return "[" + JSON.stringify(prop) + "]";
+          return "." + prop;
+        };
+        util2.ucFirst = function ucFirst(str) {
+          return str.charAt(0).toUpperCase() + str.substring(1);
+        };
+        var camelCaseRe = /_([a-z])/g;
+        util2.camelCase = function camelCase(str) {
+          return str.substring(0, 1) + str.substring(1).replace(camelCaseRe, function($0, $1) {
+            return $1.toUpperCase();
+          });
+        };
+        util2.compareFieldsById = function compareFieldsById(a2, b2) {
+          return a2.id - b2.id;
+        };
+        util2.decorateType = function decorateType(ctor, typeName) {
+          if (ctor.$type) {
+            if (typeName && ctor.$type.name !== typeName) {
+              util2.decorateRoot.remove(ctor.$type);
+              ctor.$type.name = typeName;
+              util2.decorateRoot.add(ctor.$type);
+            }
+            return ctor.$type;
+          }
+          if (!Type2)
+            Type2 = requireType();
+          var type4 = new Type2(typeName || ctor.name);
+          util2.decorateRoot.add(type4);
+          type4.ctor = ctor;
+          Object.defineProperty(ctor, "$type", { value: type4, enumerable: false });
+          Object.defineProperty(ctor.prototype, "$type", { value: type4, enumerable: false });
+          return type4;
+        };
+        var decorateEnumIndex = 0;
+        util2.decorateEnum = function decorateEnum(object4) {
+          if (object4.$type)
+            return object4.$type;
+          if (!Enum2)
+            Enum2 = require_enum();
+          var enm = new Enum2("Enum" + decorateEnumIndex++, object4);
+          util2.decorateRoot.add(enm);
+          Object.defineProperty(object4, "$type", { value: enm, enumerable: false });
+          return enm;
+        };
+        util2.setProperty = function setProperty(dst, path2, value, ifNotSet) {
+          function setProp(dst2, path3, value2) {
+            var part = path3.shift();
+            if (util2.isUnsafeProperty(part))
+              return dst2;
+            if (path3.length > 0) {
+              dst2[part] = setProp(dst2[part] || {}, path3, value2);
+            } else {
+              var prevValue = dst2[part];
+              if (prevValue && ifNotSet)
+                return dst2;
+              if (prevValue)
+                value2 = [].concat(prevValue).concat(value2);
+              dst2[part] = value2;
+            }
+            return dst2;
+          }
+          if (typeof dst !== "object")
+            throw TypeError("dst must be an object");
+          if (!path2)
+            throw TypeError("path must be specified");
+          path2 = path2.split(".");
+          if (path2.length > util2.recursionLimit)
+            throw Error("max depth exceeded");
+          return setProp(dst, path2, value);
+        };
+        Object.defineProperty(util2, "decorateRoot", {
+          get: function() {
+            return roots$1["decorated"] || (roots$1["decorated"] = new (requireRoot())());
+          }
+        });
+        return util$2.exports;
+      }
       var hasRequiredTypes;
       function requireTypes() {
         if (hasRequiredTypes)
@@ -18789,7 +21690,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
             // 14
           ];
           function bake(values, offset2) {
-            var i = 0, o2 = {};
+            var i = 0, o2 = /* @__PURE__ */ Object.create(null);
             offset2 |= 0;
             while (i < values.length)
               o2[s2[i + offset2]] = values[i++];
@@ -18937,13 +21838,17 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           return field;
         hasRequiredField = 1;
         field = Field2;
-        var ReflectionObject = requireObject();
-        ((Field2.prototype = Object.create(ReflectionObject.prototype)).constructor = Field2).className = "Field";
+        var ReflectionObject2 = requireObject();
+        ((Field2.prototype = Object.create(ReflectionObject2.prototype)).constructor = Field2).className = "Field";
         var Enum2 = require_enum(), types2 = requireTypes(), util2 = requireUtil();
         var Type2;
         var ruleRe = /^required|optional|repeated$/;
         Field2.fromJSON = function fromJSON(name, json) {
-          return new Field2(name, json.id, json.type, json.rule, json.extend, json.options, json.comment);
+          var field2 = new Field2(name, json.id, json.type, json.rule, json.extend, json.options, json.comment);
+          if (json.edition)
+            field2._edition = json.edition;
+          field2._defaultEdition = "proto3";
+          return field2;
         };
         function Field2(name, id, type4, rule, extend2, options, comment) {
           if (util2.isObject(rule)) {
@@ -18955,7 +21860,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
             options = extend2;
             extend2 = void 0;
           }
-          ReflectionObject.call(this, name, options);
+          ReflectionObject2.call(this, name, options);
           if (!util2.isInteger(id) || id < 0)
             throw TypeError("id must be a non-negative integer");
           if (!util2.isString(type4))
@@ -18971,8 +21876,6 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           this.type = type4;
           this.id = id;
           this.extend = extend2 || void 0;
-          this.required = rule === "required";
-          this.optional = !this.required;
           this.repeated = rule === "repeated";
           this.map = false;
           this.message = null;
@@ -18987,24 +21890,46 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           this.resolvedType = null;
           this.extensionField = null;
           this.declaringField = null;
-          this._packed = null;
           this.comment = comment;
         }
+        Object.defineProperty(Field2.prototype, "required", {
+          get: function() {
+            return this._features.field_presence === "LEGACY_REQUIRED";
+          }
+        });
+        Object.defineProperty(Field2.prototype, "optional", {
+          get: function() {
+            return !this.required;
+          }
+        });
+        Object.defineProperty(Field2.prototype, "delimited", {
+          get: function() {
+            return this.resolvedType instanceof Type2 && this._features.message_encoding === "DELIMITED";
+          }
+        });
         Object.defineProperty(Field2.prototype, "packed", {
           get: function() {
-            if (this._packed === null)
-              this._packed = this.getOption("packed") !== false;
-            return this._packed;
+            return this._features.repeated_field_encoding === "PACKED";
+          }
+        });
+        Object.defineProperty(Field2.prototype, "hasPresence", {
+          get: function() {
+            if (this.repeated || this.map) {
+              return false;
+            }
+            return this.partOf || // oneofs
+            this.declaringField || this.extensionField || // extensions
+            this._features.field_presence !== "IMPLICIT";
           }
         });
         Field2.prototype.setOption = function setOption(name, value, ifNotSet) {
-          if (name === "packed")
-            this._packed = null;
-          return ReflectionObject.prototype.setOption.call(this, name, value, ifNotSet);
+          return ReflectionObject2.prototype.setOption.call(this, name, value, ifNotSet);
         };
         Field2.prototype.toJSON = function toJSON3(toJSONOptions) {
           var keepComments = toJSONOptions ? Boolean(toJSONOptions.keepComments) : false;
           return util2.toObject([
+            "edition",
+            this._editionToJSON(),
             "rule",
             this.rule !== "optional" && this.rule || void 0,
             "type",
@@ -19037,13 +21962,13 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
               this.typeDefault = this.resolvedType.values[this.typeDefault];
           }
           if (this.options) {
-            if (this.options.packed === true || this.options.packed !== void 0 && this.resolvedType && !(this.resolvedType instanceof Enum2))
+            if (this.options.packed !== void 0 && this.resolvedType && !(this.resolvedType instanceof Enum2))
               delete this.options.packed;
             if (!Object.keys(this.options).length)
               this.options = void 0;
           }
           if (this.long) {
-            this.typeDefault = util2.Long.fromNumber(this.typeDefault, this.type.charAt(0) === "u");
+            this.typeDefault = util2.Long.fromNumber(this.typeDefault, this.type === "uint64" || this.type === "fixed64");
             if (Object.freeze)
               Object.freeze(this.typeDefault);
           } else if (this.bytes && typeof this.typeDefault === "string") {
@@ -19062,7 +21987,31 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
             this.defaultValue = this.typeDefault;
           if (this.parent instanceof Type2)
             this.parent.ctor.prototype[this.name] = this.defaultValue;
-          return ReflectionObject.prototype.resolve.call(this);
+          return ReflectionObject2.prototype.resolve.call(this);
+        };
+        Field2.prototype._inferLegacyProtoFeatures = function _inferLegacyProtoFeatures(edition) {
+          if (edition !== "proto2" && edition !== "proto3") {
+            return {};
+          }
+          var features = {};
+          if (this.rule === "required") {
+            features.field_presence = "LEGACY_REQUIRED";
+          }
+          if (this.parent && types2.defaults[this.type] === void 0) {
+            var type4 = this.parent.get(this.type.split(".").pop());
+            if (type4 && type4 instanceof Type2 && type4.group) {
+              features.message_encoding = "DELIMITED";
+            }
+          }
+          if (this.getOption("packed") === true) {
+            features.repeated_field_encoding = "PACKED";
+          } else if (this.getOption("packed") === false) {
+            features.repeated_field_encoding = "EXPANDED";
+          }
+          return features;
+        };
+        Field2.prototype._resolveFeatures = function _resolveFeatures(edition) {
+          return ReflectionObject2.prototype._resolveFeatures.call(this, this._edition || edition);
         };
         Field2.d = function decorateField(fieldId, fieldType, fieldRule, defaultValue) {
           if (typeof fieldType === "function")
@@ -19085,15 +22034,15 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           return oneof;
         hasRequiredOneof = 1;
         oneof = OneOf2;
-        var ReflectionObject = requireObject();
-        ((OneOf2.prototype = Object.create(ReflectionObject.prototype)).constructor = OneOf2).className = "OneOf";
+        var ReflectionObject2 = requireObject();
+        ((OneOf2.prototype = Object.create(ReflectionObject2.prototype)).constructor = OneOf2).className = "OneOf";
         var Field2 = requireField(), util2 = requireUtil();
         function OneOf2(name, fieldNames, options, comment) {
           if (!Array.isArray(fieldNames)) {
             options = fieldNames;
             fieldNames = void 0;
           }
-          ReflectionObject.call(this, name, options);
+          ReflectionObject2.call(this, name, options);
           if (!(fieldNames === void 0 || Array.isArray(fieldNames)))
             throw TypeError("fieldNames must be an Array");
           this.oneof = fieldNames || [];
@@ -19146,7 +22095,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           return this;
         };
         OneOf2.prototype.onAdd = function onAdd(parent2) {
-          ReflectionObject.prototype.onAdd.call(this, parent2);
+          ReflectionObject2.prototype.onAdd.call(this, parent2);
           var self2 = this;
           for (var i = 0; i < this.oneof.length; ++i) {
             var field2 = parent2.get(this.oneof[i]);
@@ -19161,8 +22110,17 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           for (var i = 0, field2; i < this.fieldsArray.length; ++i)
             if ((field2 = this.fieldsArray[i]).parent)
               field2.parent.remove(field2);
-          ReflectionObject.prototype.onRemove.call(this, parent2);
+          ReflectionObject2.prototype.onRemove.call(this, parent2);
         };
+        Object.defineProperty(OneOf2.prototype, "isProto3Optional", {
+          get: function() {
+            if (this.fieldsArray == null || this.fieldsArray.length !== 1) {
+              return false;
+            }
+            var field2 = this.fieldsArray[0];
+            return field2.options != null && field2.options["proto3_optional"] === true;
+          }
+        });
         OneOf2.d = function decorateOneOf() {
           var fieldNames = new Array(arguments.length), index = 0;
           while (index < arguments.length)
@@ -19177,1560 +22135,21 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         };
         return oneof;
       }
-      var namespace;
-      var hasRequiredNamespace;
-      function requireNamespace() {
-        if (hasRequiredNamespace)
-          return namespace;
-        hasRequiredNamespace = 1;
-        namespace = Namespace;
-        var ReflectionObject = requireObject();
-        ((Namespace.prototype = Object.create(ReflectionObject.prototype)).constructor = Namespace).className = "Namespace";
-        var Field2 = requireField(), util2 = requireUtil(), OneOf2 = requireOneof();
-        var Type2, Service2, Enum2;
-        Namespace.fromJSON = function fromJSON(name, json) {
-          return new Namespace(name, json.options).addJSON(json.nested);
-        };
-        function arrayToJSON(array4, toJSONOptions) {
-          if (!(array4 && array4.length))
-            return void 0;
-          var obj = {};
-          for (var i = 0; i < array4.length; ++i)
-            obj[array4[i].name] = array4[i].toJSON(toJSONOptions);
-          return obj;
-        }
-        Namespace.arrayToJSON = arrayToJSON;
-        Namespace.isReservedId = function isReservedId(reserved, id) {
-          if (reserved) {
-            for (var i = 0; i < reserved.length; ++i)
-              if (typeof reserved[i] !== "string" && reserved[i][0] <= id && reserved[i][1] > id)
-                return true;
-          }
-          return false;
-        };
-        Namespace.isReservedName = function isReservedName(reserved, name) {
-          if (reserved) {
-            for (var i = 0; i < reserved.length; ++i)
-              if (reserved[i] === name)
-                return true;
-          }
-          return false;
-        };
-        function Namespace(name, options) {
-          ReflectionObject.call(this, name, options);
-          this.nested = void 0;
-          this._nestedArray = null;
-        }
-        function clearCache(namespace2) {
-          namespace2._nestedArray = null;
-          return namespace2;
-        }
-        Object.defineProperty(Namespace.prototype, "nestedArray", {
-          get: function() {
-            return this._nestedArray || (this._nestedArray = util2.toArray(this.nested));
-          }
-        });
-        Namespace.prototype.toJSON = function toJSON3(toJSONOptions) {
-          return util2.toObject([
-            "options",
-            this.options,
-            "nested",
-            arrayToJSON(this.nestedArray, toJSONOptions)
-          ]);
-        };
-        Namespace.prototype.addJSON = function addJSON(nestedJson) {
-          var ns = this;
-          if (nestedJson) {
-            for (var names2 = Object.keys(nestedJson), i = 0, nested; i < names2.length; ++i) {
-              nested = nestedJson[names2[i]];
-              ns.add(
-                // most to least likely
-                (nested.fields !== void 0 ? Type2.fromJSON : nested.values !== void 0 ? Enum2.fromJSON : nested.methods !== void 0 ? Service2.fromJSON : nested.id !== void 0 ? Field2.fromJSON : Namespace.fromJSON)(names2[i], nested)
-              );
-            }
-          }
-          return this;
-        };
-        Namespace.prototype.get = function get3(name) {
-          return this.nested && this.nested[name] || null;
-        };
-        Namespace.prototype.getEnum = function getEnum(name) {
-          if (this.nested && this.nested[name] instanceof Enum2)
-            return this.nested[name].values;
-          throw Error("no such enum: " + name);
-        };
-        Namespace.prototype.add = function add2(object4) {
-          if (!(object4 instanceof Field2 && object4.extend !== void 0 || object4 instanceof Type2 || object4 instanceof OneOf2 || object4 instanceof Enum2 || object4 instanceof Service2 || object4 instanceof Namespace))
-            throw TypeError("object must be a valid nested object");
-          if (!this.nested)
-            this.nested = {};
-          else {
-            var prev = this.get(object4.name);
-            if (prev) {
-              if (prev instanceof Namespace && object4 instanceof Namespace && !(prev instanceof Type2 || prev instanceof Service2)) {
-                var nested = prev.nestedArray;
-                for (var i = 0; i < nested.length; ++i)
-                  object4.add(nested[i]);
-                this.remove(prev);
-                if (!this.nested)
-                  this.nested = {};
-                object4.setOptions(prev.options, true);
-              } else
-                throw Error("duplicate name '" + object4.name + "' in " + this);
-            }
-          }
-          this.nested[object4.name] = object4;
-          object4.onAdd(this);
-          return clearCache(this);
-        };
-        Namespace.prototype.remove = function remove2(object4) {
-          if (!(object4 instanceof ReflectionObject))
-            throw TypeError("object must be a ReflectionObject");
-          if (object4.parent !== this)
-            throw Error(object4 + " is not a member of " + this);
-          delete this.nested[object4.name];
-          if (!Object.keys(this.nested).length)
-            this.nested = void 0;
-          object4.onRemove(this);
-          return clearCache(this);
-        };
-        Namespace.prototype.define = function define(path2, json) {
-          if (util2.isString(path2))
-            path2 = path2.split(".");
-          else if (!Array.isArray(path2))
-            throw TypeError("illegal path");
-          if (path2 && path2.length && path2[0] === "")
-            throw Error("path must be relative");
-          var ptr = this;
-          while (path2.length > 0) {
-            var part = path2.shift();
-            if (ptr.nested && ptr.nested[part]) {
-              ptr = ptr.nested[part];
-              if (!(ptr instanceof Namespace))
-                throw Error("path conflicts with non-namespace objects");
-            } else
-              ptr.add(ptr = new Namespace(part));
-          }
-          if (json)
-            ptr.addJSON(json);
-          return ptr;
-        };
-        Namespace.prototype.resolveAll = function resolveAll() {
-          var nested = this.nestedArray, i = 0;
-          while (i < nested.length)
-            if (nested[i] instanceof Namespace)
-              nested[i++].resolveAll();
-            else
-              nested[i++].resolve();
-          return this.resolve();
-        };
-        Namespace.prototype.lookup = function lookup(path2, filterTypes, parentAlreadyChecked) {
-          if (typeof filterTypes === "boolean") {
-            parentAlreadyChecked = filterTypes;
-            filterTypes = void 0;
-          } else if (filterTypes && !Array.isArray(filterTypes))
-            filterTypes = [filterTypes];
-          if (util2.isString(path2) && path2.length) {
-            if (path2 === ".")
-              return this.root;
-            path2 = path2.split(".");
-          } else if (!path2.length)
-            return this;
-          if (path2[0] === "")
-            return this.root.lookup(path2.slice(1), filterTypes);
-          var found = this.get(path2[0]);
-          if (found) {
-            if (path2.length === 1) {
-              if (!filterTypes || filterTypes.indexOf(found.constructor) > -1)
-                return found;
-            } else if (found instanceof Namespace && (found = found.lookup(path2.slice(1), filterTypes, true)))
-              return found;
-          } else
-            for (var i = 0; i < this.nestedArray.length; ++i)
-              if (this._nestedArray[i] instanceof Namespace && (found = this._nestedArray[i].lookup(path2, filterTypes, true)))
-                return found;
-          if (this.parent === null || parentAlreadyChecked)
-            return null;
-          return this.parent.lookup(path2, filterTypes);
-        };
-        Namespace.prototype.lookupType = function lookupType(path2) {
-          var found = this.lookup(path2, [Type2]);
-          if (!found)
-            throw Error("no such type: " + path2);
-          return found;
-        };
-        Namespace.prototype.lookupEnum = function lookupEnum(path2) {
-          var found = this.lookup(path2, [Enum2]);
-          if (!found)
-            throw Error("no such Enum '" + path2 + "' in " + this);
-          return found;
-        };
-        Namespace.prototype.lookupTypeOrEnum = function lookupTypeOrEnum(path2) {
-          var found = this.lookup(path2, [Type2, Enum2]);
-          if (!found)
-            throw Error("no such Type or Enum '" + path2 + "' in " + this);
-          return found;
-        };
-        Namespace.prototype.lookupService = function lookupService(path2) {
-          var found = this.lookup(path2, [Service2]);
-          if (!found)
-            throw Error("no such Service '" + path2 + "' in " + this);
-          return found;
-        };
-        Namespace._configure = function(Type_, Service_, Enum_) {
-          Type2 = Type_;
-          Service2 = Service_;
-          Enum2 = Enum_;
-        };
-        return namespace;
-      }
-      var mapfield;
-      var hasRequiredMapfield;
-      function requireMapfield() {
-        if (hasRequiredMapfield)
-          return mapfield;
-        hasRequiredMapfield = 1;
-        mapfield = MapField2;
-        var Field2 = requireField();
-        ((MapField2.prototype = Object.create(Field2.prototype)).constructor = MapField2).className = "MapField";
-        var types2 = requireTypes(), util2 = requireUtil();
-        function MapField2(name, id, keyType, type4, options, comment) {
-          Field2.call(this, name, id, type4, void 0, void 0, options, comment);
-          if (!util2.isString(keyType))
-            throw TypeError("keyType must be a string");
-          this.keyType = keyType;
-          this.resolvedKeyType = null;
-          this.map = true;
-        }
-        MapField2.fromJSON = function fromJSON(name, json) {
-          return new MapField2(name, json.id, json.keyType, json.type, json.options, json.comment);
-        };
-        MapField2.prototype.toJSON = function toJSON3(toJSONOptions) {
-          var keepComments = toJSONOptions ? Boolean(toJSONOptions.keepComments) : false;
-          return util2.toObject([
-            "keyType",
-            this.keyType,
-            "type",
-            this.type,
-            "id",
-            this.id,
-            "extend",
-            this.extend,
-            "options",
-            this.options,
-            "comment",
-            keepComments ? this.comment : void 0
-          ]);
-        };
-        MapField2.prototype.resolve = function resolve2() {
-          if (this.resolved)
-            return this;
-          if (types2.mapKey[this.keyType] === void 0)
-            throw Error("invalid key type: " + this.keyType);
-          return Field2.prototype.resolve.call(this);
-        };
-        MapField2.d = function decorateMapField(fieldId, fieldKeyType, fieldValueType) {
-          if (typeof fieldValueType === "function")
-            fieldValueType = util2.decorateType(fieldValueType).name;
-          else if (fieldValueType && typeof fieldValueType === "object")
-            fieldValueType = util2.decorateEnum(fieldValueType).name;
-          return function mapFieldDecorator(prototype2, fieldName) {
-            util2.decorateType(prototype2.constructor).add(new MapField2(fieldName, fieldId, fieldKeyType, fieldValueType));
-          };
-        };
-        return mapfield;
-      }
-      var method;
-      var hasRequiredMethod;
-      function requireMethod() {
-        if (hasRequiredMethod)
-          return method;
-        hasRequiredMethod = 1;
-        method = Method2;
-        var ReflectionObject = requireObject();
-        ((Method2.prototype = Object.create(ReflectionObject.prototype)).constructor = Method2).className = "Method";
-        var util2 = requireUtil();
-        function Method2(name, type4, requestType, responseType, requestStream, responseStream, options, comment, parsedOptions) {
-          if (util2.isObject(requestStream)) {
-            options = requestStream;
-            requestStream = responseStream = void 0;
-          } else if (util2.isObject(responseStream)) {
-            options = responseStream;
-            responseStream = void 0;
-          }
-          if (!(type4 === void 0 || util2.isString(type4)))
-            throw TypeError("type must be a string");
-          if (!util2.isString(requestType))
-            throw TypeError("requestType must be a string");
-          if (!util2.isString(responseType))
-            throw TypeError("responseType must be a string");
-          ReflectionObject.call(this, name, options);
-          this.type = type4 || "rpc";
-          this.requestType = requestType;
-          this.requestStream = requestStream ? true : void 0;
-          this.responseType = responseType;
-          this.responseStream = responseStream ? true : void 0;
-          this.resolvedRequestType = null;
-          this.resolvedResponseType = null;
-          this.comment = comment;
-          this.parsedOptions = parsedOptions;
-        }
-        Method2.fromJSON = function fromJSON(name, json) {
-          return new Method2(name, json.type, json.requestType, json.responseType, json.requestStream, json.responseStream, json.options, json.comment, json.parsedOptions);
-        };
-        Method2.prototype.toJSON = function toJSON3(toJSONOptions) {
-          var keepComments = toJSONOptions ? Boolean(toJSONOptions.keepComments) : false;
-          return util2.toObject([
-            "type",
-            this.type !== "rpc" && /* istanbul ignore next */
-            this.type || void 0,
-            "requestType",
-            this.requestType,
-            "requestStream",
-            this.requestStream,
-            "responseType",
-            this.responseType,
-            "responseStream",
-            this.responseStream,
-            "options",
-            this.options,
-            "comment",
-            keepComments ? this.comment : void 0,
-            "parsedOptions",
-            this.parsedOptions
-          ]);
-        };
-        Method2.prototype.resolve = function resolve2() {
-          if (this.resolved)
-            return this;
-          this.resolvedRequestType = this.parent.lookupType(this.requestType);
-          this.resolvedResponseType = this.parent.lookupType(this.responseType);
-          return ReflectionObject.prototype.resolve.call(this);
-        };
-        return method;
-      }
-      var service;
-      var hasRequiredService;
-      function requireService() {
-        if (hasRequiredService)
-          return service;
-        hasRequiredService = 1;
-        service = Service2;
-        var Namespace = requireNamespace();
-        ((Service2.prototype = Object.create(Namespace.prototype)).constructor = Service2).className = "Service";
-        var Method2 = requireMethod(), util2 = requireUtil(), rpc$1 = rpc;
-        function Service2(name, options) {
-          Namespace.call(this, name, options);
-          this.methods = {};
-          this._methodsArray = null;
-        }
-        Service2.fromJSON = function fromJSON(name, json) {
-          var service2 = new Service2(name, json.options);
-          if (json.methods)
-            for (var names2 = Object.keys(json.methods), i = 0; i < names2.length; ++i)
-              service2.add(Method2.fromJSON(names2[i], json.methods[names2[i]]));
-          if (json.nested)
-            service2.addJSON(json.nested);
-          service2.comment = json.comment;
-          return service2;
-        };
-        Service2.prototype.toJSON = function toJSON3(toJSONOptions) {
-          var inherited = Namespace.prototype.toJSON.call(this, toJSONOptions);
-          var keepComments = toJSONOptions ? Boolean(toJSONOptions.keepComments) : false;
-          return util2.toObject([
-            "options",
-            inherited && inherited.options || void 0,
-            "methods",
-            Namespace.arrayToJSON(this.methodsArray, toJSONOptions) || /* istanbul ignore next */
-            {},
-            "nested",
-            inherited && inherited.nested || void 0,
-            "comment",
-            keepComments ? this.comment : void 0
-          ]);
-        };
-        Object.defineProperty(Service2.prototype, "methodsArray", {
-          get: function() {
-            return this._methodsArray || (this._methodsArray = util2.toArray(this.methods));
-          }
-        });
-        function clearCache(service2) {
-          service2._methodsArray = null;
-          return service2;
-        }
-        Service2.prototype.get = function get3(name) {
-          return this.methods[name] || Namespace.prototype.get.call(this, name);
-        };
-        Service2.prototype.resolveAll = function resolveAll() {
-          var methods2 = this.methodsArray;
-          for (var i = 0; i < methods2.length; ++i)
-            methods2[i].resolve();
-          return Namespace.prototype.resolve.call(this);
-        };
-        Service2.prototype.add = function add2(object4) {
-          if (this.get(object4.name))
-            throw Error("duplicate name '" + object4.name + "' in " + this);
-          if (object4 instanceof Method2) {
-            this.methods[object4.name] = object4;
-            object4.parent = this;
-            return clearCache(this);
-          }
-          return Namespace.prototype.add.call(this, object4);
-        };
-        Service2.prototype.remove = function remove2(object4) {
-          if (object4 instanceof Method2) {
-            if (this.methods[object4.name] !== object4)
-              throw Error(object4 + " is not a member of " + this);
-            delete this.methods[object4.name];
-            object4.parent = null;
-            return clearCache(this);
-          }
-          return Namespace.prototype.remove.call(this, object4);
-        };
-        Service2.prototype.create = function create5(rpcImpl, requestDelimited, responseDelimited) {
-          var rpcService = new rpc$1.Service(rpcImpl, requestDelimited, responseDelimited);
-          for (var i = 0, method4; i < /* initializes */
-          this.methodsArray.length; ++i) {
-            var methodName = util2.lcFirst((method4 = this._methodsArray[i]).resolve().name).replace(/[^$\w_]/g, "");
-            rpcService[methodName] = util2.codegen(["r", "c"], util2.isReserved(methodName) ? methodName + "_" : methodName)("return this.rpcCall(m,q,s,r,c)")({
-              m: method4,
-              q: method4.resolvedRequestType.ctor,
-              s: method4.resolvedResponseType.ctor
-            });
-          }
-          return rpcService;
-        };
-        return service;
-      }
-      var message$1 = Message$1;
-      var util$1 = requireMinimal();
-      function Message$1(properties) {
-        if (properties)
-          for (var keys2 = Object.keys(properties), i = 0; i < keys2.length; ++i)
-            this[keys2[i]] = properties[keys2[i]];
-      }
-      Message$1.create = function create4(properties) {
-        return this.$type.create(properties);
-      };
-      Message$1.encode = function encode2(message2, writer2) {
-        return this.$type.encode(message2, writer2);
-      };
-      Message$1.encodeDelimited = function encodeDelimited(message2, writer2) {
-        return this.$type.encodeDelimited(message2, writer2);
-      };
-      Message$1.decode = function decode(reader2) {
-        return this.$type.decode(reader2);
-      };
-      Message$1.decodeDelimited = function decodeDelimited(reader2) {
-        return this.$type.decodeDelimited(reader2);
-      };
-      Message$1.verify = function verify(message2) {
-        return this.$type.verify(message2);
-      };
-      Message$1.fromObject = function fromObject(object4) {
-        return this.$type.fromObject(object4);
-      };
-      Message$1.toObject = function toObject(message2, options) {
-        return this.$type.toObject(message2, options);
-      };
-      Message$1.prototype.toJSON = function toJSON2() {
-        return this.$type.toObject(this, util$1.toJSONOptions);
-      };
-      var decoder_1;
-      var hasRequiredDecoder;
-      function requireDecoder() {
-        if (hasRequiredDecoder)
-          return decoder_1;
-        hasRequiredDecoder = 1;
-        decoder_1 = decoder2;
-        var Enum2 = require_enum(), types2 = requireTypes(), util2 = requireUtil();
-        function missing(field2) {
-          return "missing required '" + field2.name + "'";
-        }
-        function decoder2(mtype) {
-          var gen = util2.codegen(["r", "l"], mtype.name + "$decode")("if(!(r instanceof Reader))")("r=Reader.create(r)")("var c=l===undefined?r.len:r.pos+l,m=new this.ctor" + (mtype.fieldsArray.filter(function(field3) {
-            return field3.map;
-          }).length ? ",k,value" : ""))("while(r.pos<c){")("var t=r.uint32()");
-          if (mtype.group)
-            gen("if((t&7)===4)")("break");
-          gen("switch(t>>>3){");
-          var i = 0;
-          for (; i < /* initializes */
-          mtype.fieldsArray.length; ++i) {
-            var field2 = mtype._fieldsArray[i].resolve(), type4 = field2.resolvedType instanceof Enum2 ? "int32" : field2.type, ref2 = "m" + util2.safeProp(field2.name);
-            gen("case %i: {", field2.id);
-            if (field2.map) {
-              gen("if(%s===util.emptyObject)", ref2)("%s={}", ref2)("var c2 = r.uint32()+r.pos");
-              if (types2.defaults[field2.keyType] !== void 0)
-                gen("k=%j", types2.defaults[field2.keyType]);
-              else
-                gen("k=null");
-              if (types2.defaults[type4] !== void 0)
-                gen("value=%j", types2.defaults[type4]);
-              else
-                gen("value=null");
-              gen("while(r.pos<c2){")("var tag2=r.uint32()")("switch(tag2>>>3){")("case 1: k=r.%s(); break", field2.keyType)("case 2:");
-              if (types2.basic[type4] === void 0)
-                gen("value=types[%i].decode(r,r.uint32())", i);
-              else
-                gen("value=r.%s()", type4);
-              gen("break")("default:")("r.skipType(tag2&7)")("break")("}")("}");
-              if (types2.long[field2.keyType] !== void 0)
-                gen('%s[typeof k==="object"?util.longToHash(k):k]=value', ref2);
-              else
-                gen("%s[k]=value", ref2);
-            } else if (field2.repeated) {
-              gen("if(!(%s&&%s.length))", ref2, ref2)("%s=[]", ref2);
-              if (types2.packed[type4] !== void 0)
-                gen("if((t&7)===2){")("var c2=r.uint32()+r.pos")("while(r.pos<c2)")("%s.push(r.%s())", ref2, type4)("}else");
-              if (types2.basic[type4] === void 0)
-                gen(field2.resolvedType.group ? "%s.push(types[%i].decode(r))" : "%s.push(types[%i].decode(r,r.uint32()))", ref2, i);
-              else
-                gen("%s.push(r.%s())", ref2, type4);
-            } else if (types2.basic[type4] === void 0)
-              gen(field2.resolvedType.group ? "%s=types[%i].decode(r)" : "%s=types[%i].decode(r,r.uint32())", ref2, i);
-            else
-              gen("%s=r.%s()", ref2, type4);
-            gen("break")("}");
-          }
-          gen("default:")("r.skipType(t&7)")("break")("}")("}");
-          for (i = 0; i < mtype._fieldsArray.length; ++i) {
-            var rfield = mtype._fieldsArray[i];
-            if (rfield.required)
-              gen("if(!m.hasOwnProperty(%j))", rfield.name)("throw util.ProtocolError(%j,{instance:m})", missing(rfield));
-          }
-          return gen("return m");
-        }
-        return decoder_1;
-      }
-      var verifier_1;
-      var hasRequiredVerifier;
-      function requireVerifier() {
-        if (hasRequiredVerifier)
-          return verifier_1;
-        hasRequiredVerifier = 1;
-        verifier_1 = verifier;
-        var Enum2 = require_enum(), util2 = requireUtil();
-        function invalid(field2, expected) {
-          return field2.name + ": " + expected + (field2.repeated && expected !== "array" ? "[]" : field2.map && expected !== "object" ? "{k:" + field2.keyType + "}" : "") + " expected";
-        }
-        function genVerifyValue(gen, field2, fieldIndex, ref2) {
-          if (field2.resolvedType) {
-            if (field2.resolvedType instanceof Enum2) {
-              gen("switch(%s){", ref2)("default:")("return%j", invalid(field2, "enum value"));
-              for (var keys2 = Object.keys(field2.resolvedType.values), j = 0; j < keys2.length; ++j)
-                gen("case %i:", field2.resolvedType.values[keys2[j]]);
-              gen("break")("}");
-            } else {
-              gen("{")("var e=types[%i].verify(%s);", fieldIndex, ref2)("if(e)")("return%j+e", field2.name + ".")("}");
-            }
-          } else {
-            switch (field2.type) {
-              case "int32":
-              case "uint32":
-              case "sint32":
-              case "fixed32":
-              case "sfixed32":
-                gen("if(!util.isInteger(%s))", ref2)("return%j", invalid(field2, "integer"));
-                break;
-              case "int64":
-              case "uint64":
-              case "sint64":
-              case "fixed64":
-              case "sfixed64":
-                gen("if(!util.isInteger(%s)&&!(%s&&util.isInteger(%s.low)&&util.isInteger(%s.high)))", ref2, ref2, ref2, ref2)("return%j", invalid(field2, "integer|Long"));
-                break;
-              case "float":
-              case "double":
-                gen('if(typeof %s!=="number")', ref2)("return%j", invalid(field2, "number"));
-                break;
-              case "bool":
-                gen('if(typeof %s!=="boolean")', ref2)("return%j", invalid(field2, "boolean"));
-                break;
-              case "string":
-                gen("if(!util.isString(%s))", ref2)("return%j", invalid(field2, "string"));
-                break;
-              case "bytes":
-                gen('if(!(%s&&typeof %s.length==="number"||util.isString(%s)))', ref2, ref2, ref2)("return%j", invalid(field2, "buffer"));
-                break;
-            }
-          }
-          return gen;
-        }
-        function genVerifyKey(gen, field2, ref2) {
-          switch (field2.keyType) {
-            case "int32":
-            case "uint32":
-            case "sint32":
-            case "fixed32":
-            case "sfixed32":
-              gen("if(!util.key32Re.test(%s))", ref2)("return%j", invalid(field2, "integer key"));
-              break;
-            case "int64":
-            case "uint64":
-            case "sint64":
-            case "fixed64":
-            case "sfixed64":
-              gen("if(!util.key64Re.test(%s))", ref2)("return%j", invalid(field2, "integer|Long key"));
-              break;
-            case "bool":
-              gen("if(!util.key2Re.test(%s))", ref2)("return%j", invalid(field2, "boolean key"));
-              break;
-          }
-          return gen;
-        }
-        function verifier(mtype) {
-          var gen = util2.codegen(["m"], mtype.name + "$verify")('if(typeof m!=="object"||m===null)')("return%j", "object expected");
-          var oneofs = mtype.oneofsArray, seenFirstField = {};
-          if (oneofs.length)
-            gen("var p={}");
-          for (var i = 0; i < /* initializes */
-          mtype.fieldsArray.length; ++i) {
-            var field2 = mtype._fieldsArray[i].resolve(), ref2 = "m" + util2.safeProp(field2.name);
-            if (field2.optional)
-              gen("if(%s!=null&&m.hasOwnProperty(%j)){", ref2, field2.name);
-            if (field2.map) {
-              gen("if(!util.isObject(%s))", ref2)("return%j", invalid(field2, "object"))("var k=Object.keys(%s)", ref2)("for(var i=0;i<k.length;++i){");
-              genVerifyKey(gen, field2, "k[i]");
-              genVerifyValue(gen, field2, i, ref2 + "[k[i]]")("}");
-            } else if (field2.repeated) {
-              gen("if(!Array.isArray(%s))", ref2)("return%j", invalid(field2, "array"))("for(var i=0;i<%s.length;++i){", ref2);
-              genVerifyValue(gen, field2, i, ref2 + "[i]")("}");
-            } else {
-              if (field2.partOf) {
-                var oneofProp = util2.safeProp(field2.partOf.name);
-                if (seenFirstField[field2.partOf.name] === 1)
-                  gen("if(p%s===1)", oneofProp)("return%j", field2.partOf.name + ": multiple values");
-                seenFirstField[field2.partOf.name] = 1;
-                gen("p%s=1", oneofProp);
-              }
-              genVerifyValue(gen, field2, i, ref2);
-            }
-            if (field2.optional)
-              gen("}");
-          }
-          return gen("return null");
-        }
-        return verifier_1;
-      }
-      var converter = {};
-      var hasRequiredConverter;
-      function requireConverter() {
-        if (hasRequiredConverter)
-          return converter;
-        hasRequiredConverter = 1;
-        (function(exports2) {
-          var converter2 = exports2;
-          var Enum2 = require_enum(), util2 = requireUtil();
-          function genValuePartial_fromObject(gen, field2, fieldIndex, prop) {
-            var defaultAlreadyEmitted = false;
-            if (field2.resolvedType) {
-              if (field2.resolvedType instanceof Enum2) {
-                gen("switch(d%s){", prop);
-                for (var values = field2.resolvedType.values, keys2 = Object.keys(values), i = 0; i < keys2.length; ++i) {
-                  if (values[keys2[i]] === field2.typeDefault && !defaultAlreadyEmitted) {
-                    gen("default:")('if(typeof(d%s)==="number"){m%s=d%s;break}', prop, prop, prop);
-                    if (!field2.repeated)
-                      gen("break");
-                    defaultAlreadyEmitted = true;
-                  }
-                  gen("case%j:", keys2[i])("case %i:", values[keys2[i]])("m%s=%j", prop, values[keys2[i]])("break");
-                }
-                gen("}");
-              } else
-                gen('if(typeof d%s!=="object")', prop)("throw TypeError(%j)", field2.fullName + ": object expected")("m%s=types[%i].fromObject(d%s)", prop, fieldIndex, prop);
-            } else {
-              var isUnsigned = false;
-              switch (field2.type) {
-                case "double":
-                case "float":
-                  gen("m%s=Number(d%s)", prop, prop);
-                  break;
-                case "uint32":
-                case "fixed32":
-                  gen("m%s=d%s>>>0", prop, prop);
-                  break;
-                case "int32":
-                case "sint32":
-                case "sfixed32":
-                  gen("m%s=d%s|0", prop, prop);
-                  break;
-                case "uint64":
-                  isUnsigned = true;
-                case "int64":
-                case "sint64":
-                case "fixed64":
-                case "sfixed64":
-                  gen("if(util.Long)")("(m%s=util.Long.fromValue(d%s)).unsigned=%j", prop, prop, isUnsigned)('else if(typeof d%s==="string")', prop)("m%s=parseInt(d%s,10)", prop, prop)('else if(typeof d%s==="number")', prop)("m%s=d%s", prop, prop)('else if(typeof d%s==="object")', prop)("m%s=new util.LongBits(d%s.low>>>0,d%s.high>>>0).toNumber(%s)", prop, prop, prop, isUnsigned ? "true" : "");
-                  break;
-                case "bytes":
-                  gen('if(typeof d%s==="string")', prop)("util.base64.decode(d%s,m%s=util.newBuffer(util.base64.length(d%s)),0)", prop, prop, prop)("else if(d%s.length >= 0)", prop)("m%s=d%s", prop, prop);
-                  break;
-                case "string":
-                  gen("m%s=String(d%s)", prop, prop);
-                  break;
-                case "bool":
-                  gen("m%s=Boolean(d%s)", prop, prop);
-                  break;
-              }
-            }
-            return gen;
-          }
-          converter2.fromObject = function fromObject2(mtype) {
-            var fields = mtype.fieldsArray;
-            var gen = util2.codegen(["d"], mtype.name + "$fromObject")("if(d instanceof this.ctor)")("return d");
-            if (!fields.length)
-              return gen("return new this.ctor");
-            gen("var m=new this.ctor");
-            for (var i = 0; i < fields.length; ++i) {
-              var field2 = fields[i].resolve(), prop = util2.safeProp(field2.name);
-              if (field2.map) {
-                gen("if(d%s){", prop)('if(typeof d%s!=="object")', prop)("throw TypeError(%j)", field2.fullName + ": object expected")("m%s={}", prop)("for(var ks=Object.keys(d%s),i=0;i<ks.length;++i){", prop);
-                genValuePartial_fromObject(
-                  gen,
-                  field2,
-                  /* not sorted */
-                  i,
-                  prop + "[ks[i]]"
-                )("}")("}");
-              } else if (field2.repeated) {
-                gen("if(d%s){", prop)("if(!Array.isArray(d%s))", prop)("throw TypeError(%j)", field2.fullName + ": array expected")("m%s=[]", prop)("for(var i=0;i<d%s.length;++i){", prop);
-                genValuePartial_fromObject(
-                  gen,
-                  field2,
-                  /* not sorted */
-                  i,
-                  prop + "[i]"
-                )("}")("}");
-              } else {
-                if (!(field2.resolvedType instanceof Enum2))
-                  gen("if(d%s!=null){", prop);
-                genValuePartial_fromObject(
-                  gen,
-                  field2,
-                  /* not sorted */
-                  i,
-                  prop
-                );
-                if (!(field2.resolvedType instanceof Enum2))
-                  gen("}");
-              }
-            }
-            return gen("return m");
-          };
-          function genValuePartial_toObject(gen, field2, fieldIndex, prop) {
-            if (field2.resolvedType) {
-              if (field2.resolvedType instanceof Enum2)
-                gen("d%s=o.enums===String?(types[%i].values[m%s]===undefined?m%s:types[%i].values[m%s]):m%s", prop, fieldIndex, prop, prop, fieldIndex, prop, prop);
-              else
-                gen("d%s=types[%i].toObject(m%s,o)", prop, fieldIndex, prop);
-            } else {
-              var isUnsigned = false;
-              switch (field2.type) {
-                case "double":
-                case "float":
-                  gen("d%s=o.json&&!isFinite(m%s)?String(m%s):m%s", prop, prop, prop, prop);
-                  break;
-                case "uint64":
-                  isUnsigned = true;
-                case "int64":
-                case "sint64":
-                case "fixed64":
-                case "sfixed64":
-                  gen('if(typeof m%s==="number")', prop)("d%s=o.longs===String?String(m%s):m%s", prop, prop, prop)("else")("d%s=o.longs===String?util.Long.prototype.toString.call(m%s):o.longs===Number?new util.LongBits(m%s.low>>>0,m%s.high>>>0).toNumber(%s):m%s", prop, prop, prop, prop, isUnsigned ? "true" : "", prop);
-                  break;
-                case "bytes":
-                  gen("d%s=o.bytes===String?util.base64.encode(m%s,0,m%s.length):o.bytes===Array?Array.prototype.slice.call(m%s):m%s", prop, prop, prop, prop, prop);
-                  break;
-                default:
-                  gen("d%s=m%s", prop, prop);
-                  break;
-              }
-            }
-            return gen;
-          }
-          converter2.toObject = function toObject2(mtype) {
-            var fields = mtype.fieldsArray.slice().sort(util2.compareFieldsById);
-            if (!fields.length)
-              return util2.codegen()("return {}");
-            var gen = util2.codegen(["m", "o"], mtype.name + "$toObject")("if(!o)")("o={}")("var d={}");
-            var repeatedFields = [], mapFields = [], normalFields = [], i = 0;
-            for (; i < fields.length; ++i)
-              if (!fields[i].partOf)
-                (fields[i].resolve().repeated ? repeatedFields : fields[i].map ? mapFields : normalFields).push(fields[i]);
-            if (repeatedFields.length) {
-              gen("if(o.arrays||o.defaults){");
-              for (i = 0; i < repeatedFields.length; ++i)
-                gen("d%s=[]", util2.safeProp(repeatedFields[i].name));
-              gen("}");
-            }
-            if (mapFields.length) {
-              gen("if(o.objects||o.defaults){");
-              for (i = 0; i < mapFields.length; ++i)
-                gen("d%s={}", util2.safeProp(mapFields[i].name));
-              gen("}");
-            }
-            if (normalFields.length) {
-              gen("if(o.defaults){");
-              for (i = 0; i < normalFields.length; ++i) {
-                var field2 = normalFields[i], prop = util2.safeProp(field2.name);
-                if (field2.resolvedType instanceof Enum2)
-                  gen("d%s=o.enums===String?%j:%j", prop, field2.resolvedType.valuesById[field2.typeDefault], field2.typeDefault);
-                else if (field2.long)
-                  gen("if(util.Long){")("var n=new util.Long(%i,%i,%j)", field2.typeDefault.low, field2.typeDefault.high, field2.typeDefault.unsigned)("d%s=o.longs===String?n.toString():o.longs===Number?n.toNumber():n", prop)("}else")("d%s=o.longs===String?%j:%i", prop, field2.typeDefault.toString(), field2.typeDefault.toNumber());
-                else if (field2.bytes) {
-                  var arrayDefault = "[" + Array.prototype.slice.call(field2.typeDefault).join(",") + "]";
-                  gen("if(o.bytes===String)d%s=%j", prop, String.fromCharCode.apply(String, field2.typeDefault))("else{")("d%s=%s", prop, arrayDefault)("if(o.bytes!==Array)d%s=util.newBuffer(d%s)", prop, prop)("}");
-                } else
-                  gen("d%s=%j", prop, field2.typeDefault);
-              }
-              gen("}");
-            }
-            var hasKs2 = false;
-            for (i = 0; i < fields.length; ++i) {
-              var field2 = fields[i], index = mtype._fieldsArray.indexOf(field2), prop = util2.safeProp(field2.name);
-              if (field2.map) {
-                if (!hasKs2) {
-                  hasKs2 = true;
-                  gen("var ks2");
-                }
-                gen("if(m%s&&(ks2=Object.keys(m%s)).length){", prop, prop)("d%s={}", prop)("for(var j=0;j<ks2.length;++j){");
-                genValuePartial_toObject(
-                  gen,
-                  field2,
-                  /* sorted */
-                  index,
-                  prop + "[ks2[j]]"
-                )("}");
-              } else if (field2.repeated) {
-                gen("if(m%s&&m%s.length){", prop, prop)("d%s=[]", prop)("for(var j=0;j<m%s.length;++j){", prop);
-                genValuePartial_toObject(
-                  gen,
-                  field2,
-                  /* sorted */
-                  index,
-                  prop + "[j]"
-                )("}");
-              } else {
-                gen("if(m%s!=null&&m.hasOwnProperty(%j)){", prop, field2.name);
-                genValuePartial_toObject(
-                  gen,
-                  field2,
-                  /* sorted */
-                  index,
-                  prop
-                );
-                if (field2.partOf)
-                  gen("if(o.oneofs)")("d%s=%j", util2.safeProp(field2.partOf.name), field2.name);
-              }
-              gen("}");
-            }
-            return gen("return d");
-          };
-        })(converter);
-        return converter;
-      }
-      var wrappers = {};
-      (function(exports2) {
-        var wrappers2 = exports2;
-        var Message2 = message$1;
-        wrappers2[".google.protobuf.Any"] = {
-          fromObject: function(object4) {
-            if (object4 && object4["@type"]) {
-              var name = object4["@type"].substring(object4["@type"].lastIndexOf("/") + 1);
-              var type4 = this.lookup(name);
-              if (type4) {
-                var type_url = object4["@type"].charAt(0) === "." ? object4["@type"].slice(1) : object4["@type"];
-                if (type_url.indexOf("/") === -1) {
-                  type_url = "/" + type_url;
-                }
-                return this.create({
-                  type_url,
-                  value: type4.encode(type4.fromObject(object4)).finish()
-                });
-              }
-            }
-            return this.fromObject(object4);
-          },
-          toObject: function(message2, options) {
-            var googleApi = "type.googleapis.com/";
-            var prefix = "";
-            var name = "";
-            if (options && options.json && message2.type_url && message2.value) {
-              name = message2.type_url.substring(message2.type_url.lastIndexOf("/") + 1);
-              prefix = message2.type_url.substring(0, message2.type_url.lastIndexOf("/") + 1);
-              var type4 = this.lookup(name);
-              if (type4)
-                message2 = type4.decode(message2.value);
-            }
-            if (!(message2 instanceof this.ctor) && message2 instanceof Message2) {
-              var object4 = message2.$type.toObject(message2, options);
-              var messageName = message2.$type.fullName[0] === "." ? message2.$type.fullName.slice(1) : message2.$type.fullName;
-              if (prefix === "") {
-                prefix = googleApi;
-              }
-              name = prefix + messageName;
-              object4["@type"] = name;
-              return object4;
-            }
-            return this.toObject(message2, options);
-          }
-        };
-      })(wrappers);
-      var type;
-      var hasRequiredType;
-      function requireType() {
-        if (hasRequiredType)
-          return type;
-        hasRequiredType = 1;
-        type = Type2;
-        var Namespace = requireNamespace();
-        ((Type2.prototype = Object.create(Namespace.prototype)).constructor = Type2).className = "Type";
-        var Enum2 = require_enum(), OneOf2 = requireOneof(), Field2 = requireField(), MapField2 = requireMapfield(), Service2 = requireService(), Message2 = message$1, Reader2 = reader, Writer2 = writer, util2 = requireUtil(), encoder = requireEncoder(), decoder2 = requireDecoder(), verifier = requireVerifier(), converter2 = requireConverter(), wrappers$1 = wrappers;
-        function Type2(name, options) {
-          Namespace.call(this, name, options);
-          this.fields = {};
-          this.oneofs = void 0;
-          this.extensions = void 0;
-          this.reserved = void 0;
-          this.group = void 0;
-          this._fieldsById = null;
-          this._fieldsArray = null;
-          this._oneofsArray = null;
-          this._ctor = null;
-        }
-        Object.defineProperties(Type2.prototype, {
-          /**
-           * Message fields by id.
-           * @name Type#fieldsById
-           * @type {Object.<number,Field>}
-           * @readonly
-           */
-          fieldsById: {
-            get: function() {
-              if (this._fieldsById)
-                return this._fieldsById;
-              this._fieldsById = {};
-              for (var names2 = Object.keys(this.fields), i = 0; i < names2.length; ++i) {
-                var field2 = this.fields[names2[i]], id = field2.id;
-                if (this._fieldsById[id])
-                  throw Error("duplicate id " + id + " in " + this);
-                this._fieldsById[id] = field2;
-              }
-              return this._fieldsById;
-            }
-          },
-          /**
-           * Fields of this message as an array for iteration.
-           * @name Type#fieldsArray
-           * @type {Field[]}
-           * @readonly
-           */
-          fieldsArray: {
-            get: function() {
-              return this._fieldsArray || (this._fieldsArray = util2.toArray(this.fields));
-            }
-          },
-          /**
-           * Oneofs of this message as an array for iteration.
-           * @name Type#oneofsArray
-           * @type {OneOf[]}
-           * @readonly
-           */
-          oneofsArray: {
-            get: function() {
-              return this._oneofsArray || (this._oneofsArray = util2.toArray(this.oneofs));
-            }
-          },
-          /**
-           * The registered constructor, if any registered, otherwise a generic constructor.
-           * Assigning a function replaces the internal constructor. If the function does not extend {@link Message} yet, its prototype will be setup accordingly and static methods will be populated. If it already extends {@link Message}, it will just replace the internal constructor.
-           * @name Type#ctor
-           * @type {Constructor<{}>}
-           */
-          ctor: {
-            get: function() {
-              return this._ctor || (this.ctor = Type2.generateConstructor(this)());
-            },
-            set: function(ctor) {
-              var prototype2 = ctor.prototype;
-              if (!(prototype2 instanceof Message2)) {
-                (ctor.prototype = new Message2()).constructor = ctor;
-                util2.merge(ctor.prototype, prototype2);
-              }
-              ctor.$type = ctor.prototype.$type = this;
-              util2.merge(ctor, Message2, true);
-              this._ctor = ctor;
-              var i = 0;
-              for (; i < /* initializes */
-              this.fieldsArray.length; ++i)
-                this._fieldsArray[i].resolve();
-              var ctorProperties = {};
-              for (i = 0; i < /* initializes */
-              this.oneofsArray.length; ++i)
-                ctorProperties[this._oneofsArray[i].resolve().name] = {
-                  get: util2.oneOfGetter(this._oneofsArray[i].oneof),
-                  set: util2.oneOfSetter(this._oneofsArray[i].oneof)
-                };
-              if (i)
-                Object.defineProperties(ctor.prototype, ctorProperties);
-            }
-          }
-        });
-        Type2.generateConstructor = function generateConstructor(mtype) {
-          var gen = util2.codegen(["p"], mtype.name);
-          for (var i = 0, field2; i < mtype.fieldsArray.length; ++i)
-            if ((field2 = mtype._fieldsArray[i]).map)
-              gen("this%s={}", util2.safeProp(field2.name));
-            else if (field2.repeated)
-              gen("this%s=[]", util2.safeProp(field2.name));
-          return gen("if(p)for(var ks=Object.keys(p),i=0;i<ks.length;++i)if(p[ks[i]]!=null)")("this[ks[i]]=p[ks[i]]");
-        };
-        function clearCache(type4) {
-          type4._fieldsById = type4._fieldsArray = type4._oneofsArray = null;
-          delete type4.encode;
-          delete type4.decode;
-          delete type4.verify;
-          return type4;
-        }
-        Type2.fromJSON = function fromJSON(name, json) {
-          var type4 = new Type2(name, json.options);
-          type4.extensions = json.extensions;
-          type4.reserved = json.reserved;
-          var names2 = Object.keys(json.fields), i = 0;
-          for (; i < names2.length; ++i)
-            type4.add(
-              (typeof json.fields[names2[i]].keyType !== "undefined" ? MapField2.fromJSON : Field2.fromJSON)(names2[i], json.fields[names2[i]])
-            );
-          if (json.oneofs)
-            for (names2 = Object.keys(json.oneofs), i = 0; i < names2.length; ++i)
-              type4.add(OneOf2.fromJSON(names2[i], json.oneofs[names2[i]]));
-          if (json.nested)
-            for (names2 = Object.keys(json.nested), i = 0; i < names2.length; ++i) {
-              var nested = json.nested[names2[i]];
-              type4.add(
-                // most to least likely
-                (nested.id !== void 0 ? Field2.fromJSON : nested.fields !== void 0 ? Type2.fromJSON : nested.values !== void 0 ? Enum2.fromJSON : nested.methods !== void 0 ? Service2.fromJSON : Namespace.fromJSON)(names2[i], nested)
-              );
-            }
-          if (json.extensions && json.extensions.length)
-            type4.extensions = json.extensions;
-          if (json.reserved && json.reserved.length)
-            type4.reserved = json.reserved;
-          if (json.group)
-            type4.group = true;
-          if (json.comment)
-            type4.comment = json.comment;
-          return type4;
-        };
-        Type2.prototype.toJSON = function toJSON3(toJSONOptions) {
-          var inherited = Namespace.prototype.toJSON.call(this, toJSONOptions);
-          var keepComments = toJSONOptions ? Boolean(toJSONOptions.keepComments) : false;
-          return util2.toObject([
-            "options",
-            inherited && inherited.options || void 0,
-            "oneofs",
-            Namespace.arrayToJSON(this.oneofsArray, toJSONOptions),
-            "fields",
-            Namespace.arrayToJSON(this.fieldsArray.filter(function(obj) {
-              return !obj.declaringField;
-            }), toJSONOptions) || {},
-            "extensions",
-            this.extensions && this.extensions.length ? this.extensions : void 0,
-            "reserved",
-            this.reserved && this.reserved.length ? this.reserved : void 0,
-            "group",
-            this.group || void 0,
-            "nested",
-            inherited && inherited.nested || void 0,
-            "comment",
-            keepComments ? this.comment : void 0
-          ]);
-        };
-        Type2.prototype.resolveAll = function resolveAll() {
-          var fields = this.fieldsArray, i = 0;
-          while (i < fields.length)
-            fields[i++].resolve();
-          var oneofs = this.oneofsArray;
-          i = 0;
-          while (i < oneofs.length)
-            oneofs[i++].resolve();
-          return Namespace.prototype.resolveAll.call(this);
-        };
-        Type2.prototype.get = function get3(name) {
-          return this.fields[name] || this.oneofs && this.oneofs[name] || this.nested && this.nested[name] || null;
-        };
-        Type2.prototype.add = function add2(object4) {
-          if (this.get(object4.name))
-            throw Error("duplicate name '" + object4.name + "' in " + this);
-          if (object4 instanceof Field2 && object4.extend === void 0) {
-            if (this._fieldsById ? (
-              /* istanbul ignore next */
-              this._fieldsById[object4.id]
-            ) : this.fieldsById[object4.id])
-              throw Error("duplicate id " + object4.id + " in " + this);
-            if (this.isReservedId(object4.id))
-              throw Error("id " + object4.id + " is reserved in " + this);
-            if (this.isReservedName(object4.name))
-              throw Error("name '" + object4.name + "' is reserved in " + this);
-            if (object4.parent)
-              object4.parent.remove(object4);
-            this.fields[object4.name] = object4;
-            object4.message = this;
-            object4.onAdd(this);
-            return clearCache(this);
-          }
-          if (object4 instanceof OneOf2) {
-            if (!this.oneofs)
-              this.oneofs = {};
-            this.oneofs[object4.name] = object4;
-            object4.onAdd(this);
-            return clearCache(this);
-          }
-          return Namespace.prototype.add.call(this, object4);
-        };
-        Type2.prototype.remove = function remove2(object4) {
-          if (object4 instanceof Field2 && object4.extend === void 0) {
-            if (!this.fields || this.fields[object4.name] !== object4)
-              throw Error(object4 + " is not a member of " + this);
-            delete this.fields[object4.name];
-            object4.parent = null;
-            object4.onRemove(this);
-            return clearCache(this);
-          }
-          if (object4 instanceof OneOf2) {
-            if (!this.oneofs || this.oneofs[object4.name] !== object4)
-              throw Error(object4 + " is not a member of " + this);
-            delete this.oneofs[object4.name];
-            object4.parent = null;
-            object4.onRemove(this);
-            return clearCache(this);
-          }
-          return Namespace.prototype.remove.call(this, object4);
-        };
-        Type2.prototype.isReservedId = function isReservedId(id) {
-          return Namespace.isReservedId(this.reserved, id);
-        };
-        Type2.prototype.isReservedName = function isReservedName(name) {
-          return Namespace.isReservedName(this.reserved, name);
-        };
-        Type2.prototype.create = function create5(properties) {
-          return new this.ctor(properties);
-        };
-        Type2.prototype.setup = function setup() {
-          var fullName = this.fullName, types2 = [];
-          for (var i = 0; i < /* initializes */
-          this.fieldsArray.length; ++i)
-            types2.push(this._fieldsArray[i].resolve().resolvedType);
-          this.encode = encoder(this)({
-            Writer: Writer2,
-            types: types2,
-            util: util2
-          });
-          this.decode = decoder2(this)({
-            Reader: Reader2,
-            types: types2,
-            util: util2
-          });
-          this.verify = verifier(this)({
-            types: types2,
-            util: util2
-          });
-          this.fromObject = converter2.fromObject(this)({
-            types: types2,
-            util: util2
-          });
-          this.toObject = converter2.toObject(this)({
-            types: types2,
-            util: util2
-          });
-          var wrapper = wrappers$1[fullName];
-          if (wrapper) {
-            var originalThis = Object.create(this);
-            originalThis.fromObject = this.fromObject;
-            this.fromObject = wrapper.fromObject.bind(originalThis);
-            originalThis.toObject = this.toObject;
-            this.toObject = wrapper.toObject.bind(originalThis);
-          }
-          return this;
-        };
-        Type2.prototype.encode = function encode_setup(message2, writer2) {
-          return this.setup().encode(message2, writer2);
-        };
-        Type2.prototype.encodeDelimited = function encodeDelimited2(message2, writer2) {
-          return this.encode(message2, writer2 && writer2.len ? writer2.fork() : writer2).ldelim();
-        };
-        Type2.prototype.decode = function decode_setup(reader2, length) {
-          return this.setup().decode(reader2, length);
-        };
-        Type2.prototype.decodeDelimited = function decodeDelimited2(reader2) {
-          if (!(reader2 instanceof Reader2))
-            reader2 = Reader2.create(reader2);
-          return this.decode(reader2, reader2.uint32());
-        };
-        Type2.prototype.verify = function verify_setup(message2) {
-          return this.setup().verify(message2);
-        };
-        Type2.prototype.fromObject = function fromObject2(object4) {
-          return this.setup().fromObject(object4);
-        };
-        Type2.prototype.toObject = function toObject2(message2, options) {
-          return this.setup().toObject(message2, options);
-        };
-        Type2.d = function decorateType(typeName) {
-          return function typeDecorator(target) {
-            util2.decorateType(target, typeName);
-          };
-        };
-        return type;
-      }
-      var root$2;
-      var hasRequiredRoot;
-      function requireRoot() {
-        if (hasRequiredRoot)
-          return root$2;
-        hasRequiredRoot = 1;
-        root$2 = Root2;
-        var Namespace = requireNamespace();
-        ((Root2.prototype = Object.create(Namespace.prototype)).constructor = Root2).className = "Root";
-        var Field2 = requireField(), Enum2 = require_enum(), OneOf2 = requireOneof(), util2 = requireUtil();
-        var Type2, parse2, common2;
-        function Root2(options) {
-          Namespace.call(this, "", options);
-          this.deferred = [];
-          this.files = [];
-        }
-        Root2.fromJSON = function fromJSON(json, root2) {
-          if (!root2)
-            root2 = new Root2();
-          if (json.options)
-            root2.setOptions(json.options);
-          return root2.addJSON(json.nested);
-        };
-        Root2.prototype.resolvePath = util2.path.resolve;
-        Root2.prototype.fetch = util2.fetch;
-        function SYNC() {
-        }
-        Root2.prototype.load = function load2(filename, options, callback) {
-          if (typeof options === "function") {
-            callback = options;
-            options = void 0;
-          }
-          var self2 = this;
-          if (!callback)
-            return util2.asPromise(load2, self2, filename, options);
-          var sync = callback === SYNC;
-          function finish2(err, root2) {
-            if (!callback)
-              return;
-            if (sync)
-              throw err;
-            var cb = callback;
-            callback = null;
-            cb(err, root2);
-          }
-          function getBundledFileName(filename2) {
-            var idx = filename2.lastIndexOf("google/protobuf/");
-            if (idx > -1) {
-              var altname = filename2.substring(idx);
-              if (altname in common2)
-                return altname;
-            }
-            return null;
-          }
-          function process2(filename2, source) {
-            try {
-              if (util2.isString(source) && source.charAt(0) === "{")
-                source = JSON.parse(source);
-              if (!util2.isString(source))
-                self2.setOptions(source.options).addJSON(source.nested);
-              else {
-                parse2.filename = filename2;
-                var parsed = parse2(source, self2, options), resolved2, i2 = 0;
-                if (parsed.imports) {
-                  for (; i2 < parsed.imports.length; ++i2)
-                    if (resolved2 = getBundledFileName(parsed.imports[i2]) || self2.resolvePath(filename2, parsed.imports[i2]))
-                      fetch2(resolved2);
-                }
-                if (parsed.weakImports) {
-                  for (i2 = 0; i2 < parsed.weakImports.length; ++i2)
-                    if (resolved2 = getBundledFileName(parsed.weakImports[i2]) || self2.resolvePath(filename2, parsed.weakImports[i2]))
-                      fetch2(resolved2, true);
-                }
-              }
-            } catch (err) {
-              finish2(err);
-            }
-            if (!sync && !queued)
-              finish2(null, self2);
-          }
-          function fetch2(filename2, weak) {
-            filename2 = getBundledFileName(filename2) || filename2;
-            if (self2.files.indexOf(filename2) > -1)
-              return;
-            self2.files.push(filename2);
-            if (filename2 in common2) {
-              if (sync)
-                process2(filename2, common2[filename2]);
-              else {
-                ++queued;
-                setTimeout(function() {
-                  --queued;
-                  process2(filename2, common2[filename2]);
-                });
-              }
-              return;
-            }
-            if (sync) {
-              var source;
-              try {
-                source = util2.fs.readFileSync(filename2).toString("utf8");
-              } catch (err) {
-                if (!weak)
-                  finish2(err);
-                return;
-              }
-              process2(filename2, source);
-            } else {
-              ++queued;
-              self2.fetch(filename2, function(err, source2) {
-                --queued;
-                if (!callback)
-                  return;
-                if (err) {
-                  if (!weak)
-                    finish2(err);
-                  else if (!queued)
-                    finish2(null, self2);
-                  return;
-                }
-                process2(filename2, source2);
-              });
-            }
-          }
-          var queued = 0;
-          if (util2.isString(filename))
-            filename = [filename];
-          for (var i = 0, resolved; i < filename.length; ++i)
-            if (resolved = self2.resolvePath("", filename[i]))
-              fetch2(resolved);
-          if (sync)
-            return self2;
-          if (!queued)
-            finish2(null, self2);
-          return void 0;
-        };
-        Root2.prototype.loadSync = function loadSync2(filename, options) {
-          if (!util2.isNode)
-            throw Error("not supported");
-          return this.load(filename, options, SYNC);
-        };
-        Root2.prototype.resolveAll = function resolveAll() {
-          if (this.deferred.length)
-            throw Error("unresolvable extensions: " + this.deferred.map(function(field2) {
-              return "'extend " + field2.extend + "' in " + field2.parent.fullName;
-            }).join(", "));
-          return Namespace.prototype.resolveAll.call(this);
-        };
-        var exposeRe = /^[A-Z]/;
-        function tryHandleExtension(root2, field2) {
-          var extendedType = field2.parent.lookup(field2.extend);
-          if (extendedType) {
-            var sisterField = new Field2(field2.fullName, field2.id, field2.type, field2.rule, void 0, field2.options);
-            if (extendedType.get(sisterField.name)) {
-              return true;
-            }
-            sisterField.declaringField = field2;
-            field2.extensionField = sisterField;
-            extendedType.add(sisterField);
-            return true;
-          }
-          return false;
-        }
-        Root2.prototype._handleAdd = function _handleAdd(object4) {
-          if (object4 instanceof Field2) {
-            if (
-              /* an extension field (implies not part of a oneof) */
-              object4.extend !== void 0 && /* not already handled */
-              !object4.extensionField
-            ) {
-              if (!tryHandleExtension(this, object4))
-                this.deferred.push(object4);
-            }
-          } else if (object4 instanceof Enum2) {
-            if (exposeRe.test(object4.name))
-              object4.parent[object4.name] = object4.values;
-          } else if (!(object4 instanceof OneOf2)) {
-            if (object4 instanceof Type2)
-              for (var i = 0; i < this.deferred.length; )
-                if (tryHandleExtension(this, this.deferred[i]))
-                  this.deferred.splice(i, 1);
-                else
-                  ++i;
-            for (var j = 0; j < /* initializes */
-            object4.nestedArray.length; ++j)
-              this._handleAdd(object4._nestedArray[j]);
-            if (exposeRe.test(object4.name))
-              object4.parent[object4.name] = object4;
-          }
-        };
-        Root2.prototype._handleRemove = function _handleRemove(object4) {
-          if (object4 instanceof Field2) {
-            if (
-              /* an extension field */
-              object4.extend !== void 0
-            ) {
-              if (
-                /* already handled */
-                object4.extensionField
-              ) {
-                object4.extensionField.parent.remove(object4.extensionField);
-                object4.extensionField = null;
-              } else {
-                var index = this.deferred.indexOf(object4);
-                if (index > -1)
-                  this.deferred.splice(index, 1);
-              }
-            }
-          } else if (object4 instanceof Enum2) {
-            if (exposeRe.test(object4.name))
-              delete object4.parent[object4.name];
-          } else if (object4 instanceof Namespace) {
-            for (var i = 0; i < /* initializes */
-            object4.nestedArray.length; ++i)
-              this._handleRemove(object4._nestedArray[i]);
-            if (exposeRe.test(object4.name))
-              delete object4.parent[object4.name];
-          }
-        };
-        Root2._configure = function(Type_, parse_, common_) {
-          Type2 = Type_;
-          parse2 = parse_;
-          common2 = common_;
-        };
-        return root$2;
-      }
-      var hasRequiredUtil;
-      function requireUtil() {
-        if (hasRequiredUtil)
-          return util$2.exports;
-        hasRequiredUtil = 1;
-        var util2 = util$2.exports = requireMinimal();
-        var roots$1 = roots;
-        var Type2, Enum2;
-        util2.codegen = codegen_1;
-        util2.fetch = fetch_1;
-        util2.path = path;
-        util2.fs = util2.inquire("fs");
-        util2.toArray = function toArray2(object4) {
-          if (object4) {
-            var keys2 = Object.keys(object4), array4 = new Array(keys2.length), index = 0;
-            while (index < keys2.length)
-              array4[index] = object4[keys2[index++]];
-            return array4;
-          }
-          return [];
-        };
-        util2.toObject = function toObject2(array4) {
-          var object4 = {}, index = 0;
-          while (index < array4.length) {
-            var key = array4[index++], val = array4[index++];
-            if (val !== void 0)
-              object4[key] = val;
-          }
-          return object4;
-        };
-        var safePropBackslashRe = /\\/g, safePropQuoteRe = /"/g;
-        util2.isReserved = function isReserved(name) {
-          return /^(?:do|if|in|for|let|new|try|var|case|else|enum|eval|false|null|this|true|void|with|break|catch|class|const|super|throw|while|yield|delete|export|import|public|return|static|switch|typeof|default|extends|finally|package|private|continue|debugger|function|arguments|interface|protected|implements|instanceof)$/.test(name);
-        };
-        util2.safeProp = function safeProp(prop) {
-          if (!/^[$\w_]+$/.test(prop) || util2.isReserved(prop))
-            return '["' + prop.replace(safePropBackslashRe, "\\\\").replace(safePropQuoteRe, '\\"') + '"]';
-          return "." + prop;
-        };
-        util2.ucFirst = function ucFirst(str) {
-          return str.charAt(0).toUpperCase() + str.substring(1);
-        };
-        var camelCaseRe = /_([a-z])/g;
-        util2.camelCase = function camelCase(str) {
-          return str.substring(0, 1) + str.substring(1).replace(camelCaseRe, function($0, $1) {
-            return $1.toUpperCase();
-          });
-        };
-        util2.compareFieldsById = function compareFieldsById(a2, b2) {
-          return a2.id - b2.id;
-        };
-        util2.decorateType = function decorateType(ctor, typeName) {
-          if (ctor.$type) {
-            if (typeName && ctor.$type.name !== typeName) {
-              util2.decorateRoot.remove(ctor.$type);
-              ctor.$type.name = typeName;
-              util2.decorateRoot.add(ctor.$type);
-            }
-            return ctor.$type;
-          }
-          if (!Type2)
-            Type2 = requireType();
-          var type4 = new Type2(typeName || ctor.name);
-          util2.decorateRoot.add(type4);
-          type4.ctor = ctor;
-          Object.defineProperty(ctor, "$type", { value: type4, enumerable: false });
-          Object.defineProperty(ctor.prototype, "$type", { value: type4, enumerable: false });
-          return type4;
-        };
-        var decorateEnumIndex = 0;
-        util2.decorateEnum = function decorateEnum(object4) {
-          if (object4.$type)
-            return object4.$type;
-          if (!Enum2)
-            Enum2 = require_enum();
-          var enm = new Enum2("Enum" + decorateEnumIndex++, object4);
-          util2.decorateRoot.add(enm);
-          Object.defineProperty(object4, "$type", { value: enm, enumerable: false });
-          return enm;
-        };
-        util2.setProperty = function setProperty(dst, path2, value) {
-          function setProp(dst2, path3, value2) {
-            var part = path3.shift();
-            if (part === "__proto__" || part === "prototype") {
-              return dst2;
-            }
-            if (path3.length > 0) {
-              dst2[part] = setProp(dst2[part] || {}, path3, value2);
-            } else {
-              var prevValue = dst2[part];
-              if (prevValue)
-                value2 = [].concat(prevValue).concat(value2);
-              dst2[part] = value2;
-            }
-            return dst2;
-          }
-          if (typeof dst !== "object")
-            throw TypeError("dst must be an object");
-          if (!path2)
-            throw TypeError("path must be specified");
-          path2 = path2.split(".");
-          return setProp(dst, path2, value);
-        };
-        Object.defineProperty(util2, "decorateRoot", {
-          get: function() {
-            return roots$1["decorated"] || (roots$1["decorated"] = new (requireRoot())());
-          }
-        });
-        return util$2.exports;
-      }
       var object;
       var hasRequiredObject;
       function requireObject() {
         if (hasRequiredObject)
           return object;
         hasRequiredObject = 1;
-        object = ReflectionObject;
-        ReflectionObject.className = "ReflectionObject";
+        object = ReflectionObject2;
+        ReflectionObject2.className = "ReflectionObject";
+        const OneOf2 = requireOneof();
         var util2 = requireUtil();
         var Root2;
-        function ReflectionObject(name, options) {
+        var editions2023Defaults = { enum_type: "OPEN", field_presence: "EXPLICIT", json_format: "ALLOW", message_encoding: "LENGTH_PREFIXED", repeated_field_encoding: "PACKED", utf8_validation: "VERIFY" };
+        var proto2Defaults = { enum_type: "CLOSED", field_presence: "EXPLICIT", json_format: "LEGACY_BEST_EFFORT", message_encoding: "LENGTH_PREFIXED", repeated_field_encoding: "EXPANDED", utf8_validation: "NONE" };
+        var proto3Defaults = { enum_type: "OPEN", field_presence: "IMPLICIT", json_format: "ALLOW", message_encoding: "LENGTH_PREFIXED", repeated_field_encoding: "PACKED", utf8_validation: "VERIFY" };
+        function ReflectionObject2(name, options) {
           if (!util2.isString(name))
             throw TypeError("name must be a string");
           if (options && !util2.isObject(options))
@@ -20738,12 +22157,16 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           this.options = options;
           this.parsedOptions = null;
           this.name = name;
+          this._edition = null;
+          this._defaultEdition = "proto2";
+          this._features = {};
+          this._featuresResolved = false;
           this.parent = null;
           this.resolved = false;
           this.comment = null;
           this.filename = null;
         }
-        Object.defineProperties(ReflectionObject.prototype, {
+        Object.defineProperties(ReflectionObject2.prototype, {
           /**
            * Reference to the root namespace.
            * @name ReflectionObject#root
@@ -20775,11 +22198,11 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
             }
           }
         });
-        ReflectionObject.prototype.toJSON = /* istanbul ignore next */
+        ReflectionObject2.prototype.toJSON = /* istanbul ignore next */
         function toJSON3() {
           throw Error();
         };
-        ReflectionObject.prototype.onAdd = function onAdd(parent2) {
+        ReflectionObject2.prototype.onAdd = function onAdd(parent2) {
           if (this.parent && this.parent !== parent2)
             this.parent.remove(this);
           this.parent = parent2;
@@ -20788,31 +22211,91 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           if (root2 instanceof Root2)
             root2._handleAdd(this);
         };
-        ReflectionObject.prototype.onRemove = function onRemove(parent2) {
+        ReflectionObject2.prototype.onRemove = function onRemove(parent2) {
           var root2 = parent2.root;
           if (root2 instanceof Root2)
             root2._handleRemove(this);
           this.parent = null;
           this.resolved = false;
         };
-        ReflectionObject.prototype.resolve = function resolve2() {
+        ReflectionObject2.prototype.resolve = function resolve2() {
           if (this.resolved)
             return this;
           if (this.root instanceof Root2)
             this.resolved = true;
           return this;
         };
-        ReflectionObject.prototype.getOption = function getOption(name) {
+        ReflectionObject2.prototype._resolveFeaturesRecursive = function _resolveFeaturesRecursive(edition) {
+          return this._resolveFeatures(this._edition || edition);
+        };
+        ReflectionObject2.prototype._resolveFeatures = function _resolveFeatures(edition) {
+          if (this._featuresResolved) {
+            return;
+          }
+          var defaults2 = {};
+          if (!edition) {
+            throw new Error("Unknown edition for " + this.fullName);
+          }
+          var protoFeatures = util2.merge(
+            {},
+            this.options && this.options.features,
+            this._inferLegacyProtoFeatures(edition)
+          );
+          if (this._edition) {
+            if (edition === "proto2") {
+              defaults2 = Object.assign({}, proto2Defaults);
+            } else if (edition === "proto3") {
+              defaults2 = Object.assign({}, proto3Defaults);
+            } else if (edition === "2023") {
+              defaults2 = Object.assign({}, editions2023Defaults);
+            } else {
+              throw new Error("Unknown edition: " + edition);
+            }
+            this._features = util2.merge(defaults2, protoFeatures);
+            this._featuresResolved = true;
+            return;
+          }
+          if (this.partOf instanceof OneOf2) {
+            var lexicalParentFeaturesCopy = util2.merge({}, this.partOf._features);
+            this._features = util2.merge(lexicalParentFeaturesCopy, protoFeatures);
+          } else if (this.declaringField)
+            ;
+          else if (this.parent) {
+            var parentFeaturesCopy = util2.merge({}, this.parent._features);
+            this._features = util2.merge(parentFeaturesCopy, protoFeatures);
+          } else {
+            throw new Error("Unable to find a parent for " + this.fullName);
+          }
+          if (this.extensionField) {
+            this.extensionField._features = this._features;
+          }
+          this._featuresResolved = true;
+        };
+        ReflectionObject2.prototype._inferLegacyProtoFeatures = function _inferLegacyProtoFeatures() {
+          return {};
+        };
+        ReflectionObject2.prototype.getOption = function getOption(name) {
           if (this.options)
             return this.options[name];
           return void 0;
         };
-        ReflectionObject.prototype.setOption = function setOption(name, value, ifNotSet) {
-          if (!ifNotSet || !this.options || this.options[name] === void 0)
-            (this.options || (this.options = {}))[name] = value;
+        ReflectionObject2.prototype.setOption = function setOption(name, value, ifNotSet) {
+          if (name === "__proto__")
+            return this;
+          if (!this.options)
+            this.options = {};
+          if (/^features\./.test(name)) {
+            util2.setProperty(this.options, name, value, ifNotSet);
+          } else if (!ifNotSet || this.options[name] === void 0) {
+            if (this.getOption(name) !== value)
+              this.resolved = false;
+            this.options[name] = value;
+          }
           return this;
         };
-        ReflectionObject.prototype.setParsedOption = function setParsedOption(name, value, propName) {
+        ReflectionObject2.prototype.setParsedOption = function setParsedOption(name, value, propName) {
+          if (name === "__proto__")
+            return this;
           if (!this.parsedOptions) {
             this.parsedOptions = [];
           }
@@ -20836,19 +22319,25 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           }
           return this;
         };
-        ReflectionObject.prototype.setOptions = function setOptions(options, ifNotSet) {
+        ReflectionObject2.prototype.setOptions = function setOptions(options, ifNotSet) {
           if (options)
             for (var keys2 = Object.keys(options), i = 0; i < keys2.length; ++i)
               this.setOption(keys2[i], options[keys2[i]], ifNotSet);
           return this;
         };
-        ReflectionObject.prototype.toString = function toString3() {
+        ReflectionObject2.prototype.toString = function toString3() {
           var className = this.constructor.className, fullName = this.fullName;
           if (fullName.length)
             return className + " " + fullName;
           return className;
         };
-        ReflectionObject._configure = function(Root_) {
+        ReflectionObject2.prototype._editionToJSON = function _editionToJSON() {
+          if (!this._edition || this._edition === "proto3") {
+            return void 0;
+          }
+          return this._edition;
+        };
+        ReflectionObject2._configure = function(Root_) {
           Root2 = Root_;
         };
         return object;
@@ -20860,11 +22349,11 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           return _enum;
         hasRequired_enum = 1;
         _enum = Enum2;
-        var ReflectionObject = requireObject();
-        ((Enum2.prototype = Object.create(ReflectionObject.prototype)).constructor = Enum2).className = "Enum";
+        var ReflectionObject2 = requireObject();
+        ((Enum2.prototype = Object.create(ReflectionObject2.prototype)).constructor = Enum2).className = "Enum";
         var Namespace = requireNamespace(), util2 = requireUtil();
         function Enum2(name, values, options, comment, comments, valuesOptions) {
-          ReflectionObject.call(this, name, options);
+          ReflectionObject2.call(this, name, options);
           if (values && typeof values !== "object")
             throw TypeError("values must be an object");
           this.valuesById = {};
@@ -20872,21 +22361,36 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           this.comment = comment;
           this.comments = comments || {};
           this.valuesOptions = valuesOptions;
+          this._valuesFeatures = {};
           this.reserved = void 0;
           if (values) {
             for (var keys2 = Object.keys(values), i = 0; i < keys2.length; ++i)
-              if (typeof values[keys2[i]] === "number")
+              if (keys2[i] !== "__proto__" && typeof values[keys2[i]] === "number")
                 this.valuesById[this.values[keys2[i]] = values[keys2[i]]] = keys2[i];
           }
         }
+        Enum2.prototype._resolveFeatures = function _resolveFeatures(edition) {
+          edition = this._edition || edition;
+          ReflectionObject2.prototype._resolveFeatures.call(this, edition);
+          Object.keys(this.values).forEach((key) => {
+            var parentFeaturesCopy = util2.merge({}, this._features);
+            this._valuesFeatures[key] = util2.merge(parentFeaturesCopy, this.valuesOptions && this.valuesOptions[key] && this.valuesOptions[key].features || {});
+          });
+          return this;
+        };
         Enum2.fromJSON = function fromJSON(name, json) {
           var enm = new Enum2(name, json.values, json.options, json.comment, json.comments);
           enm.reserved = json.reserved;
+          if (json.edition)
+            enm._edition = json.edition;
+          enm._defaultEdition = "proto3";
           return enm;
         };
         Enum2.prototype.toJSON = function toJSON3(toJSONOptions) {
           var keepComments = toJSONOptions ? Boolean(toJSONOptions.keepComments) : false;
           return util2.toObject([
+            "edition",
+            this._editionToJSON(),
             "options",
             this.options,
             "valuesOptions",
@@ -20906,6 +22410,8 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
             throw TypeError("name must be a string");
           if (!util2.isInteger(id))
             throw TypeError("id must be an integer");
+          if (name === "__proto__")
+            return this;
           if (this.values[name] !== void 0)
             throw Error("duplicate name '" + name + "' in " + this);
           if (this.isReservedId(id))
@@ -20956,10 +22462,10 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         encoder_1 = encoder;
         var Enum2 = require_enum(), types2 = requireTypes(), util2 = requireUtil();
         function genTypePartial(gen, field2, fieldIndex, ref2) {
-          return field2.resolvedType.group ? gen("types[%i].encode(%s,w.uint32(%i)).uint32(%i)", fieldIndex, ref2, (field2.id << 3 | 3) >>> 0, (field2.id << 3 | 4) >>> 0) : gen("types[%i].encode(%s,w.uint32(%i).fork()).ldelim()", fieldIndex, ref2, (field2.id << 3 | 2) >>> 0);
+          return field2.delimited ? gen("types[%i].encode(%s,w.uint32(%i),q+1).uint32(%i)", fieldIndex, ref2, (field2.id << 3 | 3) >>> 0, (field2.id << 3 | 4) >>> 0) : gen("types[%i].encode(%s,w.uint32(%i).fork(),q+1).ldelim()", fieldIndex, ref2, (field2.id << 3 | 2) >>> 0);
         }
         function encoder(mtype) {
-          var gen = util2.codegen(["m", "w"], mtype.name + "$encode")("if(!w)")("w=Writer.create()");
+          var gen = util2.codegen(["m", "w", "q"], mtype.name + "$encode")("if(!w)")("w=Writer.create()")("if(q===undefined)q=0")("if(q>util.recursionLimit)")('throw Error("max depth exceeded")');
           var i, ref2;
           var fields = (
             /* initializes */
@@ -20971,7 +22477,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
             if (field2.map) {
               gen("if(%s!=null&&Object.hasOwnProperty.call(m,%j)){", ref2, field2.name)("for(var ks=Object.keys(%s),i=0;i<ks.length;++i){", ref2)("w.uint32(%i).fork().uint32(%i).%s(ks[i])", (field2.id << 3 | 2) >>> 0, 8 | types2.mapKey[field2.keyType], field2.keyType);
               if (wireType === void 0)
-                gen("types[%i].encode(%s[ks[i]],w.uint32(18).fork()).ldelim().ldelim()", index, ref2);
+                gen("types[%i].encode(%s[ks[i]],w.uint32(18).fork(),q+1).ldelim().ldelim()", index, ref2);
               else
                 gen(".uint32(%i).%s(%s[ks[i]]).ldelim()", 16 | wireType, type4, ref2);
               gen("}")("}");
@@ -21277,8 +22783,8 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
       var parse_1 = parse;
       parse.filename = null;
       parse.defaults = { keepCase: false };
-      var tokenize = tokenize_1, Root = requireRoot(), Type = requireType(), Field = requireField(), MapField = requireMapfield(), OneOf = requireOneof(), Enum = require_enum(), Service = requireService(), Method = requireMethod(), types$1 = requireTypes(), util = requireUtil();
-      var base10Re = /^[1-9][0-9]*$/, base10NegRe = /^-?[1-9][0-9]*$/, base16Re = /^0[x][0-9a-fA-F]+$/, base16NegRe = /^-?0[x][0-9a-fA-F]+$/, base8Re = /^0[0-7]+$/, base8NegRe = /^-?0[0-7]+$/, numberRe = /^(?![eE])[0-9]*(?:\.[0-9]*)?(?:[eE][+-]?[0-9]+)?$/, nameRe = /^[a-zA-Z_][a-zA-Z_0-9]*$/, typeRefRe = /^(?:\.?[a-zA-Z_][a-zA-Z_0-9]*)(?:\.[a-zA-Z_][a-zA-Z_0-9]*)*$/, fqTypeRefRe = /^(?:\.[a-zA-Z_][a-zA-Z_0-9]*)+$/;
+      var tokenize = tokenize_1, Root = requireRoot(), Type = requireType(), Field = requireField(), MapField = requireMapfield(), OneOf = requireOneof(), Enum = require_enum(), Service = requireService(), Method = requireMethod(), ReflectionObject = requireObject(), types$1 = requireTypes(), util = requireUtil();
+      var base10Re = /^[1-9][0-9]*$/, base10NegRe = /^-?[1-9][0-9]*$/, base16Re = /^0[x][0-9a-fA-F]+$/, base16NegRe = /^-?0[x][0-9a-fA-F]+$/, base8Re = /^0[0-7]+$/, base8NegRe = /^-?0[0-7]+$/, numberRe = util.patterns.numberRe, nameRe = /^[a-zA-Z_][a-zA-Z_0-9]*$/, typeRefRe = util.patterns.typeRefRe;
       function parse(source, root2, options) {
         if (!(root2 instanceof Root)) {
           options = root2;
@@ -21288,11 +22794,23 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           options = parse.defaults;
         var preferTrailingComment = options.preferTrailingComment || false;
         var tn2 = tokenize(source, options.alternateCommentMode || false), next = tn2.next, push2 = tn2.push, peek = tn2.peek, skip2 = tn2.skip, cmnt = tn2.cmnt;
-        var head = true, pkg, imports, weakImports, syntax, isProto3 = false;
+        var head = true, pkg, imports, weakImports, edition = "proto2";
         var ptr = root2;
+        var topLevelObjects = [];
+        var topLevelOptions = {};
         var applyCase = options.keepCase ? function(name) {
           return name;
         } : util.camelCase;
+        function resolveFileFeatures() {
+          topLevelObjects.forEach((obj) => {
+            obj._edition = edition;
+            Object.keys(topLevelOptions).forEach((opt) => {
+              if (obj.getOption(opt) !== void 0)
+                return;
+              obj.setOption(opt, topLevelOptions[opt], true);
+            });
+          });
+        }
         function illegal(token2, name, insideTryCatch) {
           var filename = parse.filename;
           if (!insideTryCatch)
@@ -21339,12 +22857,43 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         function readRanges(target, acceptStrings) {
           var token2, start;
           do {
-            if (acceptStrings && ((token2 = peek()) === '"' || token2 === "'"))
-              target.push(readString());
-            else
-              target.push([start = parseId(next()), skip2("to", true) ? parseId(next()) : start]);
+            if (acceptStrings && ((token2 = peek()) === '"' || token2 === "'")) {
+              var str = readString();
+              target.push(str);
+              if (edition >= 2023) {
+                throw illegal(str, "id");
+              }
+            } else {
+              try {
+                target.push([start = parseId(next()), skip2("to", true) ? parseId(next()) : start]);
+              } catch (err) {
+                if (acceptStrings && typeRefRe.test(token2) && edition >= 2023) {
+                  target.push(token2);
+                } else {
+                  throw err;
+                }
+              }
+            }
           } while (skip2(",", true));
-          skip2(";");
+          var dummy = { options: void 0 };
+          dummy.setOption = function(name, value) {
+            if (this.options === void 0)
+              this.options = {};
+            this.options[name] = value;
+          };
+          ifBlock(
+            dummy,
+            function parseRange_block(token3) {
+              if (token3 === "option") {
+                parseOption(dummy, token3);
+                skip2(";");
+              } else
+                throw illegal(token3);
+            },
+            function parseRange_line() {
+              parseInlineOptions(dummy);
+            }
+          );
         }
         function parseNumber(token2, insideTryCatch) {
           var sign = 1;
@@ -21423,29 +22972,38 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         }
         function parseSyntax() {
           skip2("=");
-          syntax = readString();
-          isProto3 = syntax === "proto3";
-          if (!isProto3 && syntax !== "proto2")
-            throw illegal(syntax, "syntax");
+          edition = readString();
+          if (edition < 2023)
+            throw illegal(edition, "syntax");
           skip2(";");
         }
-        function parseCommon(parent2, token2) {
+        function parseEdition() {
+          skip2("=");
+          edition = readString();
+          const supportedEditions = ["2023"];
+          if (!supportedEditions.includes(edition))
+            throw illegal(edition, "edition");
+          skip2(";");
+        }
+        function parseCommon(parent2, token2, depth) {
+          if (depth === void 0)
+            depth = 0;
           switch (token2) {
             case "option":
               parseOption(parent2, token2);
               skip2(";");
               return true;
             case "message":
-              parseType(parent2, token2);
+              parseType(parent2, token2, depth + 1);
               return true;
             case "enum":
               parseEnum(parent2, token2);
               return true;
             case "service":
-              parseService(parent2, token2);
+              parseService(parent2, token2, depth + 1);
               return true;
             case "extend":
-              parseExtension(parent2, token2);
+              parseExtension(parent2, token2, depth);
               return true;
           }
           return false;
@@ -21471,30 +23029,38 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
               obj.comment = cmnt(trailingLine) || obj.comment;
           }
         }
-        function parseType(parent2, token2) {
+        function parseType(parent2, token2, depth) {
+          if (depth === void 0)
+            depth = 0;
+          if (depth > util.nestingLimit)
+            throw Error("max depth exceeded");
           if (!nameRe.test(token2 = next()))
             throw illegal(token2, "type name");
           var type4 = new Type(token2);
           ifBlock(type4, function parseType_block(token3) {
-            if (parseCommon(type4, token3))
+            if (parseCommon(type4, token3, depth))
               return;
             switch (token3) {
               case "map":
                 parseMapField(type4);
                 break;
               case "required":
+                if (edition !== "proto2")
+                  throw illegal(token3);
               case "repeated":
-                parseField(type4, token3);
+                parseField(type4, token3, void 0, depth + 1);
                 break;
               case "optional":
-                if (isProto3) {
-                  parseField(type4, "proto3_optional");
+                if (edition === "proto3") {
+                  parseField(type4, "proto3_optional", void 0, depth + 1);
+                } else if (edition !== "proto2") {
+                  throw illegal(token3);
                 } else {
-                  parseField(type4, "optional");
+                  parseField(type4, "optional", void 0, depth + 1);
                 }
                 break;
               case "oneof":
-                parseOneOf(type4, token3);
+                parseOneOf(type4, token3, depth + 1);
                 break;
               case "extensions":
                 readRanges(type4.extensions || (type4.extensions = []));
@@ -21503,19 +23069,23 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
                 readRanges(type4.reserved || (type4.reserved = []), true);
                 break;
               default:
-                if (!isProto3 || !typeRefRe.test(token3))
+                if (edition === "proto2" || !typeRefRe.test(token3)) {
                   throw illegal(token3);
+                }
                 push2(token3);
-                parseField(type4, "optional");
+                parseField(type4, "optional", void 0, depth + 1);
                 break;
             }
           });
           parent2.add(type4);
+          if (parent2 === ptr) {
+            topLevelObjects.push(type4);
+          }
         }
-        function parseField(parent2, rule, extend2) {
+        function parseField(parent2, rule, extend2, depth) {
           var type4 = next();
           if (type4 === "group") {
-            parseGroup(parent2, rule);
+            parseGroup(parent2, rule, depth);
             return;
           }
           while (type4.endsWith(".") || peek().startsWith(".")) {
@@ -21546,15 +23116,18 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           } else {
             parent2.add(field2);
           }
-          if (!isProto3 && field2.repeated && (types$1.packed[type4] !== void 0 || types$1.basic[type4] === void 0))
-            field2.setOption(
-              "packed",
-              false,
-              /* ifNotSet */
-              true
-            );
+          if (parent2 === ptr) {
+            topLevelObjects.push(field2);
+          }
         }
-        function parseGroup(parent2, rule) {
+        function parseGroup(parent2, rule, depth) {
+          if (depth === void 0)
+            depth = 0;
+          if (depth > util.nestingLimit)
+            throw Error("max depth exceeded");
+          if (edition >= 2023) {
+            throw illegal("group");
+          }
           var name = next();
           if (!nameRe.test(name))
             throw illegal(name, "name");
@@ -21575,20 +23148,23 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
                 break;
               case "required":
               case "repeated":
-                parseField(type4, token2);
+                parseField(type4, token2, void 0, depth + 1);
                 break;
               case "optional":
-                if (isProto3) {
-                  parseField(type4, "proto3_optional");
+                if (edition === "proto3") {
+                  parseField(type4, "proto3_optional", void 0, depth + 1);
                 } else {
-                  parseField(type4, "optional");
+                  parseField(type4, "optional", void 0, depth + 1);
                 }
                 break;
               case "message":
-                parseType(type4, token2);
+                parseType(type4, token2, depth + 1);
                 break;
               case "enum":
                 parseEnum(type4, token2);
+                break;
+              case "reserved":
+                readRanges(type4.reserved || (type4.reserved = []), true);
                 break;
               default:
                 throw illegal(token2);
@@ -21622,7 +23198,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           });
           parent2.add(field2);
         }
-        function parseOneOf(parent2, token2) {
+        function parseOneOf(parent2, token2, depth) {
           if (!nameRe.test(token2 = next()))
             throw illegal(token2, "name");
           var oneof2 = new OneOf(applyCase(token2));
@@ -21632,7 +23208,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
               skip2(";");
             } else {
               push2(token3);
-              parseField(oneof2, "optional");
+              parseField(oneof2, "optional", void 0, depth);
             }
           });
           parent2.add(oneof2);
@@ -21649,12 +23225,17 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
                 break;
               case "reserved":
                 readRanges(enm.reserved || (enm.reserved = []), true);
+                if (enm.reserved === void 0)
+                  enm.reserved = [];
                 break;
               default:
                 parseEnumValue(enm, token3);
             }
           });
           parent2.add(enm);
+          if (parent2 === ptr) {
+            topLevelObjects.push(enm);
+          }
         }
         function parseEnumValue(parent2, token2) {
           if (!nameRe.test(token2))
@@ -21663,10 +23244,14 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           var value = parseId(next(), true), dummy = {
             options: void 0
           };
+          dummy.getOption = function(name) {
+            return this.options[name];
+          };
           dummy.setOption = function(name, value2) {
-            if (this.options === void 0)
-              this.options = {};
-            this.options[name] = value2;
+            ReflectionObject.prototype.setOption.call(dummy, name, value2);
+          };
+          dummy.setParsedOption = function() {
+            return void 0;
           };
           ifBlock(dummy, function parseEnumValue_block(token3) {
             if (token3 === "option") {
@@ -21677,31 +23262,49 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           }, function parseEnumValue_line() {
             parseInlineOptions(dummy);
           });
-          parent2.add(token2, value, dummy.comment, dummy.options);
+          parent2.add(token2, value, dummy.comment, dummy.parsedOptions || dummy.options);
         }
         function parseOption(parent2, token2) {
-          var isCustom = skip2("(", true);
-          if (!typeRefRe.test(token2 = next()))
-            throw illegal(token2, "name");
-          var name = token2;
-          var option = name;
+          var option;
           var propName;
-          if (isCustom) {
-            skip2(")");
-            name = "(" + name + ")";
-            option = name;
-            token2 = peek();
-            if (fqTypeRefRe.test(token2)) {
-              propName = token2.slice(1);
-              name += token2;
-              next();
-            }
+          var isOption = true;
+          if (token2 === "option") {
+            token2 = next();
           }
-          skip2("=");
+          while (token2 !== "=") {
+            if (token2 === null) {
+              throw illegal(token2, "end of input");
+            }
+            if (token2 === "(") {
+              var parensValue = next();
+              skip2(")");
+              token2 = "(" + parensValue + ")";
+            }
+            if (isOption) {
+              isOption = false;
+              if (token2.includes(".") && !token2.includes("(")) {
+                var tokens = token2.split(".");
+                option = tokens[0] + ".";
+                token2 = tokens[1];
+                continue;
+              }
+              option = token2;
+            } else {
+              propName = propName ? propName += token2 : token2;
+            }
+            token2 = next();
+          }
+          var name = propName ? option.concat(propName) : option;
           var optionValue = parseOptionValue(parent2, name);
+          propName = propName && propName[0] === "." ? propName.slice(1) : propName;
+          option = option && option[option.length - 1] === "." ? option.slice(0, -1) : option;
           setParsedOption(parent2, option, optionValue, propName);
         }
-        function parseOptionValue(parent2, name) {
+        function parseOptionValue(parent2, name, depth) {
+          if (depth === void 0)
+            depth = 0;
+          if (depth > util.recursionLimit)
+            throw Error("max depth exceeded");
           if (skip2("{", true)) {
             var objectResult = {};
             while (!skip2("}", true)) {
@@ -21714,9 +23317,9 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
               var value;
               var propName = token;
               skip2(":", true);
-              if (peek() === "{")
-                value = parseOptionValue(parent2, name + "." + token);
-              else if (peek() === "[") {
+              if (peek() === "{") {
+                value = parseOptionValue(parent2, name + "." + token, depth + 1);
+              } else if (peek() === "[") {
                 value = [];
                 var lastValue;
                 if (skip2("[", true)) {
@@ -21736,7 +23339,8 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
               var prevValue = objectResult[propName];
               if (prevValue)
                 value = [].concat(prevValue).concat(value);
-              objectResult[propName] = value;
+              if (propName !== "__proto__")
+                objectResult[propName] = value;
               skip2(",", true);
               skip2(";", true);
             }
@@ -21747,6 +23351,10 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           return simpleValue;
         }
         function setOption(parent2, name, value) {
+          if (ptr === parent2 && /^features\./.test(name)) {
+            topLevelOptions[name] = value;
+            return;
+          }
           if (parent2.setOption)
             parent2.setOption(name, value);
         }
@@ -21763,19 +23371,27 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           }
           return parent2;
         }
-        function parseService(parent2, token2) {
+        function parseService(parent2, token2, depth) {
+          if (depth === void 0)
+            depth = 0;
+          if (depth > util.recursionLimit)
+            throw Error("max depth exceeded");
           if (!nameRe.test(token2 = next()))
             throw illegal(token2, "service name");
           var service2 = new Service(token2);
           ifBlock(service2, function parseService_block(token3) {
-            if (parseCommon(service2, token3))
+            if (parseCommon(service2, token3, depth)) {
               return;
+            }
             if (token3 === "rpc")
               parseMethod(service2, token3);
             else
               throw illegal(token3);
           });
           parent2.add(service2);
+          if (parent2 === ptr) {
+            topLevelObjects.push(service2);
+          }
         }
         function parseMethod(parent2, token2) {
           var commentText = cmnt();
@@ -21809,7 +23425,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           });
           parent2.add(method4);
         }
-        function parseExtension(parent2, token2) {
+        function parseExtension(parent2, token2, depth) {
           if (!typeRefRe.test(token2 = next()))
             throw illegal(token2, "reference");
           var reference = token2;
@@ -21817,20 +23433,20 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
             switch (token3) {
               case "required":
               case "repeated":
-                parseField(parent2, token3, reference);
+                parseField(parent2, token3, reference, depth + 1);
                 break;
               case "optional":
-                if (isProto3) {
-                  parseField(parent2, "proto3_optional", reference);
+                if (edition === "proto3") {
+                  parseField(parent2, "proto3_optional", reference, depth + 1);
                 } else {
-                  parseField(parent2, "optional", reference);
+                  parseField(parent2, "optional", reference, depth + 1);
                 }
                 break;
               default:
-                if (!isProto3 || !typeRefRe.test(token3))
+                if (edition === "proto2" || !typeRefRe.test(token3))
                   throw illegal(token3);
                 push2(token3);
-                parseField(parent2, "optional", reference);
+                parseField(parent2, "optional", reference, depth + 1);
                 break;
             }
           });
@@ -21853,24 +23469,29 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
                 throw illegal(token);
               parseSyntax();
               break;
+            case "edition":
+              if (!head)
+                throw illegal(token);
+              parseEdition();
+              break;
             case "option":
               parseOption(ptr, token);
-              skip2(";");
+              skip2(";", true);
               break;
             default:
-              if (parseCommon(ptr, token)) {
+              if (parseCommon(ptr, token, 0)) {
                 head = false;
                 continue;
               }
               throw illegal(token);
           }
         }
+        resolveFileFeatures();
         parse.filename = null;
         return {
           "package": pkg,
           "imports": imports,
           weakImports,
-          syntax,
           root: root2
         };
       }
@@ -22196,7 +23817,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           }
         }
       });
-      common.get = function get2(file) {
+      common.get = function get(file) {
         return common[file] || null;
       };
       var protobuf$1 = src.exports = indexLightExports;
@@ -23790,7 +25411,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
       })(BizCodeEnum || {});
       function installBossIdentityTransport(client) {
         client.interceptors.request.use((config) => {
-          const headers = AxiosHeaders.from(config.headers);
+          const headers = AxiosHeaders2.from(config.headers);
           const canonical = headers.get("X-Boss-Token");
           const legacy = headers.get("Zp_token");
           const canonicalProof = typeof canonical === "string" ? canonical.trim() : "";
@@ -24661,19 +26282,19 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         SwipeDirection2["LEFT"] = "LEFT";
         SwipeDirection2["NONE"] = "NONE";
       })(SwipeDirection || (SwipeDirection = {}));
-      var __defProp = Object.defineProperty;
+      var __defProp2 = Object.defineProperty;
       var __getOwnPropSymbols = Object.getOwnPropertySymbols;
       var __hasOwnProp = Object.prototype.hasOwnProperty;
       var __propIsEnum = Object.prototype.propertyIsEnumerable;
-      var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+      var __defNormalProp2 = (obj, key, value) => key in obj ? __defProp2(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
       var __spreadValues = (a2, b2) => {
         for (var prop in b2 || (b2 = {}))
           if (__hasOwnProp.call(b2, prop))
-            __defNormalProp(a2, prop, b2[prop]);
+            __defNormalProp2(a2, prop, b2[prop]);
         if (__getOwnPropSymbols)
           for (var prop of __getOwnPropSymbols(b2)) {
             if (__propIsEnum.call(b2, prop))
-              __defNormalProp(a2, prop, b2[prop]);
+              __defNormalProp2(a2, prop, b2[prop]);
           }
         return a2;
       };
@@ -25572,14 +27193,14 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         });
         return result;
       });
-      function toString(value) {
+      function toString2(value) {
         return value == null ? "" : baseToString(value);
       }
       function castPath(value, object4) {
         if (isArray(value)) {
           return value;
         }
-        return isKey(value, object4) ? [value] : stringToPath(toString(value));
+        return isKey(value, object4) ? [value] : stringToPath(toString2(value));
       }
       var INFINITY$2 = 1 / 0;
       function toKey(value) {
@@ -25597,7 +27218,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         }
         return index && index == length ? object4 : void 0;
       }
-      function get(object4, path2, defaultValue) {
+      function get2(object4, path2, defaultValue) {
         var result = object4 == null ? void 0 : baseGet(object4, path2);
         return result === void 0 ? defaultValue : result;
       }
@@ -26287,7 +27908,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           return matchesStrictComparable(toKey(path2), srcValue);
         }
         return function(object4) {
-          var objValue = get(object4, path2);
+          var objValue = get2(object4, path2);
           return objValue === void 0 && objValue === srcValue ? hasIn(object4, path2) : baseIsEqual(srcValue, objValue, COMPARE_PARTIAL_FLAG | COMPARE_UNORDERED_FLAG);
         };
       }
@@ -26753,7 +28374,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
       const getProp = (obj, path2, defaultValue) => {
         return {
           get value() {
-            return get(obj, path2, defaultValue);
+            return get2(obj, path2, defaultValue);
           },
           set value(val) {
             set(obj, path2, val);
@@ -28134,7 +29755,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         }
       };
       const buildTranslator = (locale) => (path2, option) => translate(path2, option, unref(locale));
-      const translate = (path2, option, locale) => get(locale, path2, path2).replace(/\{(\w+)\}/g, (_2, key) => {
+      const translate = (path2, option, locale) => get2(locale, path2, path2).replace(/\{(\w+)\}/g, (_2, key) => {
         var _a2;
         return `${(_a2 = option == null ? void 0 : option[key]) != null ? _a2 : `{${key}}`}`;
       });
@@ -28795,7 +30416,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
       function rn(t) {
         return t === "x" ? "y" : "x";
       }
-      function on(t) {
+      function on2(t) {
         var e = t.state, n = t.options, r = t.name, o2 = n.mainAxis, i = o2 === void 0 ? true : o2, a2 = n.altAxis, s2 = a2 === void 0 ? false : a2, f2 = n.boundary, c2 = n.rootBoundary, u2 = n.altBoundary, m2 = n.padding, v2 = n.tether, l2 = v2 === void 0 ? true : v2, h2 = n.tetherOffset, p2 = h2 === void 0 ? 0 : h2, g = ne(e, { boundary: f2, rootBoundary: c2, padding: m2, altBoundary: u2 }), x2 = q(e.placement), y = te(e.placement), $ = !y, d2 = Le(x2), b2 = rn(d2), w2 = e.modifiersData.popperOffsets, O2 = e.rects.reference, j = e.rects.popper, A2 = typeof p2 == "function" ? p2(Object.assign({}, e.rects, { placement: e.placement })) : p2, k = typeof A2 == "number" ? { mainAxis: A2, altAxis: A2 } : Object.assign({ mainAxis: 0, altAxis: 0 }, A2), D2 = e.modifiersData.offset ? e.modifiersData.offset[e.placement] : null, S2 = { x: 0, y: 0 };
         if (w2) {
           if (i) {
@@ -28809,7 +30430,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           e.modifiersData[r] = S2;
         }
       }
-      var xt = { name: "preventOverflow", enabled: true, phase: "main", fn: on, requiresIfExists: ["offset"] };
+      var xt = { name: "preventOverflow", enabled: true, phase: "main", fn: on2, requiresIfExists: ["offset"] };
       function an(t) {
         return { scrollLeft: t.scrollLeft, scrollTop: t.scrollTop };
       }
@@ -31880,7 +33501,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
             return false;
           }
         },
-        date: function date3(value) {
+        date: function date(value) {
           return typeof value.getTime === "function" && typeof value.getMonth === "function" && typeof value.getYear === "function" && !isNaN(value.getTime());
         },
         number: function number(value) {
@@ -31889,10 +33510,10 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           }
           return typeof value === "number";
         },
-        object: function object3(value) {
+        object: function object2(value) {
           return typeof value === "object" && !types.array(value);
         },
-        method: function method3(value) {
+        method: function method2(value) {
           return typeof value === "function";
         },
         email: function email(value) {
@@ -31905,7 +33526,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           return typeof value === "string" && !!value.match(pattern$2.hex);
         }
       };
-      var type$1 = function type3(rule, value, source, errors, options) {
+      var type$1 = function type2(rule, value, source, errors, options) {
         if (rule.required && value === void 0) {
           required$1(rule, value, source, errors, options);
           return;
@@ -32007,7 +33628,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         }
         callback(errors);
       };
-      var method2 = function method32(rule, value, callback, source, options) {
+      var method22 = function method3(rule, value, callback, source, options) {
         var errors = [];
         var validate = rule.required || !rule.required && source.hasOwnProperty(rule.field);
         if (validate) {
@@ -32112,7 +33733,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         }
         callback(errors);
       };
-      var object2 = function object32(rule, value, callback, source, options) {
+      var object22 = function object3(rule, value, callback, source, options) {
         var errors = [];
         var validate = rule.required || !rule.required && source.hasOwnProperty(rule.field);
         if (validate) {
@@ -32155,7 +33776,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         }
         callback(errors);
       };
-      var date2 = function date32(rule, value, callback, source, options) {
+      var date2 = function date3(rule, value, callback, source, options) {
         var errors = [];
         var validate = rule.required || !rule.required && source.hasOwnProperty(rule.field);
         if (validate) {
@@ -32184,7 +33805,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         rules.required(rule, value, source, errors, options, type4);
         callback(errors);
       };
-      var type2 = function type32(rule, value, callback, source, options) {
+      var type22 = function type3(rule, value, callback, source, options) {
         var ruleType = rule.type;
         var errors = [];
         var validate = rule.required || !rule.required && source.hasOwnProperty(rule.field);
@@ -32212,20 +33833,20 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
       };
       var validators = {
         string,
-        method: method2,
+        method: method22,
         number: number2,
         "boolean": _boolean,
         regexp: regexp2,
         integer: integer2,
         "float": floatFn,
         array: array2,
-        object: object2,
+        object: object22,
         "enum": enumerable2,
         pattern: pattern2,
         date: date2,
-        url: type2,
-        hex: type2,
-        email: type2,
+        url: type22,
+        hex: type22,
+        email: type22,
         required: required2,
         any
       };
@@ -36636,10 +38257,10 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         var p2 = v2 * (1 - s2);
         var q2 = v2 * (1 - f2 * s2);
         var t = v2 * (1 - (1 - f2) * s2);
-        var mod2 = i % 6;
-        var r = [v2, q2, p2, p2, t, v2][mod2];
-        var g = [t, v2, v2, q2, p2, p2][mod2];
-        var b2 = [p2, p2, t, v2, v2, q2][mod2];
+        var mod = i % 6;
+        var r = [v2, q2, p2, p2, t, v2][mod];
+        var g = [t, v2, v2, q2, p2, p2][mod];
+        var b2 = [p2, p2, t, v2, v2, q2][mod];
         return { r: r * 255, g: g * 255, b: b2 * 255 };
       }
       function rgbToHex(r, g, b2, allow3Char) {
@@ -37999,16 +39620,16 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         }
         return false;
       };
-      const parseDate = function(date4, format2, lang) {
-        const day = isEmpty(format2) || format2 === "x" ? dayjs(date4).locale(lang) : dayjs(date4, format2).locale(lang);
+      const parseDate = function(date5, format2, lang) {
+        const day = isEmpty(format2) || format2 === "x" ? dayjs(date5).locale(lang) : dayjs(date5, format2).locale(lang);
         return day.isValid() ? day : void 0;
       };
-      const formatter = function(date4, format2, lang) {
+      const formatter = function(date5, format2, lang) {
         if (isEmpty(format2))
-          return date4;
+          return date5;
         if (format2 === "x")
-          return +date4;
-        return dayjs(date4).locale(lang).format(format2);
+          return +date5;
+        return dayjs(date5).locale(lang).format(format2);
       };
       const makeList = (total2, method4) => {
         var _a2;
@@ -38241,16 +39862,16 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
               ignoreFocusEvent = false;
             });
           };
-          const onPick = (date4 = "", visible = false) => {
+          const onPick = (date5 = "", visible = false) => {
             if (!visible) {
               ignoreFocusEvent = true;
             }
             pickerVisible.value = visible;
             let result;
-            if (isArray$2(date4)) {
-              result = date4.map((_2) => _2.toDate());
+            if (isArray$2(date5)) {
+              result = date5.map((_2) => _2.toDate());
             } else {
-              result = date4 ? date4.toDate() : date4;
+              result = date5 ? date5.toDate() : date5;
             }
             userInput.value = null;
             emitInput(result);
@@ -38780,13 +40401,13 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         getAvailableMinutes,
         getAvailableSeconds
       }) => {
-        const getAvailableTime = (date4, role, first, compareDate) => {
+        const getAvailableTime = (date5, role, first, compareDate) => {
           const availableTimeGetters = {
             hour: getAvailableHours,
             minute: getAvailableMinutes,
             second: getAvailableSeconds
           };
-          let result = date4;
+          let result = date5;
           ["hour", "minute", "second"].forEach((type4) => {
             if (availableTimeGetters[type4]) {
               let availableTimeSlots;
@@ -39516,8 +41137,8 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
             getAvailableMinutes,
             getAvailableSeconds
           });
-          const getRangeAvailableTime = (date4) => {
-            return getAvailableTime(date4, props.datetimeRole || "", true);
+          const getRangeAvailableTime = (date5) => {
+            return getAvailableTime(date5, props.datetimeRole || "", true);
           };
           const parseUserInput = (value) => {
             if (!value)
@@ -39647,11 +41268,11 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           const handleConfirm = (visible = false) => {
             emit3("pick", [startTime.value, endTime.value], visible);
           };
-          const handleMinChange = (date4) => {
-            handleChange(date4.millisecond(0), endTime.value);
+          const handleMinChange = (date5) => {
+            handleChange(date5.millisecond(0), endTime.value);
           };
-          const handleMaxChange = (date4) => {
-            handleChange(startTime.value, date4.millisecond(0));
+          const handleMaxChange = (date5) => {
+            handleChange(startTime.value, date5.millisecond(0));
           };
           const isValidValue2 = (_date) => {
             const parsedDate = _date.map((_2) => dayjs(_2).locale(lang.value));
@@ -39915,12 +41536,12 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         app2.component(_TimePicker.name, _TimePicker);
       };
       const ElTimePicker = exports("as", _TimePicker);
-      const getPrevMonthLastDays = (date4, count) => {
-        const lastDay = date4.subtract(1, "month").endOf("month").date();
+      const getPrevMonthLastDays = (date5, count) => {
+        const lastDay = date5.subtract(1, "month").endOf("month").date();
         return rangeArr(count).map((_2, index) => lastDay - (count - index - 1));
       };
-      const getMonthDays = (date4) => {
-        const days = date4.daysInMonth();
+      const getMonthDays = (date5) => {
+        const days = date5.daysInMonth();
         return rangeArr(days).map((_2, index) => index + 1);
       };
       const toNestedArr = (days) => rangeArr(days.length / 7).map((index) => {
@@ -40084,8 +41705,8 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           }
         };
         const handlePickDay = ({ text, type: type4 }) => {
-          const date4 = getFormattedDate(text, type4);
-          emit3("pick", date4);
+          const date5 = getFormattedDate(text, type4);
+          emit3("pick", date5);
         };
         const getSlotData = ({ text, type: type4 }) => {
           const day = getFormattedDate(text, type4);
@@ -40131,11 +41752,11 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           const getCellClass = ({ text, type: type4 }) => {
             const classes = [type4];
             if (type4 === "current") {
-              const date4 = getFormattedDate(text, type4);
-              if (date4.isSame(props.selectedDay, "day")) {
+              const date5 = getFormattedDate(text, type4);
+              if (date5.isSame(props.selectedDay, "day")) {
                 classes.push(nsDay.is("selected"));
               }
-              if (date4.isSame(now2, "day")) {
+              if (date5.isSame(now2, "day")) {
                 classes.push(nsDay.is("today"));
               }
             }
@@ -40220,7 +41841,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           get() {
             if (!props.modelValue)
               return selectedDay.value;
-            return date4.value;
+            return date5.value;
           },
           set(val) {
             if (!val)
@@ -40248,17 +41869,17 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
             return calculateValidatedDateRange(startDayjs, endDayjs);
           }
         });
-        const date4 = computed(() => {
+        const date5 = computed(() => {
           if (!props.modelValue) {
             return realSelectedDay.value || (validatedRange.value.length ? validatedRange.value[0][0] : now2);
           } else {
             return dayjs(props.modelValue).locale(lang.value);
           }
         });
-        const prevMonthDayjs = computed(() => date4.value.subtract(1, "month").date(1));
-        const nextMonthDayjs = computed(() => date4.value.add(1, "month").date(1));
-        const prevYearDayjs = computed(() => date4.value.subtract(1, "year").date(1));
-        const nextYearDayjs = computed(() => date4.value.add(1, "year").date(1));
+        const prevMonthDayjs = computed(() => date5.value.subtract(1, "month").date(1));
+        const nextMonthDayjs = computed(() => date5.value.add(1, "month").date(1));
+        const prevYearDayjs = computed(() => date5.value.subtract(1, "year").date(1));
+        const nextYearDayjs = computed(() => date5.value.add(1, "year").date(1));
         const calculateValidatedDateRange = (startDayjs, endDayjs) => {
           const firstDay = startDayjs.startOf("week");
           const lastDay = endDayjs.endOf("week");
@@ -40286,13 +41907,13 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
             today: now2
           };
           const day = dateMap[type4];
-          if (!day.isSame(date4.value, "day")) {
+          if (!day.isSame(date5.value, "day")) {
             pickDay(day);
           }
         };
         return {
           calculateValidatedDateRange,
-          date: date4,
+          date: date5,
           realSelectedDay,
           pickDay,
           selectDate,
@@ -40326,7 +41947,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           const ns = useNamespace("calendar");
           const {
             calculateValidatedDateRange,
-            date: date4,
+            date: date5,
             pickDay,
             realSelectedDay,
             selectDate,
@@ -40334,8 +41955,8 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           } = useCalendar(props, emit3);
           const { t } = useLocale();
           const i18nDate = computed(() => {
-            const pickedMonth = `el.datepicker.month${date4.value.format("M")}`;
-            return `${date4.value.year()} ${t("el.datepicker.year")} ${t(pickedMonth)}`;
+            const pickedMonth = `el.datepicker.month${date5.value.format("M")}`;
+            return `${date5.value.year()} ${t("el.datepicker.year")} ${t(pickedMonth)}`;
           });
           expose({
             selectedDay: realSelectedDay,
@@ -40398,7 +42019,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
                 class: normalizeClass(unref(ns).e("body"))
               }, [
                 createVNode(DateTable$1, {
-                  date: unref(date4),
+                  date: unref(date5),
                   "selected-day": unref(realSelectedDay),
                   onPick: unref(pickDay)
                 }, createSlots({ _: 2 }, [
@@ -44738,10 +46359,10 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         const p2 = v2 * (1 - s2);
         const q2 = v2 * (1 - f2 * s2);
         const t = v2 * (1 - (1 - f2) * s2);
-        const mod2 = i % 6;
-        const r = [v2, q2, p2, p2, t, v2][mod2];
-        const g = [t, v2, v2, q2, p2, p2][mod2];
-        const b2 = [p2, p2, t, v2, v2, q2][mod2];
+        const mod = i % 6;
+        const r = [v2, q2, p2, p2, t, v2][mod];
+        const g = [t, v2, v2, q2, p2, p2][mod];
+        const b2 = [p2, p2, t, v2, v2, q2][mod];
         return {
           r: Math.round(r * 255),
           g: Math.round(g * 255),
@@ -46027,10 +47648,10 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         const isCurrent = (cell) => {
           return props.selectionMode === "date" && isNormalDay(cell.type) && cellMatchesDate(cell, props.parsedValue);
         };
-        const cellMatchesDate = (cell, date4) => {
-          if (!date4)
+        const cellMatchesDate = (cell, date5) => {
+          if (!date5)
             return false;
-          return dayjs(date4).locale(unref(lang)).isSame(props.date.date(Number(cell.text)), "day");
+          return dayjs(date5).locale(unref(lang)).isSame(props.date.date(Number(cell.text)), "day");
         };
         const getDateOfCell = (row, column) => {
           const offsetFromStart = row * 7 + (column - (props.showWeekNumber ? 1 : 0)) - unref(offsetDay);
@@ -46424,7 +48045,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
             const today = /* @__PURE__ */ new Date();
             const month = cell.text;
             style.disabled = props.disabledDate ? datesInMonth(year, month, lang.value).every(props.disabledDate) : false;
-            style.current = castArray(props.parsedValue).findIndex((date4) => dayjs.isDayjs(date4) && date4.year() === year && date4.month() === month) >= 0;
+            style.current = castArray(props.parsedValue).findIndex((date5) => dayjs.isDayjs(date5) && date5.year() === year && date5.month() === month) >= 0;
             style.today = today.getFullYear() === year && today.getMonth() === month;
             if (cell.inRange) {
               style["in-range"] = true;
@@ -46440,7 +48061,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           const isSelectedCell = (cell) => {
             const year = props.date.year();
             const month = cell.text;
-            return castArray(props.date).findIndex((date4) => date4.year() === year && date4.month() === month) >= 0;
+            return castArray(props.date).findIndex((date5) => date5.year() === year && date5.month() === month) >= 0;
           };
           const handleMouseMove = (event) => {
             var _a2;
@@ -46546,9 +48167,9 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         }
       });
       var MonthTable = /* @__PURE__ */ _export_sfc$1(_sfc_main$1w, [["__file", "basic-month-table.vue"]]);
-      const { date, disabledDate, parsedValue } = datePickerSharedProps;
+      const { date: date4, disabledDate, parsedValue } = datePickerSharedProps;
       const basicYearTableProps = buildProps({
-        date,
+        date: date4,
         disabledDate,
         parsedValue,
         selectionMode: selectionModeWithDefault("year")
@@ -46589,7 +48210,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
             return kls;
           };
           const isSelectedCell = (year) => {
-            return year === startYear.value && props.date.year() < startYear.value && props.date.year() > startYear.value + 9 || castArray(props.date).findIndex((date4) => date4.year() === year) >= 0 || castArray(props.parsedValue).findIndex((date4) => (date4 == null ? void 0 : date4.year()) === year) >= 0;
+            return year === startYear.value && props.date.year() < startYear.value && props.date.year() > startYear.value + 9 || castArray(props.date).findIndex((date5) => date5.year() === year) >= 0 || castArray(props.parsedValue).findIndex((date5) => (date5 == null ? void 0 : date5.year()) === year) >= 0;
           };
           const handleYearTableClick = (event) => {
             const clickTarget = event.target;
@@ -46700,8 +48321,8 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           const selectableRange = ref([]);
           const userInputDate = ref(null);
           const userInputTime = ref(null);
-          const checkDateWithinRange = (date4) => {
-            return selectableRange.value.length > 0 ? timeWithinRange(date4, selectableRange.value, props.format || "HH:mm:ss") : true;
+          const checkDateWithinRange = (date5) => {
+            return selectableRange.value.length > 0 ? timeWithinRange(date5, selectableRange.value, props.format || "HH:mm:ss") : true;
           };
           const formatEmit = (emitDayjs) => {
             if (defaultTime && !visibleTime.value && !isChangeToNow.value && !isShortcut) {
@@ -46901,14 +48522,14 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           const handleTimePickClose = () => {
             timePickerVisible.value = false;
           };
-          const getUnits = (date4) => {
+          const getUnits = (date5) => {
             return {
-              hour: date4.hour(),
-              minute: date4.minute(),
-              second: date4.second(),
-              year: date4.year(),
-              month: date4.month(),
-              date: date4.date()
+              hour: date5.hour(),
+              minute: date5.minute(),
+              second: date5.second(),
+              year: date5.year(),
+              month: date5.month(),
+              date: date5.date()
             };
           };
           const handleTimePick = (value, visible, first) => {
@@ -46923,8 +48544,8 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           const handleVisibleTimeChange = (value) => {
             const newDate = dayjs(value, timeFormat.value).locale(lang.value);
             if (newDate.isValid() && checkDateWithinRange(newDate)) {
-              const { year: year2, month: month2, date: date4 } = getUnits(innerDate.value);
-              innerDate.value = newDate.year(year2).month(month2).date(date4);
+              const { year: year2, month: month2, date: date5 } = getUnits(innerDate.value);
+              innerDate.value = newDate.year(year2).month(month2).date(date5);
               userInputTime.value = null;
               timePickerVisible.value = false;
               emit3(innerDate.value, true);
@@ -46942,8 +48563,8 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
               emit3(innerDate.value, true);
             }
           };
-          const isValidValue2 = (date4) => {
-            return dayjs.isDayjs(date4) && date4.isValid() && (disabledDate2 ? !disabledDate2(date4.toDate()) : true);
+          const isValidValue2 = (date5) => {
+            return dayjs.isDayjs(date5) && date5.isValid() && (disabledDate2 ? !disabledDate2(date5.toDate()) : true);
           };
           const formatToString = (value) => {
             return isArray$2(value) ? value.map((_2) => _2.format(props.format)) : value.format(props.format);
@@ -46999,32 +48620,32 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
                 [down2]: 4,
                 [left2]: -1,
                 [right2]: 1,
-                offset: (date4, step) => date4.setFullYear(date4.getFullYear() + step)
+                offset: (date5, step) => date5.setFullYear(date5.getFullYear() + step)
               },
               month: {
                 [up2]: -4,
                 [down2]: 4,
                 [left2]: -1,
                 [right2]: 1,
-                offset: (date4, step) => date4.setMonth(date4.getMonth() + step)
+                offset: (date5, step) => date5.setMonth(date5.getMonth() + step)
               },
               week: {
                 [up2]: -1,
                 [down2]: 1,
                 [left2]: -1,
                 [right2]: 1,
-                offset: (date4, step) => date4.setDate(date4.getDate() + step * 7)
+                offset: (date5, step) => date5.setDate(date5.getDate() + step * 7)
               },
               date: {
                 [up2]: -7,
                 [down2]: 7,
                 [left2]: -1,
                 [right2]: 1,
-                [home2]: (date4) => -date4.getDay(),
-                [end3]: (date4) => -date4.getDay() + 6,
-                [pageUp2]: (date4) => -new Date(date4.getFullYear(), date4.getMonth(), 0).getDate(),
-                [pageDown2]: (date4) => new Date(date4.getFullYear(), date4.getMonth() + 1, 0).getDate(),
-                offset: (date4, step) => date4.setDate(date4.getDate() + step)
+                [home2]: (date5) => -date5.getDay(),
+                [end3]: (date5) => -date5.getDay() + 6,
+                [pageUp2]: (date5) => -new Date(date5.getFullYear(), date5.getMonth(), 0).getDate(),
+                [pageDown2]: (date5) => new Date(date5.getFullYear(), date5.getMonth() + 1, 0).getDate(),
+                offset: (date5, step) => date5.setDate(date5.getDate() + step)
               }
             };
             const newDate = innerDate.value.toDate();
@@ -47526,8 +49147,8 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           const dateFormat = computed(() => {
             return props.dateFormat || extractDateFormat(format2);
           });
-          const isValidValue2 = (date4) => {
-            return isValidRange(date4) && (disabledDate2 ? !disabledDate2(date4[0].toDate()) && !disabledDate2(date4[1].toDate()) : true);
+          const isValidValue2 = (date5) => {
+            return isValidRange(date5) && (disabledDate2 ? !disabledDate2(date5[0].toDate()) && !disabledDate2(date5[1].toDate()) : true);
           };
           const leftPrevYear = () => {
             leftDate.value = leftDate.value.subtract(1, "year");
@@ -51924,7 +53545,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
       });
       var Link = /* @__PURE__ */ _export_sfc$1(_sfc_main$17, [["__file", "link.vue"]]);
       const ElLink = withInstall(Link);
-      let SubMenu$1 = class SubMenu2 {
+      let SubMenu$1 = class SubMenu {
         constructor(parent2, domNode) {
           this.parent = parent2;
           this.domNode = domNode;
@@ -51981,7 +53602,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           });
         }
       };
-      let MenuItem$1 = class MenuItem2 {
+      let MenuItem$1 = class MenuItem {
         constructor(domNode, namespace2) {
           this.domNode = domNode;
           this.submenu = null;
@@ -52029,7 +53650,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           });
         }
       };
-      let Menu$1 = class Menu2 {
+      let Menu$1 = class Menu {
         constructor(domNode, namespace2) {
           this.domNode = domNode;
           this.init(namespace2);
@@ -52171,7 +53792,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         }
       });
       const COMPONENT_NAME$c = "ElSubMenu";
-      var SubMenu = /* @__PURE__ */ defineComponent({
+      var SubMenu2 = /* @__PURE__ */ defineComponent({
         name: COMPONENT_NAME$c,
         props: subMenuProps,
         setup(props, { slots, expose }) {
@@ -52485,7 +54106,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         open: (index, indexPath) => isString$2(index) && checkIndexPath(indexPath),
         select: (index, indexPath, item, routerResult) => isString$2(index) && checkIndexPath(indexPath) && isObject$2(item) && (routerResult === void 0 || routerResult instanceof Promise)
       };
-      var Menu = /* @__PURE__ */ defineComponent({
+      var Menu2 = /* @__PURE__ */ defineComponent({
         name: "ElMenu",
         props: menuProps,
         emits: menuEmits,
@@ -52702,7 +54323,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
               const slotMore = sliceIndex.value === -1 ? [] : originalSlot.slice(sliceIndex.value);
               if ((slotMore == null ? void 0 : slotMore.length) && props.ellipsis) {
                 slot = slotDefault;
-                vShowMore.push(h$1(SubMenu, {
+                vShowMore.push(h$1(SubMenu2, {
                   index: "sub-menu-more",
                   class: nsSubMenu.e("hide-arrow"),
                   popperOffset: props.popperOffset
@@ -52850,7 +54471,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           ], 64))
         ], 2);
       }
-      var MenuItem = /* @__PURE__ */ _export_sfc$1(_sfc_main$15, [["render", _sfc_render$e], ["__file", "menu-item.vue"]]);
+      var MenuItem2 = /* @__PURE__ */ _export_sfc$1(_sfc_main$15, [["render", _sfc_render$e], ["__file", "menu-item.vue"]]);
       const menuItemGroupProps = {
         title: String
       };
@@ -52882,14 +54503,14 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         ], 2);
       }
       var MenuItemGroup = /* @__PURE__ */ _export_sfc$1(_sfc_main$14, [["render", _sfc_render$d], ["__file", "menu-item-group.vue"]]);
-      const ElMenu = exports("G", withInstall(Menu, {
-        MenuItem,
+      const ElMenu = exports("G", withInstall(Menu2, {
+        MenuItem: MenuItem2,
         MenuItemGroup,
-        SubMenu
+        SubMenu: SubMenu2
       }));
-      const ElMenuItem = exports("D", withNoopInstall(MenuItem));
+      const ElMenuItem = exports("D", withNoopInstall(MenuItem2));
       const ElMenuItemGroup = withNoopInstall(MenuItemGroup);
-      const ElSubMenu = withNoopInstall(SubMenu);
+      const ElSubMenu = withNoopInstall(SubMenu2);
       const pageHeaderProps = buildProps({
         icon: {
           type: iconPropType,
@@ -53137,7 +54758,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           } else {
             const valueKey = select.props.valueKey;
             return arr && arr.some((item) => {
-              return toRaw(get(item, valueKey)) === get(target, valueKey);
+              return toRaw(get2(item, valueKey)) === get2(target, valueKey);
             });
           }
         };
@@ -53582,7 +55203,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           const isUndefined2 = toRawType(value).toLowerCase() === "undefined";
           for (let i = states.cachedOptions.size - 1; i >= 0; i--) {
             const cachedOption = cachedOptionsArray.value[i];
-            const isEqualValue = isObjectValue ? get(cachedOption.value, props.valueKey) === get(value, props.valueKey) : cachedOption.value === value;
+            const isEqualValue = isObjectValue ? get2(cachedOption.value, props.valueKey) === get2(value, props.valueKey) : cachedOption.value === value;
             if (isEqualValue) {
               option = {
                 value,
@@ -53728,7 +55349,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           const valueKey = props.valueKey;
           let index = -1;
           arr.some((item, i) => {
-            if (toRaw(get(item, valueKey)) === get(value, valueKey)) {
+            if (toRaw(get2(item, valueKey)) === get2(value, valueKey)) {
               index = i;
               return true;
             }
@@ -53820,7 +55441,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           }
         };
         const getValueKey = (item) => {
-          return isObject$2(item.value) ? get(item.value, props.valueKey) : item.value;
+          return isObject$2(item.value) ? get2(item.value, props.valueKey) : item.value;
         };
         const optionsAllDisabled = computed(() => optionsArray.value.filter((option) => option.visible).every((option) => option.disabled));
         const showTagList = computed(() => {
@@ -58026,10 +59647,10 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
       };
       function useProps(props) {
         const aliasProps = computed(() => ({ ...defaultProps$3, ...props.props }));
-        const getLabel = (option) => get(option, aliasProps.value.label);
-        const getValue2 = (option) => get(option, aliasProps.value.value);
-        const getDisabled = (option) => get(option, aliasProps.value.disabled);
-        const getOptions = (option) => get(option, aliasProps.value.options);
+        const getLabel = (option) => get2(option, aliasProps.value.label);
+        const getValue2 = (option) => get2(option, aliasProps.value.value);
+        const getDisabled = (option) => get2(option, aliasProps.value.disabled);
+        const getOptions = (option) => get2(option, aliasProps.value.options);
         return {
           aliasProps,
           getLabel,
@@ -58252,7 +59873,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
               return arr.includes(target);
             }
             return arr && arr.some((item) => {
-              return toRaw(get(item, valueKey)) === get(target, valueKey);
+              return toRaw(get2(item, valueKey)) === get2(target, valueKey);
             });
           };
           const isEqual2 = (selected, target) => {
@@ -58262,7 +59883,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
               const {
                 valueKey
               } = select.props;
-              return get(selected, valueKey) === get(target, valueKey);
+              return get2(selected, valueKey) === get2(target, valueKey);
             }
           };
           const isItemSelected = (modelValue, target) => {
@@ -58777,7 +60398,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           const valueKey = props.valueKey;
           let index = -1;
           arr.some((item, i) => {
-            if (get(item, valueKey) === get(value, valueKey)) {
+            if (get2(item, valueKey) === get2(value, valueKey)) {
               index = i;
               return true;
             }
@@ -58786,7 +60407,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           return index;
         };
         const getValueKey = (item) => {
-          return isObject$2(item) ? get(item, props.valueKey) : item;
+          return isObject$2(item) ? get2(item, props.valueKey) : item;
         };
         const handleResize = () => {
           calculatePopperSize();
@@ -59075,7 +60696,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
             const optionValue = getValue2(item);
             let v2 = optionValue;
             if (isObject$2(v2)) {
-              v2 = get(optionValue, valueKey);
+              v2 = get2(optionValue, valueKey);
             }
             if (duplicateValue.get(v2)) {
               break;
@@ -59894,7 +61515,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           setSecondValue
         };
       };
-      const { left, down, right, up, home, end, pageUp, pageDown } = EVENT_CODE;
+      const { left, down, right, up, home, end: end2, pageUp, pageDown } = EVENT_CODE;
       const useTooltip = (props, formatTooltip, showTooltip) => {
         const tooltip = ref();
         const tooltipVisible = ref(false);
@@ -60001,7 +61622,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
             onRightKeyDown();
           } else if (event.key === home) {
             onHomeKeyDown();
-          } else if (event.key === end) {
+          } else if (event.key === end2) {
             onEndKeyDown();
           } else if (event.key === pageDown) {
             onPageDownKeyDown();
@@ -61538,7 +63159,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
             }
             return sortBy.map((by) => {
               if (typeof by === "string") {
-                return get(value, by);
+                return get2(value, by);
               } else {
                 return by(value, index, array4);
               }
@@ -61548,7 +63169,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
             if (isObject$2(value) && "$value" in value)
               value = value.$value;
           }
-          return [isObject$2(value) ? get(value, sortKey) : value];
+          return [isObject$2(value) ? get2(value, sortKey) : value];
         };
         const compare = function(a2, b2) {
           if (sortMethod) {
@@ -67578,7 +69199,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           columnIndex,
           rowData,
           rowIndex
-        }) : get(rowData, dataKey != null ? dataKey : "");
+        }) : get2(rowData, dataKey != null ? dataKey : "");
         const extraCellProps = tryCall(_cellProps, {
           cellData,
           columns: columns2,
@@ -78787,11 +80408,11 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
         }
         async getRenderComponent() {
           if (this.curUrl.includes("www.zhipin.com/web/geek/chat")) {
-            let promise = __vitePreload(() => module.import('./BossMessage-DWqFrvpt-Da3yDN0A.js'), void 0 );
+            let promise = __vitePreload(() => module.import('./BossMessage-CG1Jmub1-CwO3QDeb.js'), void 0 );
             return promise.then((item) => item.default);
           }
           if (this.curUrl.includes("www.zhipin.com/web/geek/job") || this.curUrl.includes("overseas")) {
-            let promise = __vitePreload(() => module.import('./BossJobList-C2Uw5Jd8-CERBdFkU.js'), void 0 );
+            let promise = __vitePreload(() => module.import('./BossJobList-9egjnvjR-C3Mj2drM.js'), void 0 );
             return promise.then((item) => item.default);
           }
         }
@@ -79523,8 +81144,8 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
             if (!value) {
               return "";
             }
-            const date4 = new Date(value);
-            return Number.isNaN(date4.getTime()) ? value : date4.toLocaleString("zh-CN", { hour12: false });
+            const date5 = new Date(value);
+            return Number.isNaN(date5.getTime()) ? value : date5.toLocaleString("zh-CN", { hour12: false });
           };
           const queryBetaAccess = async () => {
             betaLoading.value = true;
@@ -81424,7 +83045,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
             return data;
           }
           logger$1.debug("发送消息解码内容：", msgText);
-          if (msgText.endsWith(Tools.getEndChar()) || filter(msgText, wsData, toUid)) {
+          if (msgText.endsWith(Tools.getEndChar()) || filter2(msgText, wsData, toUid)) {
             return data;
           }
           let bossUserCache = BossOption.getBossUserInfoByCache(toUid);
@@ -81509,7 +83130,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
           });
         });
       }
-      function filter(msg, wsData, toUid) {
+      function filter2(msg, wsData, toUid) {
         if (SendStateTracker.isTrackedAutomaticOutbound(msg, wsData, toUid)) {
           return true;
         }
@@ -81751,7 +83372,7 @@ System.register("./__monkey.entry-CI7m07ZF.js", [], (function (exports, module) 
   };
 }));
 
-System.register("./BossMessage-DWqFrvpt-Da3yDN0A.js", ['./__monkey.entry-CI7m07ZF.js'], (function (exports, module) {
+System.register("./BossMessage-CG1Jmub1-CwO3QDeb.js", ['./__monkey.entry-B2HwTzJQ.js'], (function (exports, module) {
   'use strict';
   var _export_sfc, defineComponent, UserStore, ref, computed, onMounted, onUnmounted, openBlock, createElementBlock, createBaseVNode, createVNode, withCtx, normalizeClass, createTextVNode, toDisplayString, createBlock, createCommentVNode, Fragment, ConversationPauseRegistry, AiPower, parseAiSeatRuntimeStatus, getAiSeatStatusRevision, rememberAiSeatStatus, ElMessage, ElTag, ElButton, pushScopeId, popScopeId, BossOption;
   return {
@@ -81928,7 +83549,7 @@ System.register("./BossMessage-DWqFrvpt-Da3yDN0A.js", ['./__monkey.entry-CI7m07Z
   };
 }));
 
-System.register("./BossJobList-C2Uw5Jd8-CERBdFkU.js", ['./__monkey.entry-CI7m07ZF.js'], (function (exports, module) {
+System.register("./BossJobList-9egjnvjR-C3Mj2drM.js", ['./__monkey.entry-B2HwTzJQ.js'], (function (exports, module) {
   'use strict';
   var defineComponent, openBlock, createBlock, _export_sfc, shallowRef, createElementBlock, createVNode, withCtx, Fragment, renderList, unref, createTextVNode, toDisplayString, createBaseVNode, resolveDynamicComponent, ElMenuItem, ElMenu, inject, ServerStore, ref, PushStatus, LogRecorder, LoginStore, pushResultCount, UserStore, watch, onUnmounted, isProdEnv, createCommentVNode, withDirectives, vShow, CircleCloseFilled, normalizeClass, reactive, Tools, onMounted, logger$1, isRef, userRemoteLoad, ElNotification, ElMessage, waitForBossIdentity, userSessionScope, isApplicationSessionReady, axios, fetchWithGM_request, applicationResponseError, isUserConfigReady, resumeImportErrorNotice, loginInterceptor, serializeAiSeatStatus, rememberAiSeatStatus, shouldApplyAiSeatRollback, ElText, ElBadge, ElTag, ElButton, ElIcon, ElTooltip, ElButtonGroup$1, ElInput, ElCard, ElInputNumber, ElSwitch, applyPersonalPreferenceDefaults, ElFormItem, ElCheckbox, ElOption, ElSelect, ElUpload, ElRadioButton, ElRadioGroup, ElForm, ElCol, ElTimePicker, ElRow, ElTableColumn, ElEmpty, ElTable, ElPagination, pushScopeId, popScopeId, userSnapshotStorageKey, TampermonkeyApi, createStaticVNode;
   return {
