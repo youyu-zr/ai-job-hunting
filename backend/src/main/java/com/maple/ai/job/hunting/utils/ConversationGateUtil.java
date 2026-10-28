@@ -100,6 +100,26 @@ public final class ConversationGateUtil {
         return false;
     }
 
+    private static final Pattern OUTBOUND_MOBILE = Pattern.compile("(?<!\\d)1[3-9]\\d(?:[\\s-]?\\d){8}(?!\\d)");
+    private static final Pattern OUTBOUND_EMAIL = Pattern.compile("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}");
+    private static final Pattern OUTBOUND_WECHAT = Pattern.compile(
+            "(?i)(?:微信号?|vx|wx|v信|weixin|wechat)\\s*[:：是为]?\\s*[A-Za-z][-_A-Za-z0-9]{5,19}");
+    private static final Pattern OUTBOUND_QQ = Pattern.compile("(?i)qq\\s*[:：号是为]?\\s*[1-9]\\d{4,11}");
+
+    /**
+     * AI 准备发出去的回复里是否带了具体联系方式（手机号、邮箱、微信号、QQ）。
+     * 只看具体号码/账号；「可以加微信沟通」这类说法不算。
+     */
+    public static boolean containsOutboundContact(String answer) {
+        if (StringUtils.isBlank(answer)) {
+            return false;
+        }
+        return OUTBOUND_MOBILE.matcher(answer).find()
+                || OUTBOUND_EMAIL.matcher(answer).find()
+                || OUTBOUND_WECHAT.matcher(answer).find()
+                || OUTBOUND_QQ.matcher(answer).find();
+    }
+
     public static boolean isContactExchangeQuestion(String question) {
         if (StringUtils.isBlank(question)) {
             return false;

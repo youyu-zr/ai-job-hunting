@@ -171,6 +171,9 @@ public class PreferenceEntity {
     /** 普通营销推广消息是否允许自动回复，默认关闭。 */
     private boolean marketingReplyE;
 
+    /** AI 回复里是否允许带出手机号/微信号/邮箱，默认关闭：命中就不发，交给本人确认。 */
+    private boolean contactShareE;
+
     /** Editable guidance for promotion types the user does not want answered. */
     private String promotionReplyPolicy;
 

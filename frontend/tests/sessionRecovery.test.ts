@@ -65,3 +65,11 @@ test('unread scanner self-heals: relogin, watchdog, wake on visible', () => {
     assert.match(source, /visibilitychange[\s\S]{0,120}visibilityState === 'visible'/);
     assert.match(source, /if \(BossOption\.unreadScanStartedAt === scanStartedAt\)/);
 });
+
+test('contact sharing is an explicit, default-off switch on the preference page', () => {
+    const page = readFileSync(new URL('../src/components/ui/Preference.vue', import.meta.url), 'utf8');
+    const remote = readFileSync(new URL('../src/stores/remote.ts', import.meta.url), 'utf8');
+    assert.match(page, /v-model="userStore\.user\.preference\.contactShareE"/);
+    assert.match(page, /preference\.contactShareE = preference\.contactShareE \?\? false/);
+    assert.match(remote, /preference\.contactShareE = preference\.contactShareE \?\? false/);
+});

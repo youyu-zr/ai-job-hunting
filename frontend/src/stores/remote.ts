@@ -147,6 +147,7 @@ function applyPreferenceDefaults(preference: PreferenceConfig): void {
     preference.locationMismatchThreshold = preference.locationMismatchThreshold || 2;
     preference.communicationStyle = preference.communicationStyle || 'NATURAL';
     preference.marketingReplyE = preference.marketingReplyE ?? false;
+    preference.contactShareE = preference.contactShareE ?? false;
     preference.afE = preference.afE ?? true;
     preference.jceE = preference.jceE ?? false;
     preference.jce = Array.isArray(preference.jce) ? preference.jce : [];

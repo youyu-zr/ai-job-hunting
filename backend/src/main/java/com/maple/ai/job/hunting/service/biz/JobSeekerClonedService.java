@@ -298,6 +298,14 @@ public class JobSeekerClonedService {
             return new JobSeekerClonedResultVO(JobSeekerClonedAnswerTypeEnum.STOP, "", "NO_REPLY_CONTENT");
         }
         if (answerTypeList.contains(JobSeekerClonedAnswerTypeEnum.MSG_TEXT.getCode())
+                && preferenceEntityOpt.filter(PreferenceEntity::isContactShareE).isEmpty()
+                && ConversationGateUtil.containsOutboundContact(answer)) {
+            // 用户没允许发联系方式：AI 回复里出现具体号码/账号就不发，暂停本岗位等本人处理。
+            log.info("AI回复包含具体联系方式且用户未允许，暂停等待本人确认 jobKey:{} userId:{} answerLength:{}",
+                    safeLogValue(jobKey), userId, textLength(answer));
+            return pauseForUserConfirmation(jobKey);
+        }
+        if (answerTypeList.contains(JobSeekerClonedAnswerTypeEnum.MSG_TEXT.getCode())
                 && isRepeatedAnswer(jobKey, answer)) {
             log.info("AI回复命中已发送答案去重，停止发送 jobKey:{} userId:{} answerLength:{}", safeLogValue(jobKey), userId, textLength(answer));
             return new JobSeekerClonedResultVO(JobSeekerClonedAnswerTypeEnum.STOP, "", "DUPLICATE_REPLY");

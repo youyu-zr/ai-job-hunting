@@ -326,6 +326,24 @@
             <el-text type="info" size="small" class="section-hint">
                 默认不回复营销引流消息；正常岗位职责里出现“推广”“市场”“销售”等词，不会单独触发静默。
             </el-text>
+            <el-form-item>
+                <el-checkbox
+                    style="padding-top: 6px"
+                    v-model="userStore.user.preference.contactShareE"
+                    label=""
+                    size="large"
+                >允许AI在回复里发出我的联系方式</el-checkbox>
+                <el-tooltip
+                    effect="dark"
+                    placement="top"
+                    content="默认关闭。关闭时，AI 写好的回复里只要出现具体的手机号、微信号、邮箱或 QQ 号，这条就不发，并暂停这个岗位的会话，等你自己回复。只说“可以加微信沟通”这类话不受影响。"
+                >
+                    <el-text type="primary" style="cursor: help;">查看规则</el-text>
+                </el-tooltip>
+            </el-form-item>
+            <el-text type="info" size="small" class="section-hint">
+                不确定就保持关闭：防止 AI 把简历里的手机号直接发给陌生 HR。想让 AI 主动留联系方式再打开。
+            </el-text>
 
             <el-form-item>
                 <el-button type="primary" @click="submitForm(ruleFormRef)">保存偏好设置</el-button>
@@ -558,6 +576,7 @@ const preferenceDefaultValueHandler = () => {
     preference.targetCities = Array.isArray(preference.targetCities) ? preference.targetCities : [];
     preference.locationMismatchThreshold = preference.locationMismatchThreshold || 2;
     preference.marketingReplyE = preference.marketingReplyE ?? false;
+    preference.contactShareE = preference.contactShareE ?? false;
     if (!userStore.user.preference.communicationStyle) {
         userStore.user.preference.communicationStyle = 'NATURAL';
     }

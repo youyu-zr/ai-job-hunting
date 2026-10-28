@@ -75,6 +75,32 @@ class JobSeekerClonedServiceMessageDecisionTest {
     }
 
     @Test
+    void anAnswerLeakingAPhoneNumberIsHeldUnlessTheUserAllowsIt() {
+        Fixture fixture = new Fixture();
+        fixture.preference(new PreferenceEntity());
+        fixture.triageResult(Category.NORMAL_JOB, Action.REPLY);
+        fixture.ai.nextAnswer = "可以的，我的电话是 138 0013 8000，随时联系。";
+
+        JobSeekerClonedResultVO held = fixture.ask("方便留个电话吗？", "job-phone-held", 1);
+
+        assertEquals("USER_CONFIRMATION_REQUIRED", held.getStopReason());
+        assertEquals("", held.getAnswerContent());
+        assertEquals(List.of("job-phone-held:true"), fixture.sessions.pausedJobs);
+
+        Fixture allowed = new Fixture();
+        PreferenceEntity share = new PreferenceEntity();
+        share.setContactShareE(true);
+        allowed.preference(share);
+        allowed.triageResult(Category.NORMAL_JOB, Action.REPLY);
+        allowed.ai.nextAnswer = "可以的，我的电话是 13800138000。";
+
+        JobSeekerClonedResultVO sent = allowed.ask("方便留个电话吗？", "job-phone-allowed", 1);
+
+        assertEquals("可以的，我的电话是 13800138000。", sent.getAnswerContent());
+        assertTrue(allowed.sessions.pausedJobs.isEmpty());
+    }
+
+    @Test
     void missingUserPreferencesDoNotPauseAnOrdinaryInquiry() {
         Fixture fixture = new Fixture();
         fixture.preference(null);
@@ -645,6 +671,7 @@ class JobSeekerClonedServiceMessageDecisionTest {
         private final AtomicInteger sessionChatCalls = new AtomicInteger();
         private boolean failNextChat;
         private Runnable beforeSessionChat;
+        private String nextAnswer;
 
         @Override
         public ChatSessionResult sessionChat(String sessionId, String ask) {
@@ -658,7 +685,7 @@ class JobSeekerClonedServiceMessageDecisionTest {
                 result.setAnswerStatus(JobSeekerClonedAnswerTypeEnum.AI_SERVICE_EXCEPTION);
                 return result;
             }
-            result.setAnswer("好的，我们先了解一下岗位安排。");
+            result.setAnswer(nextAnswer != null ? nextAnswer : "好的，我们先了解一下岗位安排。");
             return result;
         }
     }
