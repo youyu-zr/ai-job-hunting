@@ -1,6 +1,5 @@
 import {LoginStore, UserStore} from "./index";
 import {PreferenceConfig} from "./types";
-import {ProductStore} from "./index";
 import {ServerStore} from "./server";
 import {TampermonkeyApi, Tools} from "../platform/utils";
 import logging from "../logging";
@@ -307,17 +306,6 @@ export async function userRemoteLoad(options: UserRemoteLoadOptions = {}): Promi
         }
         profileLoaded = applyUserConfig(resp?.data?.data, requestStartedAt, requestContext, options);
 
-        const betaResp = await axios.get("/api/beta/access").catch(error => {
-            logRecorder.warn("beta access load failed", error?.message || error);
-            return null;
-        });
-        if (!contextIsCurrent()) {
-            return;
-        }
-        const betaAccess = betaResp?.data?.data;
-        if (betaAccess?.activationEnabled && !betaAccess?.accessActive && !betaAccess?.betaActivated) {
-            ProductStore().setShowProduct(true);
-        }
         logRecorder.info("loaded server config");
         loginRetryCount = 0;
     } catch (error: any) {

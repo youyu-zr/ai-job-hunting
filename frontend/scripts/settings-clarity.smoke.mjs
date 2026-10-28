@@ -1,9 +1,8 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {existsSync, readFileSync} from 'node:fs';
 import {deferred, importHarness} from '../tests/helpers/resumeImportHarness.ts';
 
 const panel = readFileSync(new URL('../src/components/ui/Panel.vue', import.meta.url), 'utf8');
-const invitationExchange = readFileSync(new URL('../src/components/ui/InvitationExchange.vue', import.meta.url), 'utf8');
 const betaDialog = readFileSync(new URL('../src/components/ui/Product.vue', import.meta.url), 'utf8');
 const aiJob = readFileSync(new URL('../src/components/ui/AiJob.vue', import.meta.url), 'utf8');
 const preference = readFileSync(new URL('../src/components/ui/Preference.vue', import.meta.url), 'utf8');
@@ -30,9 +29,9 @@ assert.match(betaDialog, /无需导入简历；开始投递或开启 AI 坐席�
 assert.match(aiJob, /完成后才能开始投递或开启 AI 坐席/);
 assert.doesNotMatch(betaDialog, /请输入内测激活码|激活内测|\/api\/beta\/activate/);
 
-assert.match(invitationExchange, /\/api\/beta\/access/);
-assert.match(invitationExchange, /内测有效至/);
-assert.match(invitationExchange, /formatDate/);
+// 邀请兑换页已删除：免费不设到期，不再展示「内测有效至」，登录时也不再查内测状态。
+assert.equal(existsSync(new URL('../src/components/ui/InvitationExchange.vue', import.meta.url)), false);
+assert.doesNotMatch(readFileSync(new URL('../src/stores/remote.ts', import.meta.url), 'utf8'), /\/api\/beta\/access/);
 
 assert.match(aiJob, /const resumeImportStatus = ref\(userStore\.user\.resumeId \? '成功导入简历' : '未成功导入简历'\);/);
 assert.doesNotMatch(aiJob, /const resumeImportStatus = computed\(\(\) => userStore\.user\.resumeId/);

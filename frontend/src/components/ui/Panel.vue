@@ -22,7 +22,6 @@ import {shallowRef} from "vue";
 import {isProdEnv} from "../../utils/tools";
 import Test from "../test/Test.vue";
 import ReadMe from "./UseDocument.vue";
-import InvitationExchange from "./InvitationExchange.vue";
 
 interface Comp {
     component: any;
@@ -37,7 +36,6 @@ const componentMap = new Map<string, Comp>();
 componentMap.set('1', {component: AiJob, name: 'AI 助手'});
 componentMap.set('2', {component: Preference, name: '偏好设置'});
 componentMap.set('3', {component: RunRecord, name: '运行记录'});
-componentMap.set('4', {component: InvitationExchange, name: '邀请兑换'});
 componentMap.set('5', {component: ReadMe, name: '使用文档'});
 if (!isProdEnv()) {
     componentMap.set('6', {component: Test, name: '调试测试'});
