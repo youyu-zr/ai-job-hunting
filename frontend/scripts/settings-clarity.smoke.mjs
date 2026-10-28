@@ -89,5 +89,8 @@ assert.match(preferenceTypes, /promotionReplyPolicy\?: string/);
 assert.match(remote, /marketingReplyE\s*=\s*preference\.marketingReplyE\s*\?\?\s*false/);
 assert.match(preferenceDefaults, /不因岗位名称或单个词被过滤/);
 assert.match(preference, /薪资、地点、联系方式、合同、加班和出差按上方的个人偏好判断/);
+assert.match(preference, /停下来叫我/);
+assert.match(preference, /STOP_EVENT_ROWS/);
+assert.match(preference, /薪资底线和不投的公司只用来筛岗位，不会发给 HR/);
 
 console.log('settings clarity smoke: PASS');

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
+import com.maple.ai.job.hunting.utils.StructuredPreferenceText;
 import com.maple.ai.job.hunting.consts.AIPromptStrConstant;
 import com.maple.ai.job.hunting.model.entity.PreferenceEntity;
 import com.maple.ai.job.hunting.model.vo.MessageTriageResultVO;
@@ -331,6 +332,7 @@ public class MessageTriageService {
         values.put("salaryRange", preference.getSr());
         values.put("resumeCity", preference.getResumeCity());
         values.put("targetCities", preference.getTargetCities());
+        values.put("structuredPreference", StructuredPreferenceText.forReply(preference));
         try {
             String json = SAFE_JSON.writeValueAsString(values);
             // 偏好写得很长时，逐步截短每个文字字段，而不是让整条消息分诊失败。

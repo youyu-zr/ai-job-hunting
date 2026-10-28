@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
+import com.maple.ai.job.hunting.utils.StructuredPreferenceText;
 import com.maple.ai.job.hunting.common.HeaderContext;
 import com.maple.ai.job.hunting.consts.AIPromptStrConstant;
 import com.maple.ai.job.hunting.emums.BizCodeEnum;
@@ -289,6 +290,19 @@ public class JobFilterService {
                 copyText(source, view, "resumeCity");
                 copyValue(source, view, "targetCities");
                 copyValue(source, view, "locationMismatchThreshold");
+            }
+            // 偏好页 v3 的结构化条件（住址通勤、薪资区间与底线、想做/不做、其他底线、屏蔽公司）。
+            // 某个字段类型不对时只跳过这块，不让整次筛选失败。
+            String structured;
+            try {
+                structured = StructuredPreferenceText.forScreening(
+                        com.alibaba.fastjson.JSON.parseObject(rawPreference,
+                                com.maple.ai.job.hunting.model.entity.PreferenceEntity.class));
+            } catch (RuntimeException e) {
+                structured = "";
+            }
+            if (StringUtils.isNotBlank(structured)) {
+                view.put("structuredPreference", structured);
             }
             return SAFE_JSON.writeValueAsString(view);
         } catch (ApplicationException e) {

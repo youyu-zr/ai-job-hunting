@@ -151,6 +151,19 @@ function applyPreferenceDefaults(preference: PreferenceConfig): void {
     preference.jceE = preference.jceE ?? false;
     preference.jce = Array.isArray(preference.jce) ? preference.jce : [];
     preference.drpV = preference.drpV || DEFAULT_RISK_PACK_VERSION;
+    // 偏好页 v3：服务端返回的旧配置没有这些字段时补默认值，和服务端 StopEventPolicy 的默认一致，
+    // 否则「停下来叫我」的单选框会一个都没选中，界面和实际行为对不上。
+    for (const key of ['wantTags', 'avoidTags', 'dealbreakers', 'blockedCompanies'] as const) {
+        preference[key] = Array.isArray(preference[key]) ? preference[key] : [];
+    }
+    preference.arrivalTime = preference.arrivalTime || '';
+    preference.stopInterview = preference.stopInterview || 'PAUSE';
+    preference.stopOffer = preference.stopOffer || 'PAUSE';
+    preference.stopSalary = preference.stopSalary || 'PAUSE';
+    preference.stopContact = preference.stopContact || (preference.contactShareE ? 'ALLOW' : 'PAUSE');
+    preference.stopPersonal = preference.stopPersonal || 'PAUSE';
+    preference.stopResume = preference.stopResume || 'ALLOW';
+    preference.holdReplyE = preference.holdReplyE ?? true;
     applyPersonalPreferenceDefaults(preference);
 }
 

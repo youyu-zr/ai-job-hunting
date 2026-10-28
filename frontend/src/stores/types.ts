@@ -130,6 +130,30 @@ export type PreferenceConfig = {
     contactShareE?: boolean,
     /** Editable guidance for promotion types the user does not want answered. */
     promotionReplyPolicy?: string,
+    /** 偏好页 v3 结构化条件（null/空 = 没填，不替用户假设）。 */
+    homeCity?: string,
+    homeArea?: string,
+    commuteMaxMinutes?: number | null,
+    remoteOk?: boolean | null,
+    relocateOk?: boolean | null,
+    salaryMinK?: number | null,
+    salaryMaxK?: number | null,
+    /** 底线只用于筛岗位，不会发给 HR，也不会交给聊天 AI。 */
+    salaryFloorK?: number | null,
+    wantTags?: string[],
+    avoidTags?: string[],
+    dealbreakers?: string[],
+    blockedCompanies?: string[],
+    arrivalTime?: string,
+    /** 停下来叫我：PAUSE 停下叫我 / DECLINE 先婉拒或问清 / ALLOW 让 AI 处理；空 = 默认。 */
+    stopInterview?: string,
+    stopOffer?: string,
+    stopSalary?: string,
+    stopContact?: string,
+    stopResume?: string,
+    stopPersonal?: string,
+    /** 停下时先替我回一句「收到，我确认一下」，默认开。 */
+    holdReplyE?: boolean | null,
     /**
      * 投递间隔时间（秒）
      */
