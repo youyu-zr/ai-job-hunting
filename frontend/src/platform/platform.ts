@@ -18,6 +18,7 @@ import {AiPower} from "./aiPower";
 import {SendStateTracker, SendTraceContext} from "./sendState";
 import {AiFilterDecision, aiFilterAction, aiFilterBlockReason, compactAiFilterReason, formatAiFilterReasonForDelivery, shouldBlockAfterAiFilter, shouldRetryAfterAiFilter} from "./filterGate";
 import {evaluateLocationConsistency, readSearchCity} from "./locationGuard";
+import {checkHardConditions, matchesExcludeList} from "./hardConditions";
 import {ElMessage} from "../utils/tools";
 import {ElNotification} from "element-plus";
 import {formatAiFilterSummary, formatDeliverySuccessLog} from "../logging/presentation";
@@ -443,8 +444,24 @@ class BossPlatform extends AbsPlatform {
             throw new NotMatchException(jobTitle, jobDetail.bossOnline, '仅投递在线boss')
         }
 
+        // 硬条件（不投的公司、坚决不做、薪资底线）不依赖 AI，任何模式下都先查，查到就不花 AI 调用。
+        const hardHit = checkHardConditions(userStore.user.preference, jobDetail, {semanticScreeningEnabled});
+        if (hardHit) {
+            throw new NotMatchException(jobTitle, hardHit.data, hardHit.reason)
+        }
+        // 「公司名排除」「工作名排除」是用户亲手勾选的黑名单，语义模式下也执行（以前只在关闭 AI 过滤时生效，勾了却没用）。
+        // 改为单向匹配：页面名字包含词条才算；页面名字为空、词条只有一个字时不算。
+        if (userStore.user.preference.cneE && matchesExcludeList(userStore.user.preference.cne, jobDetail.brandName)) {
+            throw new NotMatchException(jobTitle, jobDetail.brandName, '满足排除公司名')
+        }
+        // 工作名排除和「坚决不做」一样：开着 AI 时字面匹配会误杀「售前技术支持(非销售)」这类岗位，只在关闭 AI 时执行。
+        if (!semanticScreeningEnabled && userStore.user.preference.jneE
+            && matchesExcludeList(userStore.user.preference.jne, jobDetail.jobName)) {
+            throw new NotMatchException(jobTitle, jobDetail.jobName, '满足排除工作名')
+        }
+
         // In semantic mode the complete job, company, salary and requirements are
-        // sent to the server AI. Legacy include/exclude fields stay available for
+        // sent to the server AI. Legacy include fields and ranges stay available for
         // users who explicitly disable semantic screening.
         if (!semanticScreeningEnabled) {
             const companyNameInclude: string[] = userStore.user.preference.cni;
@@ -452,19 +469,9 @@ class BossPlatform extends AbsPlatform {
                 throw new NotMatchException(jobTitle, jobDetail.brandName, '不满足配置公司名')
             }
 
-            const companyNameExclude: string[] = userStore.user.preference.cne;
-            if (userStore.user.preference.cneE && Tools.fuzzyMatch(companyNameExclude, jobDetail.brandName, false)) {
-                throw new NotMatchException(jobTitle, jobDetail.brandName, '满足排除公司名')
-            }
-
             const jobNameInclude: string[] = userStore.user.preference.jni;
             if (userStore.user.preference.jniE && !Tools.fuzzyMatch(jobNameInclude, jobDetail.jobName, true)) {
                 throw new NotMatchException(jobTitle, jobDetail.jobName, '不满足配置工作名')
-            }
-
-            const jobNameExclude: string[] = userStore.user.preference.jne;
-            if (userStore.user.preference.jneE && Tools.fuzzyMatch(jobNameExclude, jobDetail.jobName, false)) {
-                throw new NotMatchException(jobTitle, jobDetail.jobName, '满足排除工作名')
             }
 
             const pageSalaryRange = jobDetail.salaryDesc;
@@ -493,29 +500,42 @@ class BossPlatform extends AbsPlatform {
         if (!this.bossIsActive(activeTimeDesc)) {
             throw new NotMatchException(jobTitle, activeTimeDesc, '不满足活跃度检查')
         }
+        // 详情接口的沟通状态比列表页新；在调用 AI 之前查，已经沟通过的岗位不再花一次 AI 筛选。
+        if (this.isCommunication(jobDetailExt)) {
+            throw new NotMatchException(jobTitle, jobDetailExt.friendStatus, '已经沟通过')
+        }
 
         let filterResult: AiFilterDecision | null = null;
         // AI is the primary semantic gate. Personal content keyword lists are
         // only used when this optional AI gate is explicitly disabled.
         if (semanticScreeningEnabled) {
-            const screeningPrompt = this.buildSemanticScreeningPrompt();
-            let filterResp;
-            try {
-                filterResp = await AiPower.filter(
-                    screeningPrompt,
-                    JSON.stringify(this.unpackBaseInfo(jobDetail)),
-                    JSON.stringify(this.unpackExtInfo(jobDetailExt)),
-                );
-            } catch (error) {
-                jobDetail.processed = false;
-                throw normalizeAiFilterFailure(error);
+            // 同一岗位刚筛过（比如上一轮因网络中断）就复用结果，不重复调用。
+            const cachedDecision = AiPower.getCachedFilterDecision(jobDetail);
+            const fromCache = Boolean(cachedDecision) && !shouldRetryAfterAiFilter(cachedDecision);
+            filterResult = fromCache ? cachedDecision : null;
+            if (!fromCache) {
+                const screeningPrompt = this.buildSemanticScreeningPrompt();
+                let filterResp;
+                try {
+                    filterResp = await AiPower.filter(
+                        screeningPrompt,
+                        JSON.stringify(this.unpackBaseInfo(jobDetail)),
+                        JSON.stringify(this.unpackExtInfo(jobDetailExt)),
+                    );
+                } catch (error) {
+                    jobDetail.processed = false;
+                    throw normalizeAiFilterFailure(error);
+                }
+                filterResult = filterResp ? filterResp?.data?.data : null;
             }
-            filterResult = filterResp ? filterResp?.data?.data : null;
             if (shouldRetryAfterAiFilter(filterResult)) {
                 jobDetail.processed = false;
                 throw new AiFilterProcessingError();
             }
-            AiPower.rememberFilterDecision(jobDetail, filterResult);
+            if (!fromCache) {
+                // 只记新结果：缓存命中时不再写一次，免得有效期被一直往后推。
+                AiPower.rememberFilterDecision(jobDetail, filterResult);
+            }
             this.showAiJobDecision(jobDetail, jobDetailExt, filterResult);
             if (shouldBlockAfterAiFilter(filterResult)) {
                 throw new NotMatchException(jobTitle, filterResult, aiFilterBlockReason(filterResult))

@@ -205,7 +205,11 @@ public class JobSeekerClonedService {
         // The browser performs the shared per-job AI assessment before this
         // request. Keep the server boundary authoritative so an old or
         // duplicated client cannot turn an ambiguous job into an AI reply.
-        Pair<Boolean, JobSeekerClonedResultVO> aiJobGatePair = preAskAiJobGate(jobSeekerClonedParam, jobKey);
+        // 偏好或简历变了（比如新加了屏蔽公司），放行记忆就作废，重新判断。
+        String profileFingerprint = JSON.toJSONString(preferenceEntityOpt.orElse(null)).hashCode()
+                + ":" + resumeContent.hashCode();
+        Pair<Boolean, JobSeekerClonedResultVO> aiJobGatePair =
+                preAskAiJobGate(jobSeekerClonedParam, jobKey, profileFingerprint);
         if (aiJobGatePair.getKey()) {
             return aiJobGatePair.getValue();
         }
@@ -404,7 +408,21 @@ public class JobSeekerClonedService {
     private boolean rememberDecline(String jobKey, StopEventPolicy.Event event) {
         long now = System.currentTimeMillis();
         declinedOnce.entrySet().removeIf(entry -> now - entry.getValue() > 24L * 60 * 60 * 1000);
-        return declinedOnce.putIfAbsent(jobKey + "|" + event, now) == null;
+        // 带上用户：不同用户可能和同一个岗位聊天，不能共用「已婉拒过一次」。
+        return declinedOnce.putIfAbsent(HeaderContext.getHeader().getUserId() + "|" + jobKey + "|" + event, now) == null;
+    }
+
+    /**
+     * 岗位闸门放行结果的短期记忆（用户+岗位+岗位内容）。同一个岗位的后续每条 HR 消息不再重复调一次岗位 AI；
+     * 只记「放行」，拦截和失败照常每次走一遍。岗位内容变了（指纹不同）就重新判断。
+     */
+    private static final long JOB_GATE_PASS_TTL_MS = 6L * 60 * 60 * 1000;
+    private final java.util.concurrent.ConcurrentHashMap<String, Long> jobGatePassed =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    private String jobGatePassKey(String jobKey, String jobTitle, String jobContext, String profileFingerprint) {
+        return HeaderContext.getHeader().getUserId() + "|" + jobKey + "|" + (jobTitle + "\n" + jobContext).hashCode()
+                + "|" + profileFingerprint;
     }
 
     /** 停下叫你：暂停本会话，按设置先回一句不做承诺的过渡话，并提醒用户。 */
@@ -634,7 +652,7 @@ public class JobSeekerClonedService {
     }
 
     private Pair<Boolean, JobSeekerClonedResultVO> preAskAiJobGate(
-            JobSeekerClonedParam jobSeekerClonedParam, String jobKey) {
+            JobSeekerClonedParam jobSeekerClonedParam, String jobKey, String profileFingerprint) {
         JSONObject jobInfo = jobSeekerClonedParam.getJobInfo();
         AiFilterResultVO decision;
         if (shouldContinueChatWithoutJobGate(jobInfo)) {
@@ -646,6 +664,12 @@ public class JobSeekerClonedService {
         String jobContext = StringUtils.defaultString(jobInfo.getString("jobContext"));
         if (StringUtils.isBlank(jobContext)) {
             jobContext = StringUtils.defaultString(jobInfo.getString("visibleJobCard"));
+        }
+        String passKey = jobGatePassKey(jobKey, jobTitle, jobContext, profileFingerprint);
+        long now = System.currentTimeMillis();
+        Long passedAt = jobGatePassed.get(passKey);
+        if (passedAt != null && now - passedAt < JOB_GATE_PASS_TTL_MS) {
+            return Pair.of(false, null);
         }
         decision = jobFilterService.filter(new AIFilterParam(
                 "结合岗位、简历和已保存的求职条件判断是否继续投递。岗位资料不完整且没有明确风险或硬条件冲突时继续投递，并列出需要后续确认的问题。",
@@ -659,6 +683,8 @@ public class JobSeekerClonedService {
         }
         if (isSafeAiJobAction(filtered, action, risk)) {
             msgSessionService.trySetAiJobGateStop(jobKey, false);
+            jobGatePassed.entrySet().removeIf(entry -> now - entry.getValue() > JOB_GATE_PASS_TTL_MS);
+            jobGatePassed.put(passKey, now);
             return Pair.of(false, null);
         }
         String reason = decision == null ? "没有拿到岗位AI分析结果" : StringUtils.defaultIfBlank(decision.getReason(), "岗位需要人工确认");

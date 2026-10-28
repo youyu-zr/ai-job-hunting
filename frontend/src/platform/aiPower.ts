@@ -2,7 +2,7 @@ import axiosOriginal from "axios";
 import axios from "../axios";
 import logger from "../logging";
 import {Tools} from "./utils";
-import {AiFilterDecision, aiFilterAction, compactAiFilterReason, shouldBlockConversationPreflight} from "./filterGate";
+import {AiFilterDecision, aiFilterAction, compactAiFilterReason, shouldBlockConversationPreflight, shouldRetryAfterAiFilter} from "./filterGate";
 import {readFriendSource} from "./friendSource";
 import {ConversationPauseRegistry} from "./pauseRegistry";
 import {userSnapshotStorageKey} from "../stores/userSnapshotKey";
@@ -345,7 +345,10 @@ export class AiPower {
             JSON.stringify({postDescription: visibleJobCard}),
         );
         const result = response?.data?.data;
-        this.rememberFilterDecision(bossUserInfo, result);
+        // 分析失败（可重试）的结果不缓存，否则投递那边 10 分钟内都会直接读到失败。
+        if (!shouldRetryAfterAiFilter(result)) {
+            this.rememberFilterDecision(bossUserInfo, result);
+        }
         return response;
     }
 

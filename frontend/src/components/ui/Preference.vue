@@ -293,7 +293,7 @@
                     AI 过滤(语义匹配)
                     </el-tooltip>
                 </template>
-                <el-text type="info" size="small">默认开启。系统会结合岗位、公司、简历和你的个人要求综合判断；不按单个岗位词直接过滤。只有需要关闭或调整时才操作这里。</el-text>
+                <el-text type="info" size="small">默认开启。系统会结合岗位、公司、简历和你的个人要求综合判断；不按单个岗位词直接过滤。「不投的公司」「薪资底线」和勾选的「公司名排除」不管开没开都会先执行；「坚决不做」「工作名排除」开着时由 AI 结合岗位内容判断。</el-text>
             </el-form-item>
 
             <el-form-item label="招呼语补充要求（个人可选）" prop="jobContentExclude">

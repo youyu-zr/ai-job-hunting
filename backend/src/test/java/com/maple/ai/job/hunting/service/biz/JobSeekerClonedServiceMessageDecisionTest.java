@@ -454,6 +454,32 @@ class JobSeekerClonedServiceMessageDecisionTest {
     }
 
     @Test
+    void passedJobGateIsReusedForLaterMessagesOnTheSameJob() {
+        Fixture fixture = new Fixture();
+        fixture.triageResult(Category.NORMAL_JOB, Action.REPLY);
+        fixture.jobFilter.decision = AiFilterResultVO.builder()
+                .filter(false).recommendedAction("DELIVER").riskLevel("LOW").build();
+        JSONObject jobInfo = new JSONObject();
+        jobInfo.put("jobTitle", "开发工程师");
+
+        fixture.ask("请介绍一下项目经历", "job-gate-reuse", 1, jobInfo);
+        fixture.ask("你们用什么技术栈？", "job-gate-reuse", 1, jobInfo);
+        assertEquals(1, fixture.jobFilter.calls.get(), "second message on the same job should not re-run the job AI");
+
+        JSONObject changed = new JSONObject();
+        changed.put("jobTitle", "开发工程师");
+        changed.put("jobContext", "岗位描述更新：需要先交培训费");
+        fixture.ask("还有别的要求吗？", "job-gate-reuse", 1, changed);
+        assertEquals(2, fixture.jobFilter.calls.get(), "changed job content must be screened again");
+
+        PreferenceEntity stricter = new PreferenceEntity();
+        stricter.setBlockedCompanies(List.of("示例科技"));
+        fixture.preference(stricter);
+        fixture.ask("什么时候能面试？", "job-gate-reuse", 1, changed);
+        assertEquals(3, fixture.jobFilter.calls.get(), "changed preferences must be screened again");
+    }
+
+    @Test
     void chatFailureResultReleasesReservationSoIdenticalMessageCanRecover() {
         Fixture fixture = new Fixture();
         fixture.triageResult(Category.NORMAL_JOB, Action.REPLY);

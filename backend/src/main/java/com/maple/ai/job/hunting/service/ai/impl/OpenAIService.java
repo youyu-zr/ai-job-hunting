@@ -178,9 +178,14 @@ public class OpenAIService extends AbstractAIService {
 
     @Override
     public String askAndAnswer(String systemPrompt, String userPrompt) {
+        return askAndAnswer(systemPrompt, userPrompt, 0.0f);
+    }
+
+    @Override
+    public String askAndAnswer(String systemPrompt, String userPrompt, float temperature) {
         OpenAiChatClient client = getClient();
         try {
-            ChatResponse response = client.call(createRoleSeparatedPrompt(systemPrompt, userPrompt));
+            ChatResponse response = client.call(createRoleSeparatedPrompt(systemPrompt, userPrompt, temperature));
             Generation generation = response == null ? null : response.getResult();
             return generation == null || generation.getOutput() == null
                     ? ""
@@ -194,10 +199,14 @@ public class OpenAIService extends AbstractAIService {
     }
 
     static Prompt createRoleSeparatedPrompt(String systemPrompt, String userPrompt) {
+        return createRoleSeparatedPrompt(systemPrompt, userPrompt, 0.0f);
+    }
+
+    static Prompt createRoleSeparatedPrompt(String systemPrompt, String userPrompt, float temperature) {
         return new Prompt(List.of(
                 new SystemMessage(systemPrompt),
                 new UserMessage(userPrompt)),
-                OpenAiChatOptions.builder().withTemperature(0.0f).build());
+                OpenAiChatOptions.builder().withTemperature(temperature).build());
     }
 
     @Override
