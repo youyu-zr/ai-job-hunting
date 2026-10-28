@@ -4,7 +4,7 @@ import axios from '../axios'
 import {ElMessage as originalElMessage} from "element-plus";
 import {LogRecorder} from "../logging/record";
 import {GM_xmlhttpRequest} from "$";
-import {classifySilentLoginResponse, SilentLoginOutcome} from "./silentLoginState";
+import {classifySilentLoginResponse, silentLoginRefusalMessage, SilentLoginOutcome} from "./silentLoginState";
 import {
     clearScopedAuthorization,
     scopedAuthorization,
@@ -30,7 +30,14 @@ export async function silentlyLogin(
             accountId: String(bossUserId || "").trim(),
             token: bossToken
         }
-        : await waitForBossIdentity(() => Tools.window?._PAGE, bossUserId, 240, 250, currentBossToken);
+        : await waitForBossIdentity(
+            () => Tools.window?._PAGE,
+            bossUserId,
+            undefined,
+            undefined,
+            currentBossToken,
+            () => Tools.window?._PAGE
+        );
     const requestedAccountId = identity.accountId;
     const requestedServerUrl = ServerStore().baseUrl;
     const scope = userSessionScope(requestedAccountId, requestedServerUrl);
@@ -79,14 +86,20 @@ async function performSilentLogin(
             && pageToken === token;
     };
 
+    // Captured before the attempt so a failure can tell "the stored session is still the one that
+    // was working" apart from "this attempt had already replaced it". Comparing the stored value
+    // against the BOSS token instead compares two unrelated namespaces and never matches.
+    const authorizationBeforeAttempt = scopedAuthorization(sessionScope);
+
     try {
         if (!contextIsCurrent()) {
             throw new Error("BOSS账号或服务器已切换，请重试");
         }
         if (loginStore.login
             && loginStore.accountScope === sessionScope
-            && scopedAuthorization(sessionScope)
-            && loginStore.bossToken === token) {
+            && authorizationBeforeAttempt) {
+            // A live session for this scope is already proven; the BOSS cookie may have rotated
+            // since, which says nothing about whether the session is still valid.
             return "authenticated";
         }
         if (loginStore.accountScope !== sessionScope) {
@@ -103,10 +116,17 @@ async function performSilentLogin(
             throw new Error("BOSS账号或服务器已切换，请重试");
         }
         const outcome = classifySilentLoginResponse(resp);
+        if (outcome === "identity-refused") {
+            // The backend refused the identity and said why. Keep its words: it is the only place
+            // that knows whether this was an unregistered account or a rejected credential.
+            const refusal = silentLoginRefusalMessage(resp);
+            logRecorder.warn("静默登录被拒绝", refusal);
+            originalElMessage.warning({message: refusal, duration: 9000, showClose: true});
+            return outcome;
+        }
         if (outcome === "legacy-registration-required") {
-            const previousAuthorization = scopedAuthorization(sessionScope);
-            clearScopedAuthorization(sessionScope, token);
-            if (!previousAuthorization || previousAuthorization === token) {
+            clearScopedAuthorization(sessionScope, authorizationBeforeAttempt ?? undefined);
+            if (!authorizationBeforeAttempt) {
                 loginStore.loginFailForScope(sessionScope);
                 if (!loginStore.accountScope) {
                     loginStore.loginFail();
@@ -132,13 +152,42 @@ async function performSilentLogin(
             typeof e?.message === "string" ? e.message : "",
         ].filter(Boolean).join(" ") || (typeof e?.name === "string" ? e.name : "unknown");
         logRecorder.error("静默登录失败", details)
-        const authorizationWasCurrent = scopedAuthorization(sessionScope) === token;
-        clearScopedAuthorization(sessionScope, token);
-        if (contextIsCurrent() && authorizationWasCurrent) {
+        // Only a rejection that says something about the credential may drop a stored session.
+        // A rate limit, a timeout or a network blip says nothing about whether the session still
+        // works, and deleting it there is what left the panel stuck until the page was reloaded.
+        if (contextIsCurrent() && authorizationBeforeAttempt && isSessionRejectingFailure(e)) {
+            clearScopedAuthorization(sessionScope, authorizationBeforeAttempt);
             loginStore.loginFailForScope(sessionScope);
         }
         throw e;
     }
+}
+
+/**
+ * Whether this failure is evidence that the stored session itself was rejected.
+ *
+ * <p>Absence of an answer is not a rejection: 429, 5xx, timeouts and transport errors all mean
+ * "we could not ask", so the existing session must survive them.
+ */
+function isSessionRejectingFailure(error: any): boolean {
+    const status = Number(error?.response?.status);
+    if (status === 401 || status === 403) {
+        return true;
+    }
+    if (Number.isFinite(status) && status >= 500) {
+        return false;
+    }
+    // The backend reports "this identity is not valid" as 2003 in the body, sometimes with HTTP 200.
+    const code = Number(error?.response?.data?.code);
+    if (code === 2003) {
+        return true;
+    }
+    const transportCode = String(error?.code ?? "");
+    if (transportCode === "ERR_NETWORK" || transportCode === "ECONNABORTED" || transportCode === "ETIMEDOUT") {
+        return false;
+    }
+    // Unknown shapes: keep the session rather than gamble away a working one.
+    return false;
 }
 
 export const isProdEnv = (): boolean => {

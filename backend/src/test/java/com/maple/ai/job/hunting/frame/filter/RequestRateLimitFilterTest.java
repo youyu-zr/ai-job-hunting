@@ -158,15 +158,37 @@ class RequestRateLimitFilterTest {
 
     @ParameterizedTest
     @CsvSource({
-            "/api/user/silently/login,5",
-            "/api/user/import/resume,10",
-            "/api/job/filter/one,1"
+            "/api/job/filter/one,1",
+            "/api/job/seeker/cloned/ask,1"
     })
     void concurrencyRejectionIncludesAlreadyConsumedIdentityInterval(String uri, String retrySeconds) throws Exception {
         RequestRateLimitFilter filter = new RequestRateLimitFilter();
         ReflectionTestUtils.setField(filter, "activeModelRequests", new Semaphore(0));
 
         assertRateRejection(send(filter, request(uri, "synthetic-proof", null)), retrySeconds);
+    }
+
+    /**
+     * Login is not a model request. Letting it compete for a model slot means a busy AI queue locks
+     * users out of the product, which is worse than the concurrency it was meant to protect.
+     *
+     * <p>Resume import is deliberately NOT in this list: when local text extraction finds nothing
+     * usable it calls the model, so it must keep competing for the slot.
+     */
+    @Test
+    void exhaustedModelConcurrencyDoesNotBlockLogin() throws Exception {
+        RequestRateLimitFilter filter = new RequestRateLimitFilter();
+        ReflectionTestUtils.setField(filter, "activeModelRequests", new Semaphore(0));
+
+        assertEquals(200, send(filter, request("/api/user/silently/login", "synthetic-proof", null)).getStatus());
+    }
+
+    @Test
+    void resumeImportStillCompetesForAModelSlotBecauseItCanCallTheModel() throws Exception {
+        RequestRateLimitFilter filter = new RequestRateLimitFilter();
+        ReflectionTestUtils.setField(filter, "activeModelRequests", new Semaphore(0));
+
+        assertEquals(429, send(filter, request("/api/user/import/resume", "synthetic-proof", null)).getStatus());
     }
 
     @Test

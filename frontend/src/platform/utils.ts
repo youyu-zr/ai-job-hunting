@@ -83,12 +83,30 @@ export class Tools {
         return Math.floor(Math.random() * (endMs - startMs + 1)) + startMs;
     }
 
+    /**
+     * Reads a cookie value.
+     *
+     * A cookie value may legitimately contain '=' (base64 padding, JWT segments), so splitting on
+     * '=' and destructuring keeps only the first fragment and silently truncates the credential.
+     * Split on the first '=' instead. Decoding is also best-effort: a stray '%' in a value is not
+     * an encoding error worth aborting the caller for.
+     */
     public static getCookieValue(key: string) {
         const cookies = document.cookie.split(';');
         for (const cookie of cookies) {
-            const [cookieKey, cookieValue] = cookie.trim().split('=');
-            if (cookieKey === key) {
-                return decodeURIComponent(cookieValue);
+            const trimmed = cookie.trim();
+            const separator = trimmed.indexOf('=');
+            if (separator < 0) {
+                continue;
+            }
+            if (trimmed.slice(0, separator) !== key) {
+                continue;
+            }
+            const rawValue = trimmed.slice(separator + 1);
+            try {
+                return decodeURIComponent(rawValue);
+            } catch {
+                return rawValue;
             }
         }
         return null;

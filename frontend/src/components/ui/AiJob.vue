@@ -144,7 +144,7 @@ import {
     rememberAiSeatStatus,
     userRemoteLoad
 } from "../../stores/remote";
-import {waitForBossIdentity} from "../../utils/bossIdentity";
+import {waitForBossIdentity, INTERACTIVE_ATTEMPTS} from "../../utils/bossIdentity";
 import type {BossIdentity} from "../../utils/bossIdentity";
 import {userSessionScope} from "../../utils/sessionContext";
 import {applicationResponseError, resumeImportErrorNotice} from "../../utils/resumeImportError";
@@ -321,9 +321,12 @@ const handlerImport = async () => {
         identity = await waitForBossIdentity(
             () => Tools.window?._PAGE,
             expectedAccountId,
-            240,
-            250,
+            // The user is waiting on the button they just pressed, so this path gets a longer
+            // budget than the reactive loads: a slow page must not turn their click into a failure.
+            INTERACTIVE_ATTEMPTS,
+            undefined,
             currentBossToken,
+            () => Tools.window?._PAGE,
         );
         if (!contextIsCurrent()) {
             return;
@@ -332,10 +335,12 @@ const handlerImport = async () => {
         if (!userSessionScope(bossUserId, requestedServerUrl)) {
             throw Object.assign(new Error("当前账号或服务器地址无效"), {code: "RESUME_SCOPE_INVALID"});
         }
-        if (!isApplicationSessionReady(token)) {
+        // The import endpoint authorizes with the application session, not with the BOSS
+        // credential, so a rotated cookie is not a reason to re-login or to refuse the import.
+        if (!isApplicationSessionReady()) {
             await userRemoteLoad();
         }
-        if (!isApplicationSessionReady(token)) {
+        if (!isApplicationSessionReady()) {
             throw Object.assign(new Error("AI 工作猎手账号尚未连接完成"), {code: "APP_SESSION_NOT_READY"});
         }
         if (!contextIsCurrent()) {

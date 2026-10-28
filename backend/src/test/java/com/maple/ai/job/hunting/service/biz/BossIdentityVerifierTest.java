@@ -60,6 +60,7 @@ class BossIdentityVerifierTest {
     void expiredOrInvalidTokenIsRejected() {
         StubVerifier verifier = new StubVerifier("{\"code\":7,\"message\":\"当前登录状态已失效\",\"zpData\":{}}");
 
+        // Default mode is strict, so an undecidable answer still refuses the login.
         assertFalse(verifier.verify("100000001", "stale-token"));
     }
 
@@ -118,6 +119,111 @@ class BossIdentityVerifierTest {
 
         assertEquals("100000001", ReflectionTestUtils.invokeMethod(new StubVerifier("{}"), "extractUid", zpData));
         assertNull(ReflectionTestUtils.invokeMethod(new StubVerifier("{}"), "extractUid", JSONUtil.parseObj("{\"uid\":\"\"}")));
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Mode behaviour. The distinction that matters: "BOSS could not tell us" is not the same
+    // answer as "BOSS named somebody else", and only the former is relaxable.
+    // ---------------------------------------------------------------------------------------
+
+    @Test
+    void anUndecidableAnswerIsUnverifiedRatherThanRefutedUnderLenientMode() {
+        StubVerifier verifier = new StubVerifier("{\"code\":7,\"message\":\"当前登录状态已失效\",\"zpData\":{}}");
+        ReflectionTestUtils.setField(verifier, "lenient", true);
+
+        assertEquals(BossIdentityVerifier.Decision.UNVERIFIED, verifier.authorizeLogin("100000001", "stale-token"));
+        assertTrue(verifier.verify("100000001", "stale-token"));
+    }
+
+    @Test
+    void aConflictingUidIsStillRefusedUnderLenientMode() {
+        // This is the security boundary that lenient mode must not move: BOSS answered, and the
+        // answer names a different account. That is evidence of impersonation, not a gap.
+        StubVerifier verifier = new StubVerifier("{\"code\":0,\"zpData\":{\"uid\":\"100000002\"}}");
+        ReflectionTestUtils.setField(verifier, "lenient", true);
+
+        assertEquals(BossIdentityVerifier.Decision.DENY, verifier.authorizeLogin("100000001", "victim-token"));
+        assertFalse(verifier.verify("100000001", "victim-token"));
+        assertThrows(ApplicationException.class,
+                () -> verifier.requireOwnership("100000001", "victim-token"));
+    }
+
+    @Test
+    void aMatchingUidIsVerifiedUnderLenientMode() {
+        StubVerifier verifier = new StubVerifier("{\"code\":0,\"zpData\":{\"uid\":\"100000001\"}}");
+        ReflectionTestUtils.setField(verifier, "lenient", true);
+
+        assertEquals(BossIdentityVerifier.Decision.VERIFIED, verifier.authorizeLogin("100000001", "valid-token"));
+    }
+
+    @Test
+    void aMissingUidIsRefusedEvenUnderLenientMode() {
+        // Without a uid there is no account to bind a session to, in either mode.
+        StubVerifier verifier = new StubVerifier("{\"code\":0,\"zpData\":{\"uid\":\"100000001\"}}");
+        ReflectionTestUtils.setField(verifier, "lenient", true);
+
+        assertEquals(BossIdentityVerifier.Decision.DENY, verifier.authorizeLogin(null, "valid-token"));
+        assertEquals(BossIdentityVerifier.Decision.DENY, verifier.authorizeLogin("   ", "valid-token"));
+    }
+
+    @Test
+    void aMissingCredentialIsRefusedInBothModes() {
+        // "The caller sent nothing" is not "the provider could not decide". Lenient mode relaxes a
+        // gap in the provider's evidence, not the absence of any credential at all.
+        StubVerifier lenient = new StubVerifier("{\"code\":0,\"zpData\":{\"uid\":\"100000001\"}}");
+        ReflectionTestUtils.setField(lenient, "lenient", true);
+        assertEquals(BossIdentityVerifier.Decision.DENY, lenient.authorizeLogin("100000001", ""));
+
+        StubVerifier strict = new StubVerifier("{\"code\":0,\"zpData\":{\"uid\":\"100000001\"}}");
+        assertEquals(BossIdentityVerifier.Decision.DENY, strict.authorizeLogin("100000001", ""));
+    }
+
+    @Test
+    void disabledVerificationNeverIssuesAVerifiedSessionAndStillNeedsAUid() {
+        StubVerifier verifier = new StubVerifier("{\"code\":0,\"zpData\":{\"uid\":\"100000001\"}}");
+        ReflectionTestUtils.setField(verifier, "lenient", true);
+        ReflectionTestUtils.setField(verifier, "enabled", false);
+
+        // Lenient + disabled is an unverified session, never a verified one.
+        assertEquals(BossIdentityVerifier.Decision.UNVERIFIED,
+                verifier.authorizeLogin("100000001", "any-token"));
+        // And a disabled check must not invent an identity the caller never claimed.
+        assertEquals(BossIdentityVerifier.Decision.DENY, verifier.authorizeLogin("", "any-token"));
+        assertEquals(BossIdentityVerifier.Decision.DENY, verifier.authorizeLogin(null, "any-token"));
+    }
+
+    @Test
+    void requireOwnershipStillDemandsProofUnderLenientMode() {
+        StubVerifier verifier = new StubVerifier("{\"code\":7,\"message\":\"当前登录状态已失效\",\"zpData\":{}}");
+        ReflectionTestUtils.setField(verifier, "lenient", true);
+
+        // Admission via lenient is not proof; a caller asking for proof must still be refused.
+        assertEquals(BossIdentityVerifier.Decision.UNVERIFIED,
+                verifier.authorizeLogin("100000001", "stale-token"));
+        assertThrows(ApplicationException.class,
+                () -> verifier.requireOwnership("100000001", "stale-token"));
+    }
+
+    @Test
+    void networkFailureIsUnverifiedUnderLenientMode() {
+        BossIdentityVerifier verifier = new BossIdentityVerifier() {
+            @Override
+            JSONObject fetchUserInfo(String bossToken) {
+                throw new IllegalStateException("synthetic network failure");
+            }
+        };
+        ReflectionTestUtils.setField(verifier, "lenient", true);
+
+        assertEquals(BossIdentityVerifier.Decision.UNVERIFIED, verifier.authorizeLogin("100000001", "some-token"));
+    }
+
+    @Test
+    void theDefaultIsStrictSoAnUnconfiguredDeploymentFailsClosed() {
+        StubVerifier verifier = new StubVerifier("{\"code\":7,\"message\":\"当前登录状态已失效\",\"zpData\":{}}");
+
+        // No reflection: this is the field's initial value, which is what an unconfigured
+        // deployment actually gets.
+        assertEquals(BossIdentityVerifier.Decision.DENY, verifier.authorizeLogin("100000001", "stale-token"));
     }
 
     /**

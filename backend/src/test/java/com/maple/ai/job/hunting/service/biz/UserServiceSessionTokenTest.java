@@ -31,7 +31,8 @@ class UserServiceSessionTokenTest {
                 (proxy, method, args) -> "selectByUniqueId".equals(method.getName()) ? userInfo : null);
         BossIdentityVerifier bossIdentityVerifier = new BossIdentityVerifier() {
             @Override
-            public void requireOwnership(String claimedUid, String bossToken) {
+            public boolean authorizeLoginOrThrow(String claimedUid, String bossToken) {
+                return true;
             }
         };
         SysSessionCache sysSessionCache = new SysSessionCache();

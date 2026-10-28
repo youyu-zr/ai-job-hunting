@@ -165,14 +165,40 @@ public class UserService {
         }
     }
 
+    /**
+     * Whether the current session proved it owns the BOSS account it acts for.
+     *
+     * <p>Observability only. Do not gate product features on this: under lenient mode every
+     * session is unverified (the provider cannot decide for any of them), so a gate built on it
+     * would lock out the very testers it is meant to protect. The real boundary is elsewhere:
+     * unverified logins may not create accounts, and uid is not publicly discoverable.
+     */
+    public boolean isSessionOwnershipVerified() {
+        UserInfoVO sessionUser = HeaderContext.getHeader().getUserInfoVO();
+        return sessionUser != null && Boolean.TRUE.equals(sessionUser.getOwnershipVerified());
+    }
+
     public String loginSilently(String uniqueId, String bossToken) {
         String normalizedUniqueId = StringUtils.trimToEmpty(uniqueId);
-        bossIdentityVerifier.requireOwnership(normalizedUniqueId, bossToken);
+        // A proved ownership and an unproved one do not grant the same thing. The mode decides
+        // whether an unproved login may continue; the decision is recorded below so an unverified
+        // session can be told apart from a verified one after the fact.
+        boolean ownershipVerified = bossIdentityVerifier.authorizeLoginOrThrow(normalizedUniqueId, bossToken);
         UserInfoDO userInfoDO;
         try {
             userInfoDO = transactionTemplate.execute(status -> {
                 UserInfoDO account = userInfoMapper.selectByUniqueId(normalizedUniqueId);
                 if (account == null) {
+                    if (!ownershipVerified) {
+                        // An unproved session may resume an account that already exists, but it may
+                        // not bring new accounts into being: otherwise anyone who can produce a
+                        // numeric uid mints a full-featured account and drains shared AI quota.
+                        // Existing testers keep every feature; the blast radius stops growing.
+                        log.warn("refusing to create an account for an unverified uid");
+                        throw new ApplicationException(
+                                "身份校验暂不可用，且该 BOSS 账号尚未注册；请联系管理员开通内测权限",
+                                BizCodeEnum.IDENTITY_VERIFY_FAILED.getCode());
+                    }
                     account = new UserInfoDO(null, null, normalizedUniqueId);
                     if (userInfoMapper.insert(account) <= 0) {
                         throw new ApplicationException("账号创建失败，请重试");
@@ -200,7 +226,12 @@ public class UserService {
         byte[] tokenBytes = new byte[32];
         SESSION_TOKEN_RANDOM.nextBytes(tokenBytes);
         String loginKey = Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes);
-        sysSessionCache.set(loginKey, BeanUtil.copyProperties(userInfoDO, UserInfoVO.class));
+        UserInfoVO sessionUser = BeanUtil.copyProperties(userInfoDO, UserInfoVO.class);
+        // Carried on the session so later requests can tell a proved session from an unproved one.
+        sessionUser.setOwnershipVerified(ownershipVerified);
+        sysSessionCache.set(loginKey, sessionUser);
+        log.info("silent login issued: userId={} ownershipVerified={}",
+                userInfoDO.getId(), ownershipVerified);
         return loginKey;
     }
 

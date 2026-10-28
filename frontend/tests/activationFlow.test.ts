@@ -12,7 +12,9 @@ const userService = readFileSync(
 
 test('first login creates an account after BOSS identity verification without importing a resume', () => {
   const loginMethod = userService.slice(userService.indexOf('public String loginSilently'));
-  const identityCheck = loginMethod.indexOf('bossIdentityVerifier.requireOwnership(normalizedUniqueId, bossToken)');
+  // Ownership is still decided before any account is created; only the decision's shape changed,
+  // because "BOSS could not tell us" is no longer the same answer as "BOSS named someone else".
+  const identityCheck = loginMethod.indexOf('bossIdentityVerifier.authorizeLoginOrThrow(normalizedUniqueId, bossToken)');
   const accountCreation = loginMethod.indexOf('new UserInfoDO(null, null, normalizedUniqueId)');
 
   assert.ok(identityCheck >= 0);

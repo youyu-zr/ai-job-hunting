@@ -104,7 +104,7 @@ class UserServiceAutoRegistrationTest {
         Fixture fixture = new Fixture(false);
         ReflectionTestUtils.setField(fixture.userService, "bossIdentityVerifier", new BossIdentityVerifier() {
             @Override
-            public void requireOwnership(String claimedUid, String bossToken) {
+            public boolean authorizeLoginOrThrow(String claimedUid, String bossToken) {
                 throw new IllegalStateException("identity verification failed");
             }
         });
@@ -115,6 +115,70 @@ class UserServiceAutoRegistrationTest {
         assertTrue(fixture.users.isEmpty());
         assertEquals(0, fixture.userInsertCount.get());
         assertTrue(fixture.betaProducts.isEmpty());
+    }
+
+    @Test
+    void aRefusedLoginByTheVerifierCreatesNothing() {
+        Fixture fixture = new Fixture(false);
+        ReflectionTestUtils.setField(fixture.userService, "bossIdentityVerifier", new BossIdentityVerifier() {
+            @Override
+            public boolean authorizeLoginOrThrow(String claimedUid, String bossToken) {
+                // The real verifier throws on DENY; this stubs that contract directly.
+                throw new com.maple.ai.job.hunting.frame.exp.ApplicationException(
+                        com.maple.ai.job.hunting.emums.BizCodeEnum.IDENTITY_VERIFY_FAILED);
+            }
+        });
+
+        assertThrows(com.maple.ai.job.hunting.frame.exp.ApplicationException.class,
+                () -> fixture.userService.loginSilently("boss-user", "conflicting-token"));
+
+        assertTrue(fixture.users.isEmpty());
+        assertEquals(0, fixture.userInsertCount.get());
+        assertTrue(fixture.betaProducts.isEmpty());
+    }
+
+    @Test
+    void anUnverifiedLoginResumesAnExistingAccountAndRecordsItAsUnverified() {
+        Fixture fixture = new Fixture(false);
+        // An account that already exists (a real tester) keeps working while the provider cannot
+        // decide ownership; the session just must not claim ownership was proved.
+        UserInfoDO existing = new UserInfoDO(null, null, "boss-user");
+        existing.setId(7L);
+        fixture.users.put("boss-user", existing);
+        ReflectionTestUtils.setField(fixture.userService, "bossIdentityVerifier", new BossIdentityVerifier() {
+            @Override
+            public boolean authorizeLoginOrThrow(String claimedUid, String bossToken) {
+                return false;
+            }
+        });
+
+        String token = fixture.userService.loginSilently("boss-user", "boss-token");
+
+        assertNotNull(fixture.sessions.get(token));
+        assertEquals(Boolean.FALSE, fixture.sessions.get(token).getOwnershipVerified());
+        assertEquals(0, fixture.userInsertCount.get(), "an existing account must not be re-created");
+    }
+
+    @Test
+    void anUnverifiedLoginCannotMintANewAccount() {
+        Fixture fixture = new Fixture(false);
+        // Seed one unrelated account so the fixture is a populated deployment like production.
+        UserInfoDO seed = new UserInfoDO(null, null, "existing-tester");
+        seed.setId(1L);
+        fixture.users.put("existing-tester", seed);
+        ReflectionTestUtils.setField(fixture.userService, "bossIdentityVerifier", new BossIdentityVerifier() {
+            @Override
+            public boolean authorizeLoginOrThrow(String claimedUid, String bossToken) {
+                return false;
+            }
+        });
+
+        assertThrows(com.maple.ai.job.hunting.frame.exp.ApplicationException.class,
+                () -> fixture.userService.loginSilently("never-registered-uid", "boss-token"));
+
+        assertEquals(0, fixture.userInsertCount.get());
+        assertNull(fixture.users.get("never-registered-uid"));
+        assertTrue(fixture.betaProducts.isEmpty(), "no beta grant may be issued for a refused login");
     }
 
     private static final class Fixture {
@@ -182,9 +246,10 @@ class UserServiceAutoRegistrationTest {
             ReflectionTestUtils.setField(userService, "userInfoMapper", userInfoMapper);
             ReflectionTestUtils.setField(userService, "bossIdentityVerifier", new BossIdentityVerifier() {
                 @Override
-                public void requireOwnership(String claimedUid, String bossToken) {
+                public boolean authorizeLoginOrThrow(String claimedUid, String bossToken) {
                     assertEquals("boss-user", claimedUid);
                     assertEquals("boss-token", bossToken);
+                    return true;
                 }
             });
             ReflectionTestUtils.setField(userService, "betaAccessService", betaAccessService);

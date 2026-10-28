@@ -66,7 +66,6 @@ class UserServicePrivacyTest {
             RePatternConstant.EMAIL_PATTERN.matcher(emailCandidate).find();
         });
     }
-
     @Test
     void successfulResumeImportGrantsBetaOnlyAfterUserAndResumeAreSaved() throws Exception {
         AtomicInteger persistenceStage = new AtomicInteger();
@@ -306,6 +305,9 @@ class UserServicePrivacyTest {
     private static void setAuthenticatedUser(Long userId) {
         UserInfoVO sessionUser = new UserInfoVO();
         sessionUser.setId(userId);
+        // Contact details derived from a resume are only written for a session whose ownership
+        // BOSS actually proved; the default (absent) means unproved.
+        sessionUser.setOwnershipVerified(Boolean.TRUE);
         Header header = new Header();
         header.setUserInfoVO(sessionUser);
         HeaderContext.setHeader(header);

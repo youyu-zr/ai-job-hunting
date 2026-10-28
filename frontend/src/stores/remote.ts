@@ -26,6 +26,42 @@ const DEFAULT_RISK_PACK_VERSION = "risk-pack-20260829-v2";
 const userConfigReadiness = createScopedReadiness();
 let identityRetryTimer: ReturnType<typeof setTimeout> | undefined;
 let identityRetryCount = 0;
+let loginRetryTimer: ReturnType<typeof setTimeout> | undefined;
+let loginRetryCount = 0;
+
+const LOGIN_RETRY_MAX = 3;
+const LOGIN_RETRY_BASE_MS = 3000;
+const LOGIN_RETRY_MAX_DELAY_MS = 30000;
+
+/**
+ * Retries a failed login with backoff.
+ *
+ * Losing the login is the exact failure a retry exists for, yet there was no retry here at all:
+ * the panel simply stayed disconnected until the user reloaded the page. A rate limit is asked to
+ * wait for the delay the server named instead of hammering the same limit again.
+ */
+function scheduleLoginRetry(scope: string, serverUrl: string, error?: any): void {
+    if (loginRetryTimer || loginRetryCount >= LOGIN_RETRY_MAX) {
+        return;
+    }
+    if (currentSessionScope() !== scope || ServerStore().baseUrl !== serverUrl) {
+        return;
+    }
+    const status = Number(error?.response?.status);
+    const retryAfter = Number(
+        typeof error?.response?.headers?.get === "function"
+            ? error.response.headers.get("Retry-After")
+            : undefined
+    );
+    const delay = status === 429 && Number.isFinite(retryAfter) && retryAfter > 0
+        ? Math.min(retryAfter * 1000, LOGIN_RETRY_MAX_DELAY_MS)
+        : Math.min(LOGIN_RETRY_BASE_MS * Math.pow(2, loginRetryCount), LOGIN_RETRY_MAX_DELAY_MS);
+    loginRetryCount += 1;
+    loginRetryTimer = setTimeout(() => {
+        loginRetryTimer = undefined;
+        void userRemoteLoad();
+    }, delay);
+}
 
 function currentBossToken(): string {
     return String(Tools.getCookieValue("bst") ?? "").trim();
@@ -34,22 +70,23 @@ function currentBossToken(): string {
 export function isUserConfigReady(): boolean {
     const scope = currentSessionScope();
     const loginStore = LoginStore();
+    // The BOSS cookie is deliberately not part of this test. It rotates on its own schedule, so
+    // comparing it here turned a routine cookie refresh into "configuration never loaded", with
+    // no way back to ready short of reloading the page.
     return Boolean(scope
         && userConfigReadiness.isReady(scope)
         && loginStore.login
         && loginStore.accountScope === scope
-        && loginStore.bossToken === currentBossToken()
         && !loginStore.loginFailStatus);
 }
 
-export function isApplicationSessionReady(expectedBossToken: string): boolean {
+export function isApplicationSessionReady(): boolean {
     const scope = currentSessionScope();
     const loginStore = LoginStore();
     return Boolean(scope
         && loginStore.login
         && loginStore.accountScope === scope
         && !loginStore.loginFailStatus
-        && loginStore.bossToken === expectedBossToken
         && scopedAuthorization(scope));
 }
 
@@ -184,7 +221,14 @@ export async function userRemoteLoad(options: UserRemoteLoadOptions = {}): Promi
     const requestedServerUrl = serverStore.baseUrl;
     let identity: BossIdentity;
     try {
-        identity = await waitForBossIdentity(() => Tools.window?._PAGE, "", 240, 250, currentBossToken);
+        identity = await waitForBossIdentity(
+            () => Tools.window?._PAGE,
+            "",
+            undefined,
+            undefined,
+            currentBossToken,
+            () => Tools.window?._PAGE
+        );
         identityRetryCount = 0;
         if (identityRetryTimer) {
             clearTimeout(identityRetryTimer);
@@ -269,6 +313,7 @@ export async function userRemoteLoad(options: UserRemoteLoadOptions = {}): Promi
             ProductStore().setShowProduct(true);
         }
         logRecorder.info("loaded server config");
+        loginRetryCount = 0;
     } catch (error: any) {
         logRecorder.warn("server config load failed; try local mirror", error?.message || error);
 
@@ -286,6 +331,7 @@ export async function userRemoteLoad(options: UserRemoteLoadOptions = {}): Promi
                 loginStore.loginFail();
             }
             logRecorder.error("load config failed: no server data and no local mirror");
+            scheduleLoginRetry(requestedScope, requestedServerUrl, error);
         }
     } finally {
         if (contextIsCurrent()) {

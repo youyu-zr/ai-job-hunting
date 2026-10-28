@@ -116,7 +116,12 @@ public class RequestRateLimitFilter implements Filter {
 
     private static Rule ruleFor(String uri) {
         return switch (uri) {
-            case "/api/user/silently/login" -> new Rule(0.2, 10.0, true, true);
+            // Login is not a model request: making it compete for a model concurrency slot means
+            // a busy AI queue locks users out of the product entirely.
+            case "/api/user/silently/login" -> new Rule(0.2, 10.0, true, false);
+            // Resume import IS a model request on the fallback path: when local text extraction
+            // finds nothing usable, UserService hands the file to aiServiceFacade.readFile. Dropping
+            // the concurrency slot here would let this route bypass ai.request.max-concurrent.
             case "/api/user/import/resume" -> new Rule(0.1, 2.0, false, true);
             case "/api/user/ai/config/test" -> new Rule(0.1, 0, false, true);
             case "/api/job/filter/one",

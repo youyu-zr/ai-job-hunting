@@ -138,6 +138,9 @@ export function importHarness(app = applicationHarness()) {
         resumeImportAttempted: false,
         loginInterceptor: () => Boolean(app.page.token),
         waitForBossIdentity: (...args: any[]) => identity(),
+        // The production handler passes this as the attempt budget. It must exist in this context
+        // or the extracted handler throws a ReferenceError before doing any work.
+        INTERACTIVE_ATTEMPTS: 120,
         userSessionScope: session.userSessionScope,
         storeScopedAuthorization: (proof: string, scope: string) =>
             session.storeScopedAuthorization(proof, scope, app.memoryStorage),
@@ -151,8 +154,9 @@ export function importHarness(app = applicationHarness()) {
             await refresh();
             app.login.bossToken = app.page.cookieToken;
         },
-        isApplicationSessionReady: (expectedBossToken?: string) => app.login.login && !app.login.loginFailStatus
-            && app.login.bossToken === expectedBossToken
+        // The application session authorizes the import; the BOSS cookie is not part of it, so a
+        // rotated cookie must not make the session look unready.
+        isApplicationSessionReady: () => app.login.login && !app.login.loginFailStatus
             && Boolean(session.scopedAuthorization(
                 session.userSessionScope(app.page.uid, app.server.baseUrl),
                 app.memoryStorage,

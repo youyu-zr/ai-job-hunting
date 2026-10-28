@@ -106,9 +106,27 @@ test("a BOSS identity change while the application session is loading stops befo
     assert.equal(app.notices.length, 0);
 });
 
-test("a BOSS token not verified for the current application session cannot import a resume", async () => {
+test("a BOSS cookie rotation alone does not block a resume import for the same account", async () => {
+    // BOSS rotates its own cookie on its own schedule. That is not an account switch and must not
+    // be treated as one: the import is authorized by the application session, not by the cookie.
     const app = importHarness();
-    app.page.cookieToken = "unverified-other-account-proof";
+    app.page.cookieToken = "rotated-proof-for-same-account";
+
+    await app.run();
+
+    assert.equal(app.lookups.length, 1);
+    assert.equal(app.downloads.length, 1);
+    assert.equal(app.requests.length, 1);
+    assert.equal(app.requests[0].headers.get("Authorization"), "synthetic-session");
+    assert.equal(app.status.value, "成功导入简历");
+    // Any notice raised must be about reconnecting, never about the account being wrong.
+    assert.ok(app.notices.every(notice => !/账号|身份|切换/.test(String(notice.message))));
+});
+
+test("a different BOSS account cannot import a resume without its own application session", async () => {
+    const app = importHarness();
+    app.page.uid = "different-account";
+    app.page.cookieToken = "different-account-proof";
     app.refreshWith(async () => {
         throw new Error("synthetic identity mismatch");
     });
