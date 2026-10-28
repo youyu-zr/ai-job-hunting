@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class SysSessionCache extends AbsMemoryCache<String, UserInfoVO> {
     public SysSessionCache() {
-        super(2, TimeUnit.HOURS, false);
+        // 滑动续期：只要页面还在用，会话就不过期；闲置 2 小时才失效，失效后前端会自动重登。
+        super(2, TimeUnit.HOURS, true);
     }
 }

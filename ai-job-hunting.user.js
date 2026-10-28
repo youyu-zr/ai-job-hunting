@@ -26,7 +26,7 @@
 !function(t){function e(t){t.registerRegistry=Object.create(null),t.namedRegisterAliases=Object.create(null)}var r=t.System;e(r);var i,s,n=r.constructor.prototype,l=r.constructor,a=function(){l.call(this),e(this)};a.prototype=n,r.constructor=a;var o=n.register;n.register=function(t,e,r,n){if("string"!=typeof t)return o.apply(this,arguments);var l=[e,r,n];return this.registerRegistry[t]=l,i||(i=l,s=t),Promise.resolve().then((function(){i=null,s=null})),o.apply(this,[e,r,n])};var u=n.resolve;n.resolve=function(t,e){try{return u.call(this,t,e)}catch(r){if(t in this.registerRegistry)return this.namedRegisterAliases[t]||t;throw r}};var c=n.instantiate;n.instantiate=function(t,e,r){var i=this.registerRegistry[t];return i?(this.registerRegistry[t]=null,i):c.call(this,t,e,r)};var g=n.getRegister;n.getRegister=function(t){var e=g.call(this,t);s&&t&&(this.namedRegisterAliases[s]=t);var r=i||e;return i=null,s=null,r}}("undefined"!=typeof self?self:global);
 ;(typeof System!='undefined')&&(System=new System.constructor());
 
-System.register("./__entry.js", ['./__monkey.entry-6HLsdsVP.js'], (function (exports, module) {
+System.register("./__entry.js", ['./__monkey.entry-ChKw75Bm.js'], (function (exports, module) {
 	'use strict';
 	return {
 		setters: [null],
@@ -38,7 +38,7 @@ System.register("./__entry.js", ['./__monkey.entry-6HLsdsVP.js'], (function (exp
 	};
 }));
 
-System.register("./__monkey.entry-6HLsdsVP.js", [], (function (exports, module) {
+System.register("./__monkey.entry-ChKw75Bm.js", [], (function (exports, module) {
   'use strict';
   return {
     execute: (function () {
@@ -25506,6 +25506,51 @@ System.register("./__monkey.entry-6HLsdsVP.js", [], (function (exports, module) 
         }
         return "服务端未能完成简历导入，请稍后重试；不能据此判断 BOSS 附件有误。";
       }
+      const MIN_BACKOFF_MS = 3e4;
+      const MAX_BACKOFF_MS = 10 * 6e4;
+      let relogin = null;
+      let isReady = null;
+      let inFlight = null;
+      let failures = 0;
+      let nextAllowedAt = 0;
+      function registerSessionRecovery(fn2, ready) {
+        relogin = fn2;
+        isReady = ready;
+      }
+      function recoverSession(now2 = Date.now()) {
+        if (!relogin || !isReady) {
+          return Promise.resolve(false);
+        }
+        if (inFlight) {
+          return inFlight;
+        }
+        if (now2 < nextAllowedAt) {
+          return Promise.resolve(false);
+        }
+        const run = relogin;
+        const ready = isReady;
+        inFlight = run().then(() => ready(), () => false).then((ok) => {
+          if (ok) {
+            failures = 0;
+            nextAllowedAt = 0;
+          } else {
+            failures += 1;
+            nextAllowedAt = Date.now() + Math.min(MIN_BACKOFF_MS * Math.pow(2, failures - 1), MAX_BACKOFF_MS);
+          }
+          return ok;
+        }).finally(() => {
+          inFlight = null;
+        });
+        return inFlight;
+      }
+      const RECOVERY_OWN_URLS = ["/api/user/silently/login", "/api/user/userinfo", "/api/beta/access"];
+      function canReplayAfterRelogin(config) {
+        if (!config || config.__retriedAfterRelogin || config.bossIdentityContext) {
+          return false;
+        }
+        const url2 = String(config.url || "");
+        return !RECOVERY_OWN_URLS.some((prefix) => url2.startsWith(prefix));
+      }
       const request = axios.create({
         // 超时时间
         timeout: 1e4,
@@ -25569,6 +25614,23 @@ System.register("./__monkey.entry-6HLsdsVP.js", [], (function (exports, module) 
         ElMessage(options);
         markRequestErrorNotified(error);
       }
+      function replayAfterRelogin(config, error, notifyOnFailure) {
+        if (!canReplayAfterRelogin(config) || !isCurrentSessionRequest(config)) {
+          return Promise.reject(error);
+        }
+        return recoverSession().then((ok) => {
+          if (ok && isCurrentSessionRequest(config)) {
+            return request({ ...config, __retriedAfterRelogin: true });
+          }
+          if (notifyOnFailure) {
+            notifyRequestError(error, {
+              type: "error",
+              message: "登录过期，自动重新登录失败，请刷新页面重试"
+            });
+          }
+          return Promise.reject(error);
+        });
+      }
       function handlerErrorCode(result) {
         if (!result || (result == null ? void 0 : result.code) < 5e3) {
           return;
@@ -25605,6 +25667,11 @@ System.register("./__monkey.entry-6HLsdsVP.js", [], (function (exports, module) 
             );
             if (isCurrentSessionRequest(resp.config) && authorizationIsCurrent) {
               LoginStore().loginFailForScope(scope || null);
+            }
+            if (canReplayAfterRelogin(resp.config)) {
+              return replayAfterRelogin(resp.config, error, authorizationIsCurrent);
+            }
+            if (isCurrentSessionRequest(resp.config) && authorizationIsCurrent) {
               notifyRequestError(error, {
                 type: "error",
                 message: "登录过期，请刷新页面重试"
@@ -25638,6 +25705,9 @@ System.register("./__monkey.entry-6HLsdsVP.js", [], (function (exports, module) 
             clearScopedAuthorization(scope || null, (_d = error.config) == null ? void 0 : _d.__aiAuthorization);
             if (isCurrentSessionRequest(error.config) && authorizationIsCurrent) {
               LoginStore().loginFailForScope(scope || null);
+            }
+            if (canReplayAfterRelogin(error.config)) {
+              return replayAfterRelogin(error.config, error, authorizationIsCurrent);
             }
           }
           if (error.code === "ECONNABORTED") {
@@ -79549,6 +79619,7 @@ System.register("./__monkey.entry-6HLsdsVP.js", [], (function (exports, module) 
           userConfigReadiness.complete(requestedScope, Boolean(contextIsCurrent() && profileLoaded && authenticated));
         }
       }
+      registerSessionRecovery(() => userRemoteLoad(), isApplicationSessionReady);
       function shouldBlockAfterAiFilter(result) {
         if (!result) {
           return true;
@@ -80558,11 +80629,11 @@ System.register("./__monkey.entry-6HLsdsVP.js", [], (function (exports, module) 
         }
         async getRenderComponent() {
           if (this.curUrl.includes("www.zhipin.com/web/geek/chat")) {
-            let promise = __vitePreload(() => module.import('./BossMessage-DiijH_iK-BpS2E3cD.js'), void 0 );
+            let promise = __vitePreload(() => module.import('./BossMessage-D8AJvE_U-BFVjwkkt.js'), void 0 );
             return promise.then((item) => item.default);
           }
           if (this.curUrl.includes("www.zhipin.com/web/geek/job") || this.curUrl.includes("overseas")) {
-            let promise = __vitePreload(() => module.import('./BossJobList-6gxdQjhn-BcqdttE0.js'), void 0 );
+            let promise = __vitePreload(() => module.import('./BossJobList-YQWDWY-4-QPWIQlhJ.js'), void 0 );
             return promise.then((item) => item.default);
           }
         }
@@ -82343,17 +82414,35 @@ System.register("./__monkey.entry-6HLsdsVP.js", [], (function (exports, module) 
           };
           setTimeout(scan, 5e3);
           window.setInterval(scan, 15e3);
+          document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "visible") {
+              scan();
+            }
+          });
         }
         static async scanUnreadConversationOnce() {
           var _a2, _b;
           if (_BossOption.unreadScanRunning) {
-            return;
+            if (Date.now() - _BossOption.unreadScanStartedAt < _BossOption.UNREAD_SCAN_STUCK_MS) {
+              return;
+            }
+            _BossOption.logRecorder.warn("【未读补扫】上一轮超过3分钟未结束，强制复位");
           }
           if (!userStore$1) {
             userStore$1 = UserStore();
           }
           _BossOption.unreadScanRunning = true;
+          const scanStartedAt = Date.now();
+          _BossOption.unreadScanStartedAt = scanStartedAt;
           try {
+            if (!isApplicationSessionReady()) {
+              const recovered = await recoverSession();
+              if (!recovered) {
+                _BossOption.logRecorder.info("【未读补扫】登录已失效，自动重登未成功，稍后再试");
+                return;
+              }
+              _BossOption.logRecorder.info("【未读补扫】已自动重新登录，继续补扫");
+            }
             const authoritativeSeatEnabled = await AiPower.getGlobalAiSeatStatus();
             if (!canScanUnreadConversations(authoritativeSeatEnabled)) {
               if (authoritativeSeatEnabled === false && ((_a2 = userStore$1.user) == null ? void 0 : _a2.aiSeatStatus)) {
@@ -82449,7 +82538,9 @@ System.register("./__monkey.entry-6HLsdsVP.js", [], (function (exports, module) 
               handledOne
             );
           } finally {
-            _BossOption.unreadScanRunning = false;
+            if (_BossOption.unreadScanStartedAt === scanStartedAt) {
+              _BossOption.unreadScanRunning = false;
+            }
           }
         }
         static getFriendSource(friendEle) {
@@ -82927,6 +83018,8 @@ System.register("./__monkey.entry-6HLsdsVP.js", [], (function (exports, module) 
       __publicField(_BossOption, "messageMergeQueue", new MessageMergeQueue(3500));
       __publicField(_BossOption, "unreadScanStarted", false);
       __publicField(_BossOption, "unreadScanRunning", false);
+      __publicField(_BossOption, "unreadScanStartedAt", 0);
+      __publicField(_BossOption, "UNREAD_SCAN_STUCK_MS", 3 * 6e4);
       __publicField(_BossOption, "unreadScanCache", /* @__PURE__ */ new Map());
       // Keep the in-flight guard short so transient failures can be retried, but
       // keep a successful result long enough for the periodic unread scan to see it.
@@ -83525,7 +83618,7 @@ System.register("./__monkey.entry-6HLsdsVP.js", [], (function (exports, module) 
   };
 }));
 
-System.register("./BossMessage-DiijH_iK-BpS2E3cD.js", ['./__monkey.entry-6HLsdsVP.js'], (function (exports, module) {
+System.register("./BossMessage-D8AJvE_U-BFVjwkkt.js", ['./__monkey.entry-ChKw75Bm.js'], (function (exports, module) {
   'use strict';
   var _export_sfc, defineComponent, UserStore, ref, computed, onMounted, onUnmounted, openBlock, createElementBlock, createBaseVNode, createVNode, withCtx, normalizeClass, createTextVNode, toDisplayString, createBlock, createCommentVNode, Fragment, ConversationPauseRegistry, AiPower, parseAiSeatRuntimeStatus, getAiSeatStatusRevision, rememberAiSeatStatus, ElMessage, ElTag, ElButton, pushScopeId, popScopeId, BossOption;
   return {
@@ -83702,7 +83795,7 @@ System.register("./BossMessage-DiijH_iK-BpS2E3cD.js", ['./__monkey.entry-6HLsdsV
   };
 }));
 
-System.register("./BossJobList-6gxdQjhn-BcqdttE0.js", ['./__monkey.entry-6HLsdsVP.js'], (function (exports, module) {
+System.register("./BossJobList-YQWDWY-4-QPWIQlhJ.js", ['./__monkey.entry-ChKw75Bm.js'], (function (exports, module) {
   'use strict';
   var defineComponent, openBlock, createBlock, _export_sfc, shallowRef, createElementBlock, createVNode, withCtx, Fragment, renderList, unref, createTextVNode, toDisplayString, createBaseVNode, resolveDynamicComponent, ElMenuItem, ElMenu, inject, ServerStore, ref, PushStatus, LogRecorder, LoginStore, pushResultCount, UserStore, watch, onUnmounted, isProdEnv, createCommentVNode, withDirectives, vShow, CircleCloseFilled, normalizeClass, reactive, Tools, onMounted, logger$1, isRef, userRemoteLoad, ElNotification, ElMessage, waitForBossIdentity, INTERACTIVE_ATTEMPTS, userSessionScope, isApplicationSessionReady, axios, fetchWithGM_request, applicationResponseError, isUserConfigReady, resumeImportErrorNotice, loginInterceptor, serializeAiSeatStatus, rememberAiSeatStatus, shouldApplyAiSeatRollback, ElText, ElBadge, ElTag, ElButton, ElIcon, ElTooltip, ElButtonGroup$1, ElInput, ElCard, ElInputNumber, ElSwitch, applyPersonalPreferenceDefaults, ElFormItem, ElCheckbox, ElOption, ElSelect, ElUpload, ElRadioButton, ElRadioGroup, ElForm, ElCol, ElTimePicker, ElRow, ElTableColumn, ElEmpty, ElTable, ElPagination, pushScopeId, popScopeId, userSnapshotStorageKey, TampermonkeyApi, createStaticVNode;
   return {

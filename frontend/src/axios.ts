@@ -14,6 +14,7 @@ import {
 } from "./utils/sessionContext";
 import {installBossIdentityTransport} from "./utils/bossIdentityTransport";
 import {applicationResponseError, markRequestErrorNotified, rateLimitMessage} from "./utils/resumeImportError";
+import {canReplayAfterRelogin, recoverSession} from "./utils/sessionRecovery";
 
 
 /**
@@ -97,6 +98,28 @@ function notifyRequestError(error: any, options: any): void {
     markRequestErrorNotified(error);
 }
 
+/**
+ * 会话失效（服务器重启 / 闲置过期）时自动重登，并把原请求重放一次。
+ * 重登失败才提示用户，这样页面挂着也能继续回复。
+ */
+function replayAfterRelogin(config: any, error: any, notifyOnFailure: boolean): Promise<any> {
+    if (!canReplayAfterRelogin(config) || !isCurrentSessionRequest(config)) {
+        return Promise.reject(error)
+    }
+    return recoverSession().then(ok => {
+        if (ok && isCurrentSessionRequest(config)) {
+            return request({...config, __retriedAfterRelogin: true} as any)
+        }
+        if (notifyOnFailure) {
+            notifyRequestError(error, {
+                type: "error",
+                message: "登录过期，自动重新登录失败，请刷新页面重试"
+            });
+        }
+        return Promise.reject(error)
+    })
+}
+
 function handlerErrorCode(result: any) {
     if (!result || result?.code < 5000) {
         return;
@@ -139,6 +162,11 @@ request.interceptors.response.use((resp: any) => {
             )
             if (isCurrentSessionRequest(resp.config) && authorizationIsCurrent) {
                 LoginStore().loginFailForScope(scope || null)
+            }
+            if (canReplayAfterRelogin(resp.config)) {
+                return replayAfterRelogin(resp.config, error, authorizationIsCurrent)
+            }
+            if (isCurrentSessionRequest(resp.config) && authorizationIsCurrent) {
                 notifyRequestError(error, {
                     type: "error",
                     message: "登录过期，请刷新页面重试"
@@ -176,6 +204,9 @@ request.interceptors.response.use((resp: any) => {
             clearScopedAuthorization(scope || null, error.config?.__aiAuthorization)
             if (isCurrentSessionRequest(error.config) && authorizationIsCurrent) {
                 LoginStore().loginFailForScope(scope || null)
+            }
+            if (canReplayAfterRelogin(error.config)) {
+                return replayAfterRelogin(error.config, error, authorizationIsCurrent)
             }
         }
 

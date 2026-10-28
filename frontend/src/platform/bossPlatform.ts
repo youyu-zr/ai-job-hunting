@@ -4,7 +4,8 @@ import {MessageCache, Tools} from "./utils";
 import {MessageMergeBatch, MessageMergeQueue} from "./messageMerge";
 import {batchPlatformBodyTypeOf} from "./messageBatchMetadata";
 import {UserStore} from '../stores'
-import {rememberAiSeatStatus} from '../stores/remote'
+import {isApplicationSessionReady, rememberAiSeatStatus} from '../stores/remote'
+import {recoverSession} from '../utils/sessionRecovery'
 import logging from "../logging";
 import logger from "../logging";
 import {LogRecorder} from "../logging/record";
@@ -50,6 +51,8 @@ export class BossOption {
     private static readonly messageMergeQueue = new MessageMergeQueue<BossMessageMergeItem>(3500);
     private static unreadScanStarted = false;
     private static unreadScanRunning = false;
+    private static unreadScanStartedAt = 0;
+    private static readonly UNREAD_SCAN_STUCK_MS = 3 * 60_000;
     private static unreadScanCache: Map<string, number> = new Map();
     // Keep the in-flight guard short so transient failures can be retried, but
     // keep a successful result long enough for the periodic unread scan to see it.
@@ -731,17 +734,38 @@ export class BossOption {
         };
         setTimeout(scan, 5000);
         window.setInterval(scan, 15000);
+        // 后台标签页的定时器会被浏览器节流/冻结；切回前台时立刻补扫一次。
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                scan();
+            }
+        });
     }
 
     private static async scanUnreadConversationOnce(): Promise<void> {
         if (BossOption.unreadScanRunning) {
-            return;
+            // 看门狗：某次扫描卡在没有返回的请求上时，3 分钟后强制放行，避免补扫永久停住。
+            if (Date.now() - BossOption.unreadScanStartedAt < BossOption.UNREAD_SCAN_STUCK_MS) {
+                return;
+            }
+            BossOption.logRecorder.warn("【未读补扫】上一轮超过3分钟未结束，强制复位");
         }
         if (!userStore) {
             userStore = UserStore();
         }
         BossOption.unreadScanRunning = true;
+        const scanStartedAt = Date.now();
+        BossOption.unreadScanStartedAt = scanStartedAt;
         try {
+            if (!isApplicationSessionReady()) {
+                // 服务器重启或会话过期：先自动重登（自带退避），成功后本轮照常扫描。
+                const recovered = await recoverSession();
+                if (!recovered) {
+                    BossOption.logRecorder.info("【未读补扫】登录已失效，自动重登未成功，稍后再试");
+                    return;
+                }
+                BossOption.logRecorder.info("【未读补扫】已自动重新登录，继续补扫");
+            }
             const authoritativeSeatEnabled = await AiPower.getGlobalAiSeatStatus();
             if (!canScanUnreadConversations(authoritativeSeatEnabled)) {
                 if (authoritativeSeatEnabled === false && userStore.user?.aiSeatStatus) {
@@ -834,7 +858,10 @@ export class BossOption {
                 "handled:", handledOne,
             );
         } finally {
-            BossOption.unreadScanRunning = false;
+            // 被看门狗复位后，旧的那一轮结束时不能把新一轮的占用标记清掉。
+            if (BossOption.unreadScanStartedAt === scanStartedAt) {
+                BossOption.unreadScanRunning = false;
+            }
         }
     }
 

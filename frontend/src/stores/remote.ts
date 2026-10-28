@@ -20,6 +20,7 @@ import {createScopedReadiness} from "./scopedReadiness";
 import {scopedAuthorization, userSessionScope} from "../utils/sessionContext";
 import {BossIdentity, waitForBossIdentity} from "../utils/bossIdentity";
 import {captureUserConfigSnapshot, mergeRemoteUserConfig, UserConfigSnapshot} from "./profileMerge";
+import {registerSessionRecovery} from "../utils/sessionRecovery";
 
 const logRecorder = new LogRecorder();
 const DEFAULT_RISK_PACK_VERSION = "risk-pack-20260829-v2";
@@ -354,3 +355,5 @@ export async function userRemoteLoad(options: UserRemoteLoadOptions = {}): Promi
     }
 }
 
+// 会话失效时由 axios / 未读补扫调用：重走一次静默登录 + 拉配置，不弹窗打扰。
+registerSessionRecovery(() => userRemoteLoad(), isApplicationSessionReady);
