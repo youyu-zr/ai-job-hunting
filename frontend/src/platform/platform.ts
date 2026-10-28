@@ -30,6 +30,8 @@ import {
 } from "./jobFilterFailure";
 
 let pushResultCounter: any;
+/** 每天最多成功投递数（BOSS 普通账号每日开聊上限约 100）。 */
+const DAILY_PUSH_LIMIT = 80;
 let userStore: any;
 
 
@@ -96,6 +98,20 @@ export abstract class AbsPlatform implements Platform {
     abstract getRenderComponent(): Promise<any>;
 
     async startPush() {
+        if (this._pushLoopRunning) {
+            throw new PublishStopExp("上一轮投递还在收尾，请稍等几秒再点开始");
+        }
+        this._pushLoopRunning = true;
+        try {
+            await this.runPushLoop();
+        } finally {
+            this._pushLoopRunning = false;
+        }
+    }
+
+    private _pushLoopRunning = false;
+
+    private async runPushLoop() {
         this.logRecorder.info("开始投递")
         // 每次投递前清空单次成功计数器
         pushResultCounter.clearOnceSuccessCount()
@@ -134,6 +150,9 @@ export abstract class AbsPlatform implements Platform {
                         // 投递限制；平台限制.结束链路
                         case error instanceof PublishLimitExp:
                             this.logRecorder.info("停止投递 " + error.message)
+                            if (error.message !== "自定义投递次数限制") {
+                                ElMessage({message: "已停止投递：" + error.message, type: 'warning', duration: 0, showClose: true})
+                            }
                             return;
 
                         default:
@@ -656,9 +675,11 @@ class BossPlatform extends AbsPlatform {
 
 
     isLimit(jobDetail: JobDetail): { limit: boolean; msg: string } {
+        // 按今天累计成功数判断（successIncr 已按天持久化），反复点「开始」也不会绕过。
+        const todaySuccess = Number(TampermonkeyApi.GmGetValue(TampermonkeyApi.PUSH_SUCCESS_COUNT, 0)) || 0;
         return {
-            limit: TampermonkeyApi.GmGetValue(TampermonkeyApi.PUSH_LIMIT, false),
-            msg: "Boss投递限制每天100次"
+            limit: todaySuccess >= DAILY_PUSH_LIMIT,
+            msg: `今天已投递 ${todaySuccess} 个，达到每日上限 ${DAILY_PUSH_LIMIT}，明天再继续`
         }
     }
 
@@ -696,7 +717,7 @@ class BossPlatform extends AbsPlatform {
         let pushResp: any = {code: PushResultStatus.NOT_START, message: ""};
         try {
             // 避免频繁，每次投递前延时
-            await Tools.sleep(userStore.user.preference.pi * 1000)
+            await Tools.sleep(userStore.user.preference.pi * 1000 + Math.floor(Math.random() * 2000))
             pushResp = await axiosOriginal.post(publishUrl, null, {headers: {"Zp_token": Tools.getCookieValue("bst")}});
         } catch (error: any) {
             // 重试投递
@@ -706,19 +727,17 @@ class BossPlatform extends AbsPlatform {
         }
 
         if (pushResp.data.code === PushResultStatus.FAIL && pushResp.data?.zpData?.bizData?.chatRemindDialog?.content) {
+            const remindContent = String(pushResp.data.zpData.bizData.chatRemindDialog.content);
             // 过滤开聊提示，实际投递成功
-            if (pushResp.data?.zpData?.bizData?.chatRemindDialog?.content.include("您今天已与120位BOSS沟通")) {
+            if (remindContent.includes("您今天已与120位BOSS沟通")) {
                 logger.debug(`当天已投递超过120次 工作【${jobTitle}】已修正为投递成功`)
                 return {
                     code: PushResultStatus.SUCCESS,
                     message: "Success"
                 }
             }
-            // 某些条件不满足，boss限制投递，无需重试，在结果处理器中处理
-            return {
-                code: 1,
-                message: pushResp.data?.zpData?.bizData?.chatRemindDialog?.content
-            }
+            // BOSS 弹出了限制/提醒（上限、频繁、需完善简历等）：整轮停下，交给用户本人处理，避免继续请求触发风控。
+            throw new PublishLimitExp("BOSS 提示：" + remindContent)
         }
         // 避免频繁
         await Tools.sleep(800);

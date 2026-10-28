@@ -490,13 +490,24 @@ const startPush = () => {
 
     let pushResultPromise = platform.startPush();
 
-    //   投递结果处理
-    pushResultPromise.then(() => {
-        ElMessage({
-            message: "批量投递完成",
-            type: 'success',
-            duration: 3000
-        })
+    //   投递结果处理：成功或出错都要把按钮恢复，出错时说清楚原因。
+    const finishPush = (failed?: any) => {
+        if (failed) {
+            logger.error('投递中断', failed);
+            ElMessage({
+                message: /稍等/.test(String(failed?.message))
+                    ? String(failed.message)
+                    : "投递中断：读取岗位列表失败，BOSS 页面可能已改版，请刷新页面后重试",
+                type: 'error',
+                duration: 5000
+            })
+        } else {
+            ElMessage({
+                message: "批量投递结束，详情见投递记录",
+                type: 'success',
+                duration: 3000
+            })
+        }
         setTimeout(() => {
             updateLatestPushRecords();
             pushStatus.value = PushStatus.PAUSE;
@@ -505,7 +516,8 @@ const startPush = () => {
             // 给 websocket 回执留出时间，再停止本次投递记录刷新。
             stopRecordsAfterSettling();
         }, 200)
-    })
+    };
+    pushResultPromise.then(() => finishPush(), error => finishPush(error || new Error("unknown")));
 }
 const pausePush = () => {
     platform.pausePush()
