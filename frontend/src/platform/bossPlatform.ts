@@ -6,6 +6,7 @@ import {batchPlatformBodyTypeOf} from "./messageBatchMetadata";
 import {UserStore} from '../stores'
 import {isApplicationSessionReady, rememberAiSeatStatus} from '../stores/remote'
 import {recoverSession} from '../utils/sessionRecovery'
+import {UnreadRetryBackoff} from './unreadRetryBackoff'
 import logging from "../logging";
 import logger from "../logging";
 import {LogRecorder} from "../logging/record";
@@ -52,6 +53,7 @@ export class BossOption {
     private static unreadScanStarted = false;
     private static unreadScanRunning = false;
     private static unreadScanStartedAt = 0;
+    private static readonly unreadRetryBackoff = new UnreadRetryBackoff();
     private static readonly UNREAD_SCAN_STUCK_MS = 3 * 60_000;
     private static unreadScanCache: Map<string, number> = new Map();
     // Keep the in-flight guard short so transient failures can be retried, but
@@ -820,6 +822,11 @@ export class BossOption {
                     skippedRecent += 1;
                     continue;
                 }
+                if (!BossOption.unreadRetryBackoff.isDue(bossId, text)) {
+                    // 这条之前失败过，还没到下次重试时间；先处理别的联系人。
+                    skippedRecent += 1;
+                    continue;
+                }
                 pendingCount += 1;
                 BossOption.logRecorder.info(
                     pending.source === 'read-pending' ? "【已读待回复补扫】触发AI坐席" : "【未读补扫】触发AI坐席",
@@ -840,13 +847,23 @@ export class BossOption {
                     continue;
                 }
                 const msgObj = BossOption.buildSyntheticTextMessage(bossId, source, text);
-                const handled = await bossOption.handlerBossMessage(msgObj, bossId, text);
+                let handled = false;
+                try {
+                    handled = await bossOption.handlerBossMessage(msgObj, bossId, text);
+                } catch (e: any) {
+                    BossOption.logRecorder.warn("【未读补扫】处理异常 bossId:", bossId, e?.message || e);
+                }
                 if (handled) {
+                    BossOption.unreadRetryBackoff.clear(bossId, text);
                     BossOption.markUnreadScanCompleted(bossId, text);
                     handledOne = true;
                     break;
                 }
-                BossOption.logRecorder.warn("【未读补扫】本轮未完成，保留下一轮重试 bossId:", bossId);
+                const waitMs = BossOption.unreadRetryBackoff.recordFailure(bossId, text);
+                BossOption.logRecorder.warn("【未读补扫】本轮未完成，稍后重试 bossId:", bossId,
+                    "等待秒数:", Math.round(waitMs / 1000));
+                // 一轮只给一个联系人发 AI 请求，保持低频。
+                break;
             }
             BossOption.logRecorder.info(
                 "【未读补扫】本轮统计",

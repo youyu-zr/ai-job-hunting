@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import {UnreadRetryBackoff} from '../src/platform/unreadRetryBackoff.ts';
 import {setTimeout as delay} from 'node:timers/promises';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
@@ -360,6 +361,7 @@ function ingressHarness() {
         MessageCache, MessageMergeQueue, batchPlatformBodyTypeOf, normalizedMessageBatch,
         ConversationPauseRegistry, canDeliverAiSeatTurn, parseAiSeatRuntimeStatus,
         shouldDelegateConversationTextToAi,
+        UnreadRetryBackoff,
         userStore: {user: {aiSeatStatus: true}},
         remotelyPausedJobs: new Set<string>(),
         Tools: {window: {_PAGE: {uid: 9}}, getEndChar: () => ''},
