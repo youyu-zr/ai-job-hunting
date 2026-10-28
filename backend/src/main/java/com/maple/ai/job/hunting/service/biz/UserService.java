@@ -89,8 +89,6 @@ public class UserService {
     private BetaAccessService betaAccessService;
 
     @Resource
-    private BossIdentityVerifier bossIdentityVerifier;
-    @Resource
     private TransactionTemplate transactionTemplate;
 
     private static final ThreadPoolExecutor THREAD_POOL_EXECUTOR = new ThreadPoolExecutor(2, 2,
@@ -165,40 +163,22 @@ public class UserService {
         }
     }
 
-    /**
-     * Whether the current session proved it owns the BOSS account it acts for.
-     *
-     * <p>Observability only. Do not gate product features on this: under lenient mode every
-     * session is unverified (the provider cannot decide for any of them), so a gate built on it
-     * would lock out the very testers it is meant to protect. The real boundary is elsewhere:
-     * unverified logins may not create accounts, and uid is not publicly discoverable.
-     */
-    public boolean isSessionOwnershipVerified() {
-        UserInfoVO sessionUser = HeaderContext.getHeader().getUserInfoVO();
-        return sessionUser != null && Boolean.TRUE.equals(sessionUser.getOwnershipVerified());
-    }
 
+    /**
+     * 按 BOSS uid 登录；没有这个账号就自动创建。与上游原版一致，不回查 BOSS。
+     * bossToken 仅为兼容旧客户端保留，不参与判断。
+     */
     public String loginSilently(String uniqueId, String bossToken) {
         String normalizedUniqueId = StringUtils.trimToEmpty(uniqueId);
-        // A proved ownership and an unproved one do not grant the same thing. The mode decides
-        // whether an unproved login may continue; the decision is recorded below so an unverified
-        // session can be told apart from a verified one after the fact.
-        boolean ownershipVerified = bossIdentityVerifier.authorizeLoginOrThrow(normalizedUniqueId, bossToken);
+        if (normalizedUniqueId.isEmpty()) {
+            throw new ApplicationException("未读取到 BOSS 账号，请先登录 BOSS 后刷新页面",
+                    BizCodeEnum.IDENTITY_VERIFY_FAILED.getCode());
+        }
         UserInfoDO userInfoDO;
         try {
             userInfoDO = transactionTemplate.execute(status -> {
                 UserInfoDO account = userInfoMapper.selectByUniqueId(normalizedUniqueId);
                 if (account == null) {
-                    if (!ownershipVerified) {
-                        // An unproved session may resume an account that already exists, but it may
-                        // not bring new accounts into being: otherwise anyone who can produce a
-                        // numeric uid mints a full-featured account and drains shared AI quota.
-                        // Existing testers keep every feature; the blast radius stops growing.
-                        log.warn("refusing to create an account for an unverified uid");
-                        throw new ApplicationException(
-                                "身份校验暂不可用，且该 BOSS 账号尚未注册；请联系管理员开通内测权限",
-                                BizCodeEnum.IDENTITY_VERIFY_FAILED.getCode());
-                    }
                     account = new UserInfoDO(null, null, normalizedUniqueId);
                     if (userInfoMapper.insert(account) <= 0) {
                         throw new ApplicationException("账号创建失败，请重试");
@@ -227,11 +207,8 @@ public class UserService {
         SESSION_TOKEN_RANDOM.nextBytes(tokenBytes);
         String loginKey = Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes);
         UserInfoVO sessionUser = BeanUtil.copyProperties(userInfoDO, UserInfoVO.class);
-        // Carried on the session so later requests can tell a proved session from an unproved one.
-        sessionUser.setOwnershipVerified(ownershipVerified);
         sysSessionCache.set(loginKey, sessionUser);
-        log.info("silent login issued: userId={} ownershipVerified={}",
-                userInfoDO.getId(), ownershipVerified);
+        log.info("silent login issued: userId={}", userInfoDO.getId());
         return loginKey;
     }
 

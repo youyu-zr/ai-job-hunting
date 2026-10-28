@@ -45,19 +45,6 @@ public class UserInfoVO extends BaseVO {
      */
     private String bindInviteCode;
 
-    /**
-     * Whether BOSS actually confirmed that the caller owns this account.
-     *
-     * <p>Observability only. This is <strong>not</strong> a permission gate: under lenient mode the
-     * provider cannot decide for anybody, so every session is unverified and a gate built on this
-     * field would lock out every tester. Read it to know how a session was established; do not
-     * branch product behaviour on it.
-     *
-     * <p>The boundary that does hold is at login: an unverified login may resume an account that
-     * already exists, but may never create one.
-     */
-    private Boolean ownershipVerified;
-
     public UserInfoVO(String phone, String email) {
         this.phone = phone;
         this.email = email;

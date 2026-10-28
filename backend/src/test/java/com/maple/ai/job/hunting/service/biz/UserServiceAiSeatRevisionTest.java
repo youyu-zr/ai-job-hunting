@@ -88,8 +88,7 @@ class UserServiceAiSeatRevisionTest {
     private static Header header(Long userId) {
         UserInfoVO user = new UserInfoVO();
         user.setId(userId);
-        // Preference writes are reserved for sessions whose ownership BOSS actually proved.
-        user.setOwnershipVerified(Boolean.TRUE);
+
         return new Header(user, "request", "/api/user/save/preference",
                 null, false, null, null);
     }

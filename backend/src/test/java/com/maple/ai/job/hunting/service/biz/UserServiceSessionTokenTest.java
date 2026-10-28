@@ -29,16 +29,9 @@ class UserServiceSessionTokenTest {
                 getClass().getClassLoader(),
                 new Class[]{UserInfoMapper.class},
                 (proxy, method, args) -> "selectByUniqueId".equals(method.getName()) ? userInfo : null);
-        BossIdentityVerifier bossIdentityVerifier = new BossIdentityVerifier() {
-            @Override
-            public boolean authorizeLoginOrThrow(String claimedUid, String bossToken) {
-                return true;
-            }
-        };
         SysSessionCache sysSessionCache = new SysSessionCache();
         UserService userService = new UserService();
         ReflectionTestUtils.setField(userService, "userInfoMapper", userInfoMapper);
-        ReflectionTestUtils.setField(userService, "bossIdentityVerifier", bossIdentityVerifier);
         ReflectionTestUtils.setField(userService, "sysSessionCache", sysSessionCache);
         ReflectionTestUtils.setField(userService, "betaAccessService", new BetaAccessService(null, null, null) {
             @Override

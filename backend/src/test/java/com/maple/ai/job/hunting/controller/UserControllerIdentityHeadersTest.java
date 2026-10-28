@@ -3,9 +3,7 @@ package com.maple.ai.job.hunting.controller;
 import com.maple.ai.job.hunting.emums.BizCodeEnum;
 import com.maple.ai.job.hunting.frame.GlobalExceptionHandler;
 import com.maple.ai.job.hunting.model.vo.UserInfoVO;
-import com.maple.ai.job.hunting.service.biz.BossIdentityVerifier;
 import com.maple.ai.job.hunting.service.biz.UserService;
-import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -58,12 +56,6 @@ class UserControllerIdentityHeadersTest {
                 Arguments.of("synthetic-proof ", "synthetic-proof"));
     }
 
-    static Stream<Arguments> missingProofs() {
-        return Stream.of(
-                Arguments.of(null, null),
-                Arguments.of(" \t", ""));
-    }
-
     @ParameterizedTest
     @MethodSource("compatibleProofs")
     void loginBindsCompatibleProofHeaders(String canonical, String legacy) throws Exception {
@@ -113,16 +105,6 @@ class UserControllerIdentityHeadersTest {
         assertEquals(0, service.calls);
     }
 
-    @ParameterizedTest
-    @MethodSource("missingProofs")
-    void missingLoginProofStillFailsExistingIdentityVerification(String canonical, String legacy) throws Exception {
-        mvc.perform(headers(post("/api/user/silently/login").param("uniqueId", "synthetic-uid"),
-                        canonical, legacy))
-                .andExpect(jsonPath("$.code").value(BizCodeEnum.IDENTITY_VERIFY_FAILED.getCode()));
-
-        assertEquals(1, service.calls);
-    }
-
     private MockHttpServletRequestBuilder resumeRequest() {
         return multipart("/api/user/import/resume")
                 .file(new MockMultipartFile("file", "resume.txt", "text/plain",
@@ -152,10 +134,6 @@ class UserControllerIdentityHeadersTest {
             calls++;
             uid = uniqueId;
             proof = bossToken;
-            // Missing proof exercises the real verifier's local, network-free rejection.
-            if (StringUtils.isBlank(bossToken)) {
-                new BossIdentityVerifier().requireOwnership(uniqueId, bossToken);
-            }
         }
 
         @Override
