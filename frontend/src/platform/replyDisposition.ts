@@ -6,7 +6,6 @@ export type StopReplyData = {
 
 const TERMINAL_STOP_REASONS = new Set([
     'SESSION_PAUSED',
-    'DUPLICATE_MESSAGE',
     'HUMAN_HANDOFF',
     'DUPLICATE_REPLY',
     'JOB_GATE',
@@ -24,7 +23,7 @@ const TERMINAL_STOP_REASONS = new Set([
  */
 export function shouldCompleteStoppedReply(data: StopReplyData | null | undefined): boolean {
     const reason = String(data?.stopReason || '').trim().toUpperCase();
-    if (reason === 'AI_PROCESSING_ERROR' || data?.retryable === true) {
+    if (reason === 'AI_PROCESSING_ERROR' || reason === 'IN_PROGRESS' || data?.retryable === true) {
         return false;
     }
     if (TERMINAL_STOP_REASONS.has(reason)) {

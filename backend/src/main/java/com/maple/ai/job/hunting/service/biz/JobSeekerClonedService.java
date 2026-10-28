@@ -109,22 +109,49 @@ public class JobSeekerClonedService {
         if (Integer.valueOf(14).equals(jobSeekerClonedParam.getPlatformBodyType())) {
             return pauseForUserConfirmation(jobKey);
         }
-        // 重复问题过滤
-        if (askDuplication(jobSeekerClonedParam)) {
-            return new JobSeekerClonedResultVO(JobSeekerClonedAnswerTypeEnum.STOP, "", "DUPLICATE_MESSAGE");
+        // 重复问题：同一条 HR 消息在 5 分钟内再来（多为前端超时后补扫重发），
+        // 已有结果就把结果原样还给前端（前端按「是否已发送」防重），还在生成就让前端稍后再来。
+        String dedupKey = askDuplicationKey(jobSeekerClonedParam);
+        AskRecord previous = reserveAsk(dedupKey);
+        if (previous != null) {
+            if (previous.result() != null) {
+                return previous.result();
+            }
+            JobSeekerClonedResultVO inProgress = new JobSeekerClonedResultVO(
+                    JobSeekerClonedAnswerTypeEnum.STOP, "", "IN_PROGRESS");
+            inProgress.setRetryable(true);
+            return inProgress;
         }
         try {
             JobSeekerClonedResultVO result = askReserved(jobSeekerClonedParam, jobKey, userId);
             if (result.isRetryable()
                     || (result.getAnswerTypeList() != null
                     && result.getAnswerTypeList().contains(JobSeekerClonedAnswerTypeEnum.AI_SERVICE_EXCEPTION.getCode()))) {
-                forgetAskDuplication(jobSeekerClonedParam);
+                askRecords.remove(dedupKey);
+            } else {
+                askRecords.put(dedupKey, new AskRecord(System.currentTimeMillis(), result));
             }
             return result;
         } catch (RuntimeException e) {
-            forgetAskDuplication(jobSeekerClonedParam);
+            askRecords.remove(dedupKey);
             throw e;
         }
+    }
+
+    private static final long ASK_RECORD_TTL_MS = java.util.concurrent.TimeUnit.MINUTES.toMillis(5);
+
+    /** 同一条 HR 消息的处理记录：result 为 null 表示正在生成。 */
+    private record AskRecord(long createdAt, JobSeekerClonedResultVO result) {
+    }
+
+    private final java.util.concurrent.ConcurrentHashMap<String, AskRecord> askRecords =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** 抢占处理权：返回 null 表示由本次请求处理；否则返回已有记录。 */
+    private AskRecord reserveAsk(String key) {
+        long now = System.currentTimeMillis();
+        askRecords.entrySet().removeIf(entry -> now - entry.getValue().createdAt() > ASK_RECORD_TTL_MS);
+        return askRecords.putIfAbsent(key, new AskRecord(now, null));
     }
 
     private JobSeekerClonedResultVO askReserved(JobSeekerClonedParam jobSeekerClonedParam,
@@ -1208,26 +1235,7 @@ public class JobSeekerClonedService {
         return sessionId;
     }
 
-    /**
-     * 询问重复
-     *
-     * @param jobSeekerClonedParam 求职者克隆参数
-     * @return boolean
-     */
-    private boolean askDuplication(JobSeekerClonedParam jobSeekerClonedParam) {
-        String key = askDuplicationKey(jobSeekerClonedParam);
-
-        if (questionCache.contains(key)) {
-            return true;
-        }
-        questionCache.set(key, "");
-        return false;
-    }
-
-    private void forgetAskDuplication(JobSeekerClonedParam jobSeekerClonedParam) {
-        questionCache.delete(askDuplicationKey(jobSeekerClonedParam));
-    }
-
+    /** 同一岗位会话里的同一条 HR 消息。 */
     private String askDuplicationKey(JobSeekerClonedParam jobSeekerClonedParam) {
         String question = Optional.ofNullable(jobSeekerClonedParam.getQuestion()).orElse("").hashCode() + "";
         return jobSeekerClonedParam.getJobKey() + "-" + question;

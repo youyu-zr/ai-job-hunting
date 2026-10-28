@@ -41,6 +41,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -130,12 +131,47 @@ class JobSeekerClonedServiceMessageDecisionTest {
         Fixture fixture = new Fixture();
         fixture.triageResult(Category.NORMAL_JOB, Action.REPLY);
 
-        fixture.ask("Please describe the job", "job-text-identity", null);
+        JobSeekerClonedResultVO first = fixture.ask("Please describe the job", "job-text-identity", null);
         JobSeekerClonedResultVO repeated = fixture.ask("Please describe the job", "job-text-identity", 1);
 
-        assertEquals("DUPLICATE_MESSAGE", repeated.getStopReason());
+        // 补扫重发同一条消息：拿回第一次的结果，不再调模型，也不会被当成「已处理」吞掉。
+        assertSame(first, repeated);
         assertEquals(1, fixture.ai.sessionChatCalls.get());
         assertTrue(fixture.sessions.pausedJobs.isEmpty());
+    }
+
+    @Test
+    void aRepeatWhileTheFirstIsStillGeneratingIsRetryableNotSwallowed() throws Exception {
+        Fixture fixture = new Fixture();
+        fixture.triageResult(Category.NORMAL_JOB, Action.REPLY);
+        java.util.concurrent.CountDownLatch entered = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+        fixture.ai.beforeSessionChat = () -> {
+            entered.countDown();
+            try {
+                release.await(5, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        };
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newSingleThreadExecutor();
+        try {
+            java.util.concurrent.Future<JobSeekerClonedResultVO> slow =
+                    pool.submit(() -> fixture.ask("What is the salary", "job-slow", 1));
+            assertTrue(entered.await(5, java.util.concurrent.TimeUnit.SECONDS));
+
+            JobSeekerClonedResultVO repeat = fixture.ask("What is the salary", "job-slow", 1);
+            assertEquals("IN_PROGRESS", repeat.getStopReason());
+            assertTrue(repeat.isRetryable());
+
+            release.countDown();
+            JobSeekerClonedResultVO done = slow.get(5, java.util.concurrent.TimeUnit.SECONDS);
+            assertSame(done, fixture.ask("What is the salary", "job-slow", 1));
+            assertEquals(1, fixture.ai.sessionChatCalls.get());
+        } finally {
+            release.countDown();
+            pool.shutdownNow();
+        }
     }
 
     @Test
@@ -608,10 +644,14 @@ class JobSeekerClonedServiceMessageDecisionTest {
     private static final class RecordingAIServiceFacade extends AIServiceFacade {
         private final AtomicInteger sessionChatCalls = new AtomicInteger();
         private boolean failNextChat;
+        private Runnable beforeSessionChat;
 
         @Override
         public ChatSessionResult sessionChat(String sessionId, String ask) {
             sessionChatCalls.incrementAndGet();
+            if (beforeSessionChat != null) {
+                beforeSessionChat.run();
+            }
             ChatSessionResult result = new ChatSessionResult();
             if (failNextChat) {
                 failNextChat = false;

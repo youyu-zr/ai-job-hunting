@@ -440,6 +440,12 @@ export class BossOption {
             // 停止交互
             if (answerTypeList.includes(JobSeekerClonedAnswerTypeEnum.STOP)) {
                 const stopReason = String(data?.stopReason || '').trim().toUpperCase();
+                if (stopReason === 'IN_PROGRESS') {
+                    // 上一次请求超时但服务器仍在生成；不提示错误，留给补扫稍后取同一结果。
+                    BossOption.logRecorder.info("这条消息服务器还在生成回复，稍后补扫取结果");
+                    this.removeBatchMessages(batch);
+                    return false;
+                }
                 if (stopReason === 'AI_PROCESSING_ERROR' || data?.retryable === true) {
                     ElNotification({
                         type: 'error',

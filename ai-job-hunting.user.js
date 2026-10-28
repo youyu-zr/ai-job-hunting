@@ -26,7 +26,7 @@
 !function(t){function e(t){t.registerRegistry=Object.create(null),t.namedRegisterAliases=Object.create(null)}var r=t.System;e(r);var i,s,n=r.constructor.prototype,l=r.constructor,a=function(){l.call(this),e(this)};a.prototype=n,r.constructor=a;var o=n.register;n.register=function(t,e,r,n){if("string"!=typeof t)return o.apply(this,arguments);var l=[e,r,n];return this.registerRegistry[t]=l,i||(i=l,s=t),Promise.resolve().then((function(){i=null,s=null})),o.apply(this,[e,r,n])};var u=n.resolve;n.resolve=function(t,e){try{return u.call(this,t,e)}catch(r){if(t in this.registerRegistry)return this.namedRegisterAliases[t]||t;throw r}};var c=n.instantiate;n.instantiate=function(t,e,r){var i=this.registerRegistry[t];return i?(this.registerRegistry[t]=null,i):c.call(this,t,e,r)};var g=n.getRegister;n.getRegister=function(t){var e=g.call(this,t);s&&t&&(this.namedRegisterAliases[s]=t);var r=i||e;return i=null,s=null,r}}("undefined"!=typeof self?self:global);
 ;(typeof System!='undefined')&&(System=new System.constructor());
 
-System.register("./__entry.js", ['./__monkey.entry-C2l_1RNp.js'], (function (exports, module) {
+System.register("./__entry.js", ['./__monkey.entry-6HLsdsVP.js'], (function (exports, module) {
 	'use strict';
 	return {
 		setters: [null],
@@ -38,7 +38,7 @@ System.register("./__entry.js", ['./__monkey.entry-C2l_1RNp.js'], (function (exp
 	};
 }));
 
-System.register("./__monkey.entry-C2l_1RNp.js", [], (function (exports, module) {
+System.register("./__monkey.entry-6HLsdsVP.js", [], (function (exports, module) {
   'use strict';
   return {
     execute: (function () {
@@ -80558,11 +80558,11 @@ System.register("./__monkey.entry-C2l_1RNp.js", [], (function (exports, module) 
         }
         async getRenderComponent() {
           if (this.curUrl.includes("www.zhipin.com/web/geek/chat")) {
-            let promise = __vitePreload(() => module.import('./BossMessage-A5Uvlp7M-CJSlpIt9.js'), void 0 );
+            let promise = __vitePreload(() => module.import('./BossMessage-DiijH_iK-BpS2E3cD.js'), void 0 );
             return promise.then((item) => item.default);
           }
           if (this.curUrl.includes("www.zhipin.com/web/geek/job") || this.curUrl.includes("overseas")) {
-            let promise = __vitePreload(() => module.import('./BossJobList-urHDfPan-BvB1Y-xQ.js'), void 0 );
+            let promise = __vitePreload(() => module.import('./BossJobList-6gxdQjhn-BcqdttE0.js'), void 0 );
             return promise.then((item) => item.default);
           }
         }
@@ -81782,7 +81782,6 @@ System.register("./__monkey.entry-C2l_1RNp.js", [], (function (exports, module) 
       })(BossOperationTypeEnum || {});
       const TERMINAL_STOP_REASONS = /* @__PURE__ */ new Set([
         "SESSION_PAUSED",
-        "DUPLICATE_MESSAGE",
         "HUMAN_HANDOFF",
         "DUPLICATE_REPLY",
         "JOB_GATE",
@@ -81794,7 +81793,7 @@ System.register("./__monkey.entry-C2l_1RNp.js", [], (function (exports, module) 
       ]);
       function shouldCompleteStoppedReply(data) {
         const reason = String((data == null ? void 0 : data.stopReason) || "").trim().toUpperCase();
-        if (reason === "AI_PROCESSING_ERROR" || (data == null ? void 0 : data.retryable) === true) {
+        if (reason === "AI_PROCESSING_ERROR" || reason === "IN_PROGRESS" || (data == null ? void 0 : data.retryable) === true) {
           return false;
         }
         if (TERMINAL_STOP_REASONS.has(reason)) {
@@ -82086,6 +82085,11 @@ System.register("./__monkey.entry-C2l_1RNp.js", [], (function (exports, module) 
             }
             if (answerTypeList.includes(JobSeekerClonedAnswerTypeEnum.STOP)) {
               const stopReason = String((data == null ? void 0 : data.stopReason) || "").trim().toUpperCase();
+              if (stopReason === "IN_PROGRESS") {
+                _BossOption.logRecorder.info("这条消息服务器还在生成回复，稍后补扫取结果");
+                this.removeBatchMessages(batch);
+                return false;
+              }
               if (stopReason === "AI_PROCESSING_ERROR" || (data == null ? void 0 : data.retryable) === true) {
                 ElNotification({
                   type: "error",
@@ -83521,7 +83525,7 @@ System.register("./__monkey.entry-C2l_1RNp.js", [], (function (exports, module) 
   };
 }));
 
-System.register("./BossMessage-A5Uvlp7M-CJSlpIt9.js", ['./__monkey.entry-C2l_1RNp.js'], (function (exports, module) {
+System.register("./BossMessage-DiijH_iK-BpS2E3cD.js", ['./__monkey.entry-6HLsdsVP.js'], (function (exports, module) {
   'use strict';
   var _export_sfc, defineComponent, UserStore, ref, computed, onMounted, onUnmounted, openBlock, createElementBlock, createBaseVNode, createVNode, withCtx, normalizeClass, createTextVNode, toDisplayString, createBlock, createCommentVNode, Fragment, ConversationPauseRegistry, AiPower, parseAiSeatRuntimeStatus, getAiSeatStatusRevision, rememberAiSeatStatus, ElMessage, ElTag, ElButton, pushScopeId, popScopeId, BossOption;
   return {
@@ -83698,7 +83702,7 @@ System.register("./BossMessage-A5Uvlp7M-CJSlpIt9.js", ['./__monkey.entry-C2l_1RN
   };
 }));
 
-System.register("./BossJobList-urHDfPan-BvB1Y-xQ.js", ['./__monkey.entry-C2l_1RNp.js'], (function (exports, module) {
+System.register("./BossJobList-6gxdQjhn-BcqdttE0.js", ['./__monkey.entry-6HLsdsVP.js'], (function (exports, module) {
   'use strict';
   var defineComponent, openBlock, createBlock, _export_sfc, shallowRef, createElementBlock, createVNode, withCtx, Fragment, renderList, unref, createTextVNode, toDisplayString, createBaseVNode, resolveDynamicComponent, ElMenuItem, ElMenu, inject, ServerStore, ref, PushStatus, LogRecorder, LoginStore, pushResultCount, UserStore, watch, onUnmounted, isProdEnv, createCommentVNode, withDirectives, vShow, CircleCloseFilled, normalizeClass, reactive, Tools, onMounted, logger$1, isRef, userRemoteLoad, ElNotification, ElMessage, waitForBossIdentity, INTERACTIVE_ATTEMPTS, userSessionScope, isApplicationSessionReady, axios, fetchWithGM_request, applicationResponseError, isUserConfigReady, resumeImportErrorNotice, loginInterceptor, serializeAiSeatStatus, rememberAiSeatStatus, shouldApplyAiSeatRollback, ElText, ElBadge, ElTag, ElButton, ElIcon, ElTooltip, ElButtonGroup$1, ElInput, ElCard, ElInputNumber, ElSwitch, applyPersonalPreferenceDefaults, ElFormItem, ElCheckbox, ElOption, ElSelect, ElUpload, ElRadioButton, ElRadioGroup, ElForm, ElCol, ElTimePicker, ElRow, ElTableColumn, ElEmpty, ElTable, ElPagination, pushScopeId, popScopeId, userSnapshotStorageKey, TampermonkeyApi, createStaticVNode;
   return {
