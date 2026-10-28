@@ -75,7 +75,7 @@ test("a timeout remains the original structured error instead of a bare string",
     await assert.rejects(app.client.post("/api/user/import/resume"), error => error === original);
 });
 
-for (const change of ["account", "server", "token"] as const) {
+for (const change of ["account", "server"] as const) {
     test(`queued import is cancelled before dispatch if its ${change} changed`, async () => {
         const app = applicationHarness();
         const config = {
@@ -84,12 +84,22 @@ for (const change of ["account", "server", "token"] as const) {
         };
         if (change === "account") app.page.uid = "other-account";
         if (change === "server") app.server.baseUrl = "https://other.invalid/";
-        if (change === "token") app.page.cookieToken = "other-proof";
         await assert.rejects(app.client.post("/api/user/import/resume", null, config));
         assert.equal(app.requests.length, 0);
         assert.equal(app.notices.length, 0);
     });
 }
+
+test("queued import still goes out when BOSS only rotated its cookie", async () => {
+    const app = applicationHarness();
+    const config = {
+        headers: {Zp_token: app.page.token},
+        bossIdentityContext: {accountId: app.page.uid, token: app.page.cookieToken, serverUrl: app.server.baseUrl},
+    };
+    app.page.cookieToken = "other-proof";
+    await app.client.post("/api/user/import/resume", null, config);
+    assert.equal(app.requests.length, 1);
+});
 
 for (const headers of [
     {Zp_token: " synthetic-proof "},

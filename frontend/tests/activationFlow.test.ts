@@ -10,20 +10,16 @@ const userService = readFileSync(
   'utf8',
 );
 
-test('first login creates an account after BOSS identity verification without importing a resume', () => {
+test('first login creates an account from the BOSS uid alone, without importing a resume', () => {
   const loginMethod = userService.slice(userService.indexOf('public String loginSilently'));
-  // Ownership is still decided before any account is created; only the decision's shape changed,
-  // because "BOSS could not tell us" is no longer the same answer as "BOSS named someone else".
-  const identityCheck = loginMethod.indexOf('bossIdentityVerifier.authorizeLoginOrThrow(normalizedUniqueId, bossToken)');
-  const accountCreation = loginMethod.indexOf('new UserInfoDO(null, null, normalizedUniqueId)');
-
-  assert.ok(identityCheck >= 0);
-  assert.ok(accountCreation > identityCheck);
+  assert.doesNotMatch(userService, /bossIdentityVerifier/);
+  assert.match(loginMethod, /new UserInfoDO\(null, null, normalizedUniqueId\)/);
   assert.match(loginMethod, /betaAccessService\.ensureAutoGrant\(account\.getId\(\)\)/);
-  assert.match(loginState, /response\?\.data\?\.code === 2000/);
-  assert.match(tools, /if \(outcome === "legacy-registration-required"\)/);
-  assert.match(tools, /这不是简历未导入导致的/);
+  // A refused login must leave the panel signed out instead of pretending to be connected.
+  const refused = tools.slice(tools.indexOf('if (outcome === "identity-refused")'), tools.indexOf('if (outcome === "legacy-registration-required")'));
+  assert.match(refused, /loginStore\.loginFailForScope\(sessionScope\)/);
   assert.doesNotMatch(tools, /handlerImport|\/api\/user\/import\/resume/);
+  assert.doesNotMatch(aiJob, /:disabled="!serverStore\.isOnline"/);
 });
 
 test('resume upload is wired to the user-triggered import button', () => {

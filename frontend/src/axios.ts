@@ -30,10 +30,6 @@ const request = axios.create({
 })
 installBossIdentityTransport(request);
 
-function currentBossToken(): string {
-    return String(Tools.getCookieValue("bst") ?? "").trim();
-}
-
 /**
  * 请求拦截器
  */
@@ -54,9 +50,9 @@ request.interceptors.request.use(req => {
             throw new AxiosError("当前账号或服务器地址无效，请填写完整的 HTTP(S) 服务地址后重试", "RESUME_SCOPE_INVALID", req)
         }
         if (expectedIdentity && (serverUrl !== expectedIdentity.serverUrl
-            || accountId !== expectedIdentity.accountId
-            || currentBossToken() !== expectedIdentity.token)) {
-            throw new AxiosError("BOSS账号、登录身份或服务器已变更，请重新导入", AxiosError.ERR_CANCELED, req)
+            || accountId !== expectedIdentity.accountId)) {
+            // BOSS 自己轮换 cookie 不算换人；只有换账号/换服务器才取消。
+            throw new AxiosError("BOSS账号或服务器已变更，请重新导入", AxiosError.ERR_CANCELED, req)
         }
         req.baseURL = destination
         ;(req as any).__aiSessionScope = scope
@@ -90,8 +86,7 @@ function isCurrentSessionRequest(config: any): boolean {
 function isCurrentImportRequest(config: any): boolean {
     const expected = config?.bossIdentityContext;
     return !expected || (isCurrentSessionRequest(config)
-        && isCurrentServerRequest(config)
-        && currentBossToken() === expected.token);
+        && isCurrentServerRequest(config));
 }
 
 function notifyRequestError(error: any, options: any): void {

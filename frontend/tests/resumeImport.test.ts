@@ -103,7 +103,8 @@ test("a BOSS identity change while the application session is loading stops befo
     assert.equal(app.lookups.length, 0);
     assert.equal(app.downloads.length, 0);
     assert.equal(app.requests.length, 0);
-    assert.equal(app.notices.length, 0);
+    assert.equal(app.notices.length, 1);
+    assert.match(app.notices[0].message, /已切换.*导入已取消/);
 });
 
 test("a BOSS cookie rotation alone does not block a resume import for the same account", async () => {
@@ -175,8 +176,8 @@ test("import waits for a ready live identity before lookup or changing the saved
     assert.equal(app.requests[0].headers.has("X-Boss-Token"), false);
 });
 
-for (const change of ["account", "server", "token"] as const) {
-    test(`a ${change} change during download prevents upload and stale notices`, async () => {
+for (const change of ["account", "server"] as const) {
+    test(`a ${change} change during download prevents upload and says the import was cancelled`, async () => {
         const app = importHarness();
         const wait = deferred<any>();
         app.downloadWith(() => wait.promise);
@@ -184,17 +185,28 @@ for (const change of ["account", "server", "token"] as const) {
         await new Promise(resolve => setImmediate(resolve));
         if (change === "account") app.page.uid = "other-account";
         if (change === "server") app.server.baseUrl = "https://other.invalid/";
-        if (change === "token") {
-            app.page.token = "other-proof";
-            app.page.cookieToken = "other-proof";
-        }
         wait.resolve({status: 200, response: new Uint8Array([1, 2]).buffer});
         await pending;
         assert.equal(app.requests.length, 0);
-        assert.equal(app.notices.length, 0);
+        assert.equal(app.notices.length, 1);
+        assert.match(app.notices[0].message, /已切换.*导入已取消/);
         assert.equal(app.loading.value, false);
     });
 }
+
+test("a BOSS cookie rotation during download does not cancel the import", async () => {
+    const app = importHarness();
+    const wait = deferred<any>();
+    app.downloadWith(() => wait.promise);
+    const pending = app.run();
+    await new Promise(resolve => setImmediate(resolve));
+    app.page.token = "other-proof";
+    app.page.cookieToken = "other-proof";
+    wait.resolve({status: 200, response: new Uint8Array([1, 2]).buffer});
+    await pending;
+    assert.equal(app.requests.length, 1);
+    assert.equal(app.status.value, "成功导入简历");
+});
 
 test("a stale rejected download cannot overwrite the new account badge", async () => {
     const app = importHarness();
@@ -207,7 +219,8 @@ test("a stale rejected download cannot overwrite the new account badge", async (
     wait.reject(new Error("synthetic old-account error"));
     await pending;
     assert.equal(app.status.value, "成功导入简历");
-    assert.equal(app.notices.length, 0);
+    assert.equal(app.notices.length, 1);
+    assert.match(app.notices[0].message, /已切换.*导入已取消/);
 });
 
 for (const response of [
@@ -263,7 +276,7 @@ test("import logs exclude proof, response bodies and untrusted exception message
     assert.doesNotMatch(JSON.stringify(app.logs), /synthetic-secret|synthetic-proof|synthetic-session/);
 });
 
-test("a stale upload rejection does not display an application toast for a new identity", async () => {
+test("a stale upload rejection for a switched account only reports the cancellation", async () => {
     const app = importHarness();
     const wait = deferred<any>();
     app.respondWith(config => wait.promise.then(() => {
@@ -271,10 +284,11 @@ test("a stale upload rejection does not display an application toast for a new i
     }));
     const pending = app.run();
     await new Promise(resolve => setImmediate(resolve));
-    app.page.cookieToken = "other-proof";
+    app.page.uid = "other-account";
     wait.resolve(undefined);
     await pending;
-    assert.equal(app.notices.length, 0);
+    assert.equal(app.notices.length, 1);
+    assert.match(app.notices[0].message, /已切换.*导入已取消/);
 });
 
 test("valid binary downloads from another userscript realm are accepted without changing bytes", async () => {

@@ -285,6 +285,10 @@ export async function userRemoteLoad(options: UserRemoteLoadOptions = {}): Promi
         if (!contextIsCurrent()) {
             return;
         }
+        if (loginOutcome === "identity-refused") {
+            // 登录被拒（已提示原因），不要再去拉用户配置。
+            return;
+        }
         if (loginOutcome === "legacy-registration-required") {
             if (!userStore.user.preference) {
                 userStore.user.preference = {} as PreferenceConfig;

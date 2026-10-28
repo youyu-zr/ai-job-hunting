@@ -122,6 +122,13 @@ async function performSilentLogin(
             const refusal = silentLoginRefusalMessage(resp);
             logRecorder.warn("静默登录被拒绝", refusal);
             originalElMessage.warning({message: refusal, duration: 9000, showClose: true});
+            // 服务端拒绝了这个身份（现在只有读不到 uid 时才会出现），本地必须同步标记为未登录，
+            // 否则面板会以为已登录，后续请求全部 401。
+            clearScopedAuthorization(sessionScope, authorizationBeforeAttempt ?? undefined);
+            loginStore.loginFailForScope(sessionScope);
+            if (!loginStore.accountScope) {
+                loginStore.loginFail();
+            }
             return outcome;
         }
         if (outcome === "legacy-registration-required") {

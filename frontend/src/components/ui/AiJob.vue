@@ -58,7 +58,6 @@
     - 仅用于AI坐席定制化回复
     " placement="bottom">
         <el-button :icon="Upload as any" type="primary" @click="handlerImport"
-                   :disabled="!serverStore.isOnline"
                    :loading="importResumeLoading"><p
             style="font-size: 15px">导入简历</p>
         </el-button>
@@ -73,19 +72,18 @@
     </el-tooltip>
 
     <el-tooltip effect="dark" raw-content content="
-    AI坐席：登录并自动开通内测权限后可开启。<br/>
+    AI坐席：登录后即可开启。<br/>
     - 开始投递和开启 AI 坐席前，请先导入本人简历。<br/>
     - 根据简历、求职要求和岗位信息回复HR。<br/>
     - HR索要简历时才通过平台发送简历。<br/>
     - 联系方式交换、明确面试安排及需要本人承诺的事项会暂停当前岗位会话。<br/>
     " placement="bottom">
-        <el-button :icon="Service as any" color="#626aef" :disabled="!serverStore.isOnline">
+        <el-button :icon="Service as any" color="#626aef">
             <p style="font-size: 15px">
                 <span>AI坐席 </span>
                 <el-switch active-text="开" inactive-text="关" inline-prompt
                            style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
                            :model-value="Boolean(userStore.user.aiSeatStatus)"
-                           :disabled="!serverStore.isOnline"
                            @update:model-value="handlerAISeatStatusChange"/>
             </p>
         </el-button>
@@ -310,12 +308,18 @@ const handlerImport = async () => {
     let stage: ResumeImportStage = "identity";
     const currentBossToken = () =>
         String(Tools.getCookieValue("bst") ?? "").trim();
+    // 只有「换了 BOSS 账号」或「换了服务器」才算上下文变了；BOSS 自己轮换 cookie 不算。
     const contextIsCurrent = () =>
         serverStore.baseUrl === requestedServerUrl
         && (!identity
             ? !expectedAccountId || String(Tools.window?._PAGE?.uid ?? "").trim() === expectedAccountId
-            : String(Tools.window?._PAGE?.uid ?? "").trim() === identity.accountId
-                && currentBossToken() === identity.token);
+            : String(Tools.window?._PAGE?.uid ?? "").trim() === identity.accountId);
+    const CONTEXT_SWITCHED = "RESUME_CONTEXT_SWITCHED";
+    const ensureContext = () => {
+        if (!contextIsCurrent()) {
+            throw Object.assign(new Error("账号或服务器已切换"), {code: CONTEXT_SWITCHED});
+        }
+    };
 
     try {
         identity = await waitForBossIdentity(
@@ -328,9 +332,7 @@ const handlerImport = async () => {
             currentBossToken,
             () => Tools.window?._PAGE,
         );
-        if (!contextIsCurrent()) {
-            return;
-        }
+        ensureContext();
         const {accountId: bossUserId, token} = identity;
         if (!userSessionScope(bossUserId, requestedServerUrl)) {
             throw Object.assign(new Error("当前账号或服务器地址无效"), {code: "RESUME_SCOPE_INVALID"});
@@ -343,16 +345,12 @@ const handlerImport = async () => {
         if (!isApplicationSessionReady()) {
             throw Object.assign(new Error("AI 工作猎手账号尚未连接完成"), {code: "APP_SESSION_NOT_READY"});
         }
-        if (!contextIsCurrent()) {
-            return;
-        }
+        ensureContext();
         resumeImportAttempted = true;
         resumeImportStatus.value = '未成功导入简历';
         stage = "lookup";
         const resumeInfoResp = await axiosOriginal.get("https://www.zhipin.com/wapi/zpgeek/resume/sidebar.json", {headers: {"Zp_token": token}} as {});
-        if (!contextIsCurrent()) {
-            return;
-        }
+        ensureContext();
         const zpData = resumeInfoResp.data?.zpData;
         if (!Array.isArray(zpData?.attachmentList)) {
             throw new Error("附件列表响应无效");
@@ -369,9 +367,7 @@ const handlerImport = async () => {
             "https://docdownload.zhipin.com/wflow/zpgeek/download/download4geek?resumeId=" + resumeId,
             {headers: {"Zp_token": token}, responseType: 'arraybuffer'} as {},
         );
-        if (!contextIsCurrent()) {
-            return;
-        }
+        ensureContext();
         if (resumeFileResp?.status !== 200
             || Object.prototype.toString.call(resumeFileResp.response) !== "[object ArrayBuffer]"
             || resumeFileResp.response.byteLength === 0) {
@@ -387,9 +383,7 @@ const handlerImport = async () => {
             headers: {'Content-Type': "multipart/form-data"},
             bossIdentityContext: {...identity, serverUrl: requestedServerUrl},
         });
-        if (!contextIsCurrent()) {
-            return;
-        }
+        ensureContext();
         if (importResp.data.code !== 200) {
             throw applicationResponseError(importResp);
         }
@@ -400,9 +394,7 @@ const handlerImport = async () => {
         } catch {
             logger.warn('简历已保存，但登录状态刷新失败');
         }
-        if (!contextIsCurrent()) {
-            return;
-        }
+        ensureContext();
         userStore.user.resumeId = resumeId;
         resumeImportStatus.value = '成功导入简历';
         const refreshWarning = loginSessionReady ? '' : '；请刷新页面重新连接';
@@ -413,12 +405,18 @@ const handlerImport = async () => {
             resumeImportStatus.value = '成功导入简历';
         }
         ElMessage({
-            message: `简历保存成功，内测权限已自动开通${refreshWarning}${emailWarning}`,
+            message: `简历保存成功${refreshWarning}${emailWarning}`,
             type: loginSessionReady && importResp.data?.data?.email ? 'success' : 'warning',
             duration: 3000
         });
     } catch (error: any) {
-        if (!contextIsCurrent()) {
+        if (error?.code === CONTEXT_SWITCHED || !contextIsCurrent()) {
+            // 不要静默：明确告诉用户本次导入取消了，且不改动新账号的导入状态。
+            ElMessage({
+                message: "检测到 BOSS 账号或服务器已切换，本次导入已取消，请在当前账号下重新点击「导入简历」",
+                type: 'warning',
+                duration: 5000
+            });
             return;
         }
         resumeImportStatus.value = '未成功导入简历';
