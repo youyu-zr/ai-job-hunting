@@ -28,14 +28,14 @@ class RequestRateLimitFilterTest {
 
     @Test
     void expensiveRoutesHavePerIdentityRateLimits() {
-        assertEquals(0.2, RequestRateLimitFilter.permitsPerSecond("/api/user/silently/login"));
+        assertEquals(1.2, RequestRateLimitFilter.permitsPerSecond("/api/user/silently/login"));
         assertEquals(0.1, RequestRateLimitFilter.permitsPerSecond("/api/user/import/resume"));
         assertEquals(0.1, RequestRateLimitFilter.permitsPerSecond("/api/user/ai/config/test"));
-        assertEquals(2.0, RequestRateLimitFilter.permitsPerSecond("/api/job/filter/one"));
-        assertEquals(2.0, RequestRateLimitFilter.permitsPerSecond("/api/job/ai/assistant/generate/greeting"));
-        assertEquals(3.0, RequestRateLimitFilter.permitsPerSecond("/api/job/seeker/cloned/ask"));
+        assertEquals(5.0, RequestRateLimitFilter.permitsPerSecond("/api/job/filter/one"));
+        assertEquals(3.0, RequestRateLimitFilter.permitsPerSecond("/api/job/ai/assistant/generate/greeting"));
+        assertEquals(12.0, RequestRateLimitFilter.permitsPerSecond("/api/job/seeker/cloned/ask"));
         assertEquals(0, RequestRateLimitFilter.permitsPerSecond("/api/user/userinfo"));
-        assertEquals(10.0, RequestRateLimitFilter.globalPermitsPerSecond("/api/user/silently/login"));
+        assertEquals(20.0, RequestRateLimitFilter.globalPermitsPerSecond("/api/user/silently/login"));
         assertEquals(2.0, RequestRateLimitFilter.globalPermitsPerSecond("/api/user/import/resume"));
     }
 
@@ -57,7 +57,7 @@ class RequestRateLimitFilterTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"/api/user/silently/login,5"})
+    @CsvSource({"/api/user/silently/login,1"})
     void canonicalAndLegacyNamesShareTheSameIdentityQuota(String uri, String retrySeconds) throws Exception {
         RequestRateLimitFilter filter = new RequestRateLimitFilter();
         keepGlobalQuotaAvailable(filter, uri);
@@ -75,7 +75,7 @@ class RequestRateLimitFilterTest {
         keepGlobalQuotaAvailable(filter, uri);
         assertEquals(200, send(filter, request(uri, null, "same-proof")).getStatus());
 
-        assertRateRejection(send(filter, request(uri, " \t", "same-proof")), "5");
+        assertRateRejection(send(filter, request(uri, " \t", "same-proof")), "1");
     }
 
     @Test
@@ -85,7 +85,7 @@ class RequestRateLimitFilterTest {
         keepGlobalQuotaAvailable(filter, uri);
         assertEquals(200, send(filter, request(uri, "same-proof", "same-proof")).getStatus());
 
-        assertRateRejection(send(filter, request(uri, "same-proof", null)), "5");
+        assertRateRejection(send(filter, request(uri, "same-proof", null)), "1");
     }
 
     @Test
@@ -105,7 +105,7 @@ class RequestRateLimitFilterTest {
 
     @ParameterizedTest
     @CsvSource({
-            "/api/user/silently/login,5",
+            "/api/user/silently/login,1",
             "/api/user/import/resume,10",
             "/api/user/ai/config/test,10"
     })
@@ -161,11 +161,20 @@ class RequestRateLimitFilterTest {
             "/api/job/filter/one,1",
             "/api/job/seeker/cloned/ask,1"
     })
-    void concurrencyRejectionIncludesAlreadyConsumedIdentityInterval(String uri, String retrySeconds) throws Exception {
+    void concurrencyRejectionDoesNotBurnTheUsersOwnQuota(String uri, String retrySeconds) throws Exception {
         RequestRateLimitFilter filter = new RequestRateLimitFilter();
-        ReflectionTestUtils.setField(filter, "activeModelRequests", new Semaphore(0));
+        setAuthenticatedUser(91L);
+        try {
+            ReflectionTestUtils.setField(filter, "activeModelRequests", new Semaphore(0));
+            assertRateRejection(send(filter, request(uri, "synthetic-proof", null)), retrySeconds);
 
-        assertRateRejection(send(filter, request(uri, "synthetic-proof", null)), retrySeconds);
+            Semaphore slots = new Semaphore(1);
+            ReflectionTestUtils.setField(filter, "activeModelRequests", slots);
+            assertEquals(200, send(filter, request(uri, "synthetic-proof", null)).getStatus());
+            assertEquals(1, slots.availablePermits());
+        } finally {
+            HeaderContext.clear();
+        }
     }
 
     /**

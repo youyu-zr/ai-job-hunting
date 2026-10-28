@@ -30,10 +30,10 @@ public class RequestRateLimitFilter implements Filter {
             .expireAfterAccess(1, TimeUnit.HOURS)
             .build();
 
-    @Value("${ai.request.max-concurrent:32}")
-    private int configuredMaxConcurrentRequests = 32;
+    @Value("${ai.request.max-concurrent:64}")
+    private int configuredMaxConcurrentRequests = 64;
 
-    private volatile Semaphore activeModelRequests = new Semaphore(32, true);
+    private volatile Semaphore activeModelRequests = new Semaphore(64, true);
 
     @PostConstruct
     void initializeConcurrencyLimit() {
@@ -67,20 +67,24 @@ public class RequestRateLimitFilter implements Filter {
             return;
         }
 
-        String key = rateLimitKey(request, rule.anonymousIdentity, bossToken);
-        if (!tryAcquire(key, rule.permitsPerSecond)) {
-            reject(response, rule.permitsPerSecond);
-            return;
-        }
-
+        // Take the model slot first: a request turned away for lack of a slot must not also burn
+        // the user's own quota, otherwise a busy server makes the retry fail a second time.
         boolean modelSlotAcquired = false;
         if (rule.modelRequest) {
             modelSlotAcquired = activeModelRequests.tryAcquire();
             if (!modelSlotAcquired) {
-                // The identity permit has already been consumed, even without a model slot.
-                reject(response, rule.permitsPerSecond);
+                reject(response, 1.0);
                 return;
             }
+        }
+
+        String key = rateLimitKey(request, rule.anonymousIdentity, bossToken);
+        if (!tryAcquire(key, rule.permitsPerSecond)) {
+            if (modelSlotAcquired) {
+                activeModelRequests.release();
+            }
+            reject(response, rule.permitsPerSecond);
+            return;
         }
 
         try {
@@ -114,19 +118,27 @@ public class RequestRateLimitFilter implements Filter {
         return rule == null ? 0 : rule.globalPermitsPerSecond;
     }
 
+    /**
+     * Limits are set to roughly twice the highest rate a single real user produces (measured from the
+     * frontend call sites: scan batches, recommend-page paging, unread re-scans), so a normal user
+     * never sees a 429; they only stop runaway loops and scripted abuse.
+     */
     private static Rule ruleFor(String uri) {
         return switch (uri) {
             // Login is not a model request: making it compete for a model concurrency slot means
-            // a busy AI queue locks users out of the product entirely.
-            case "/api/user/silently/login" -> new Rule(0.2, 10.0, true, false);
+            // a busy AI queue locks users out of the product entirely. Peak: page load + session
+            // recovery retry within ~2s -> 0.6/s, doubled.
+            case "/api/user/silently/login" -> new Rule(1.2, 20.0, true, false);
             // Resume import IS a model request on the fallback path: when local text extraction
             // finds nothing usable, UserService hands the file to aiServiceFacade.readFile. Dropping
             // the concurrency slot here would let this route bypass ai.request.max-concurrent.
             case "/api/user/import/resume" -> new Rule(0.1, 2.0, false, true);
             case "/api/user/ai/config/test" -> new Rule(0.1, 0, false, true);
-            case "/api/job/filter/one",
-                 "/api/job/ai/assistant/generate/greeting" -> new Rule(2.0, 0, false, true);
-            case "/api/job/seeker/cloned/ask" -> new Rule(3.0, 0, false, true);
+            // Peak: one job card screened every ~0.4s while paging the recommend list.
+            case "/api/job/filter/one" -> new Rule(5.0, 0, false, true);
+            case "/api/job/ai/assistant/generate/greeting" -> new Rule(3.0, 0, false, true);
+            // Peak: an unread re-scan replays a batch of up to ~6 contacts back to back.
+            case "/api/job/seeker/cloned/ask" -> new Rule(12.0, 0, false, true);
             default -> null;
         };
     }
