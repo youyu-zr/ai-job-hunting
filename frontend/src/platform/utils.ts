@@ -1,6 +1,7 @@
 import {GM_getValue, GM_setValue, GM_notification, GM_addValueChangeListener, GM_xmlhttpRequest, unsafeWindow} from "$";
 import {messageFingerprint} from "./messageFingerprint";
 import {isCompletedMessage, terminalWithoutReply} from "./messageCompletion";
+import {isRangeOverlap, parseLooseRange} from './looseRange';
 
 export class Tools {
 
@@ -59,24 +60,12 @@ export class Tools {
             || (end === undefined && match[3] !== undefined);
     }
 
+    public static parseLooseRange(value: string): [number, number] | null {
+        return parseLooseRange(value);
+    }
+
     public static isRangeOverlap(range: string, input: string): boolean {
-        const parseRange = (str: string): [number, number] => {
-            const match = String(str || '').match(/^\s*(\d+(?:\.\d+)?)\s*(?:-\s*(\d+(?:\.\d+)?))?\s*(以上|以下)?(?:\s*[kK])?\s*$/);
-            if (!match) {
-                throw new Error("Invalid range format");
-            }
-            const start = parseFloat(match[1]);
-            if (match[3] === '以下') {
-                return [0, start];
-            }
-            const end = match[2] ? parseFloat(match[2]) : Number.POSITIVE_INFINITY;
-            return [start, end];
-        };
-
-        const [rangeStart, rangeEnd] = parseRange(range);
-        const [inputStart, inputEnd] = parseRange(input);
-
-        return !(rangeEnd < inputStart || inputEnd < rangeStart);
+        return isRangeOverlap(range, input);
     }
 
     public static getRandomNumber(startMs: number, endMs: number) {

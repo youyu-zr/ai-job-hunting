@@ -26,7 +26,7 @@
 !function(t){function e(t){t.registerRegistry=Object.create(null),t.namedRegisterAliases=Object.create(null)}var r=t.System;e(r);var i,s,n=r.constructor.prototype,l=r.constructor,a=function(){l.call(this),e(this)};a.prototype=n,r.constructor=a;var o=n.register;n.register=function(t,e,r,n){if("string"!=typeof t)return o.apply(this,arguments);var l=[e,r,n];return this.registerRegistry[t]=l,i||(i=l,s=t),Promise.resolve().then((function(){i=null,s=null})),o.apply(this,[e,r,n])};var u=n.resolve;n.resolve=function(t,e){try{return u.call(this,t,e)}catch(r){if(t in this.registerRegistry)return this.namedRegisterAliases[t]||t;throw r}};var c=n.instantiate;n.instantiate=function(t,e,r){var i=this.registerRegistry[t];return i?(this.registerRegistry[t]=null,i):c.call(this,t,e,r)};var g=n.getRegister;n.getRegister=function(t){var e=g.call(this,t);s&&t&&(this.namedRegisterAliases[s]=t);var r=i||e;return i=null,s=null,r}}("undefined"!=typeof self?self:global);
 ;(typeof System!='undefined')&&(System=new System.constructor());
 
-System.register("./__entry.js", ['./__monkey.entry-CcYqd1wJ.js'], (function (exports, module) {
+System.register("./__entry.js", ['./__monkey.entry-BeMMUOHO.js'], (function (exports, module) {
 	'use strict';
 	return {
 		setters: [null],
@@ -38,7 +38,7 @@ System.register("./__entry.js", ['./__monkey.entry-CcYqd1wJ.js'], (function (exp
 	};
 }));
 
-System.register("./__monkey.entry-CcYqd1wJ.js", [], (function (exports, module) {
+System.register("./__monkey.entry-BeMMUOHO.js", [], (function (exports, module) {
   'use strict';
   return {
     execute: (function () {
@@ -14799,6 +14799,36 @@ System.register("./__monkey.entry-CcYqd1wJ.js", [], (function (exports, module) 
       function terminalWithoutReply(expiration) {
         return { expiration, completed: true, replySent: false };
       }
+      function parseLooseRange(value) {
+        const text = String(value || "").replace(/\s+/g, "");
+        if (!text || /元\/(天|时|小时|周)|面议/.test(text)) {
+          return null;
+        }
+        const match = text.match(/(\d+(?:\.\d+)?)(?:[-~至到](\d+(?:\.\d+)?))?/);
+        if (!match) {
+          return null;
+        }
+        const start = Number(match[1]);
+        const end3 = match[2] === void 0 ? void 0 : Number(match[2]);
+        if (!Number.isFinite(start) || end3 !== void 0 && (!Number.isFinite(end3) || start > end3)) {
+          return null;
+        }
+        if (end3 !== void 0) {
+          return [start, end3];
+        }
+        if (text.includes("以下")) {
+          return [0, start];
+        }
+        return [start, Number.POSITIVE_INFINITY];
+      }
+      function isRangeOverlap(range3, input) {
+        const wanted = parseLooseRange(range3);
+        const actual = parseLooseRange(input);
+        if (!wanted || !actual) {
+          return true;
+        }
+        return !(wanted[1] < actual[0] || actual[1] < wanted[0]);
+      }
       class Tools {
         /**
          * 模糊匹配
@@ -14842,22 +14872,11 @@ System.register("./__monkey.entry-CcYqd1wJ.js", [], (function (exports, module) 
           }
           return end3 !== void 0 && match[3] === void 0 || end3 === void 0 && match[3] !== void 0;
         }
+        static parseLooseRange(value) {
+          return parseLooseRange(value);
+        }
         static isRangeOverlap(range3, input) {
-          const parseRange = (str) => {
-            const match = String(str || "").match(/^\s*(\d+(?:\.\d+)?)\s*(?:-\s*(\d+(?:\.\d+)?))?\s*(以上|以下)?(?:\s*[kK])?\s*$/);
-            if (!match) {
-              throw new Error("Invalid range format");
-            }
-            const start = parseFloat(match[1]);
-            if (match[3] === "以下") {
-              return [0, start];
-            }
-            const end3 = match[2] ? parseFloat(match[2]) : Number.POSITIVE_INFINITY;
-            return [start, end3];
-          };
-          const [rangeStart, rangeEnd] = parseRange(range3);
-          const [inputStart, inputEnd] = parseRange(input);
-          return !(rangeEnd < inputStart || inputEnd < rangeStart);
+          return isRangeOverlap(range3, input);
         }
         static getRandomNumber(startMs, endMs) {
           return Math.floor(Math.random() * (endMs - startMs + 1)) + startMs;
@@ -25693,7 +25712,7 @@ System.register("./__monkey.entry-CcYqd1wJ.js", [], (function (exports, module) 
          * @param error
          */
         (error) => {
-          var _a2, _b, _c, _d, _e, _f, _g, _h;
+          var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j;
           const serverStore2 = ServerStore();
           if (((_a2 = error.response) == null ? void 0 : _a2.status) === 401) {
             const scope = (_b = error.config) == null ? void 0 : _b.__aiSessionScope;
@@ -25733,7 +25752,13 @@ System.register("./__monkey.entry-CcYqd1wJ.js", [], (function (exports, module) 
             });
             return Promise.reject(error);
           }
-          if (typeof ((_h = (_g = error.response) == null ? void 0 : _g.data) == null ? void 0 : _h.message) === "string" && error.response.data.message.trim()) {
+          if (((_g = error.response) == null ? void 0 : _g.status) === 429 && error.config && !error.config.__retriedAfter429 && error.config.url !== "/api/user/import/resume") {
+            const raw = Number((_h = error.response.headers) == null ? void 0 : _h["retry-after"]);
+            const waitMs = Math.min(3e3, Math.max(500, Number.isFinite(raw) ? raw * 1e3 : 1e3));
+            console.warn(`[AI工作猎手] 服务器限流 429，${waitMs}ms 后重发一次：${error.config.url}`);
+            return new Promise((resolve2) => setTimeout(resolve2, waitMs)).then(() => request({ ...error.config, __retriedAfter429: true }));
+          }
+          if (typeof ((_j = (_i = error.response) == null ? void 0 : _i.data) == null ? void 0 : _j.message) === "string" && error.response.data.message.trim()) {
             error.message = error.response.data.message;
           }
           if (error.response && error.response.status === 404) {
@@ -80618,11 +80643,11 @@ System.register("./__monkey.entry-CcYqd1wJ.js", [], (function (exports, module) 
         }
         async getRenderComponent() {
           if (this.curUrl.includes("www.zhipin.com/web/geek/chat")) {
-            let promise = __vitePreload(() => module.import('./BossMessage-CdBpbyjK-LfAEuh6S.js'), void 0 );
+            let promise = __vitePreload(() => module.import('./BossMessage-BUZeIR10-w9R1kATm.js'), void 0 );
             return promise.then((item) => item.default);
           }
           if (this.curUrl.includes("www.zhipin.com/web/geek/job") || this.curUrl.includes("overseas")) {
-            let promise = __vitePreload(() => module.import('./BossJobList-h-Xm8Jxh-BjxAa9Dg.js'), void 0 );
+            let promise = __vitePreload(() => module.import('./BossJobList-DEfL_H9x-ClnKPpeo.js'), void 0 );
             return promise.then((item) => item.default);
           }
         }
@@ -80704,7 +80729,7 @@ System.register("./__monkey.entry-CcYqd1wJ.js", [], (function (exports, module) 
           var _a2;
           jobDetail.processed = true;
           const jobTitle = this.getJobKey(jobDetail);
-          const semanticScreeningEnabled = Boolean(userStore$2.user.preference.afE && userStore$2.user.preference.af);
+          const semanticScreeningEnabled = Boolean(userStore$2.user.preference.afE);
           this.checkLocationConsistency(jobDetail, jobTitle);
           if (jobDetail.contact) {
             throw new NotMatchException(jobTitle, jobDetail.contact, "已经沟通过");
@@ -80732,12 +80757,12 @@ System.register("./__monkey.entry-CcYqd1wJ.js", [], (function (exports, module) 
             if (userStore$2.user.preference.jneE && Tools.fuzzyMatch(jobNameExclude, jobDetail.jobName, false)) {
               throw new NotMatchException(jobTitle, jobDetail.jobName, "满足排除工作名");
             }
-            const pageSalaryRange = jobDetail.salaryDesc.split(".")[0];
+            const pageSalaryRange = jobDetail.salaryDesc;
             if (userStore$2.user.preference.srE) {
               if (!Tools.isSalaryRangeInputValid(userStore$2.user.preference.sr)) {
                 throw new NotMatchException(jobTitle, userStore$2.user.preference.sr, "薪资范围格式错误，请使用如8-12、12以上或20以下");
               }
-              if (Tools.isSalaryRangeInputValid(pageSalaryRange) && !Tools.isRangeOverlap(userStore$2.user.preference.sr, pageSalaryRange)) {
+              if (!Tools.isRangeOverlap(userStore$2.user.preference.sr, pageSalaryRange)) {
                 throw new NotMatchException(jobTitle, pageSalaryRange, "不满足薪资范围");
               }
             }
@@ -80754,7 +80779,7 @@ System.register("./__monkey.entry-CcYqd1wJ.js", [], (function (exports, module) 
             throw new NotMatchException(jobTitle, activeTimeDesc, "不满足活跃度检查");
           }
           let filterResult = null;
-          if (userStore$2.user.preference.afE && userStore$2.user.preference.af) {
+          if (semanticScreeningEnabled) {
             const screeningPrompt = this.buildSemanticScreeningPrompt();
             let filterResp;
             try {
@@ -81006,7 +81031,7 @@ System.register("./__monkey.entry-CcYqd1wJ.js", [], (function (exports, module) 
           const jobTitle = this.getJobKey(jobDetail);
           if (pushResult.message === "Success" && pushResult.code === 0) {
             pushResultCounter.successIncr();
-            const semanticScreeningEnabled = Boolean(userStore$2.user.preference.afE && userStore$2.user.preference.af);
+            const semanticScreeningEnabled = Boolean(userStore$2.user.preference.afE);
             const filterDecision = semanticScreeningEnabled ? AiPower.getCachedFilterDecision(jobDetail) : null;
             const deliveryReason = filterDecision ? formatAiFilterReasonForDelivery(filterDecision) : "通过当前筛选条件";
             this.logRecorder.info(formatDeliverySuccessLog({
@@ -83659,7 +83684,7 @@ System.register("./__monkey.entry-CcYqd1wJ.js", [], (function (exports, module) 
   };
 }));
 
-System.register("./BossMessage-CdBpbyjK-LfAEuh6S.js", ['./__monkey.entry-CcYqd1wJ.js'], (function (exports, module) {
+System.register("./BossMessage-BUZeIR10-w9R1kATm.js", ['./__monkey.entry-BeMMUOHO.js'], (function (exports, module) {
   'use strict';
   var _export_sfc, defineComponent, UserStore, ref, computed, onMounted, onUnmounted, openBlock, createElementBlock, createBaseVNode, createVNode, withCtx, normalizeClass, createTextVNode, toDisplayString, createBlock, createCommentVNode, Fragment, ConversationPauseRegistry, AiPower, parseAiSeatRuntimeStatus, getAiSeatStatusRevision, rememberAiSeatStatus, ElMessage, ElTag, ElButton, pushScopeId, popScopeId, BossOption;
   return {
@@ -83836,7 +83861,7 @@ System.register("./BossMessage-CdBpbyjK-LfAEuh6S.js", ['./__monkey.entry-CcYqd1w
   };
 }));
 
-System.register("./BossJobList-h-Xm8Jxh-BjxAa9Dg.js", ['./__monkey.entry-CcYqd1wJ.js'], (function (exports, module) {
+System.register("./BossJobList-DEfL_H9x-ClnKPpeo.js", ['./__monkey.entry-BeMMUOHO.js'], (function (exports, module) {
   'use strict';
   var defineComponent, openBlock, createBlock, _export_sfc, shallowRef, createElementBlock, createVNode, withCtx, Fragment, renderList, unref, createTextVNode, toDisplayString, createBaseVNode, resolveDynamicComponent, ElMenuItem, ElMenu, inject, ServerStore, ref, PushStatus, LogRecorder, LoginStore, pushResultCount, UserStore, watch, onUnmounted, isProdEnv, createCommentVNode, withDirectives, vShow, CircleCloseFilled, normalizeClass, reactive, Tools, onMounted, userRemoteLoad, ElNotification, ElMessage, waitForBossIdentity, INTERACTIVE_ATTEMPTS, userSessionScope, isApplicationSessionReady, axios, fetchWithGM_request, applicationResponseError, isUserConfigReady, logger$1, resumeImportErrorNotice, loginInterceptor, serializeAiSeatStatus, rememberAiSeatStatus, shouldApplyAiSeatRollback, ElText, ElBadge, ElTag, ElButton, ElIcon, ElTooltip, ElButtonGroup$1, ElInput, ElCard, ElInputNumber, ElSwitch, applyPersonalPreferenceDefaults, ElFormItem, ElCheckbox, ElOption, ElSelect, ElUpload, ElRadioButton, ElRadioGroup, ElForm, ElCol, ElTimePicker, ElRow, ElTableColumn, ElEmpty, ElTable, ElPagination, pushScopeId, popScopeId, userSnapshotStorageKey, TampermonkeyApi, createStaticVNode;
   return {

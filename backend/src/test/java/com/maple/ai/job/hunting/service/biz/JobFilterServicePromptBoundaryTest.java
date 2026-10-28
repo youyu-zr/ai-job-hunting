@@ -418,9 +418,13 @@ class JobFilterServicePromptBoundaryTest {
     }
 
     @Test
-    void fencedModelDecisionsAreRetryableUnderThePureJsonContract() {
-        assertRetryableFailure("```json\n" + DELIVER_DECISION + "```");
-        assertRetryableFailure("```\n" + DELIVER_DECISION + "```");
+    void aSingleWholeCodeFenceIsUnwrappedButProseAroundItIsStillRetryable() {
+        assertEquals(DELIVER_DECISION.trim(),
+                JobFilterService.stripWholeCodeFence("```json\n" + DELIVER_DECISION.trim() + "\n```").trim());
+        assertEquals(DELIVER_DECISION.trim(),
+                JobFilterService.stripWholeCodeFence("```\n" + DELIVER_DECISION.trim() + "\n```").trim());
+        assertRetryableFailure("Here you go:\n```json\n" + DELIVER_DECISION + "\n```");
+        assertRetryableFailure("```json\n" + DELIVER_DECISION + "\n```\nHope this helps");
     }
 
     @Test

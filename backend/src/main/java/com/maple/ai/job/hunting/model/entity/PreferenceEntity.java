@@ -105,6 +105,18 @@ public class PreferenceEntity {
     private boolean fhE;
 
     /**
+     * 仅投递在线 BOSS（前端开关；以前实体里没有，保存时会被丢掉）
+     */
+    private boolean polE;
+
+    /**
+     * 投递间隔下限 / 上限（秒，前端用）
+     */
+    private Integer pi;
+
+    private Integer npi;
+
+    /**
      * 发送自定义招呼语
      */
     private boolean cgE;

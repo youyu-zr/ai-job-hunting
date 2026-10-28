@@ -428,7 +428,7 @@ class BossPlatform extends AbsPlatform {
         // 标记为已处理
         jobDetail.processed = true
         const jobTitle = this.getJobKey(jobDetail)
-        const semanticScreeningEnabled = Boolean(userStore.user.preference.afE && userStore.user.preference.af)
+        const semanticScreeningEnabled = Boolean(userStore.user.preference.afE)
         this.checkLocationConsistency(jobDetail, jobTitle)
         // 已经沟通过
         if (jobDetail.contact) {
@@ -467,13 +467,12 @@ class BossPlatform extends AbsPlatform {
                 throw new NotMatchException(jobTitle, jobDetail.jobName, '满足排除工作名')
             }
 
-            const pageSalaryRange = jobDetail.salaryDesc.split(".")[0];
+            const pageSalaryRange = jobDetail.salaryDesc;
             if (userStore.user.preference.srE) {
                 if (!Tools.isSalaryRangeInputValid(userStore.user.preference.sr)) {
                     throw new NotMatchException(jobTitle, userStore.user.preference.sr, '薪资范围格式错误，请使用如8-12、12以上或20以下')
                 }
-                if (Tools.isSalaryRangeInputValid(pageSalaryRange)
-                    && !Tools.isRangeOverlap(userStore.user.preference.sr, pageSalaryRange)) {
+                if (!Tools.isRangeOverlap(userStore.user.preference.sr, pageSalaryRange)) {
                     throw new NotMatchException(jobTitle, pageSalaryRange, '不满足薪资范围')
                 }
             }
@@ -498,7 +497,7 @@ class BossPlatform extends AbsPlatform {
         let filterResult: AiFilterDecision | null = null;
         // AI is the primary semantic gate. Personal content keyword lists are
         // only used when this optional AI gate is explicitly disabled.
-        if (userStore.user.preference.afE && userStore.user.preference.af) {
+        if (semanticScreeningEnabled) {
             const screeningPrompt = this.buildSemanticScreeningPrompt();
             let filterResp;
             try {
@@ -796,7 +795,7 @@ class BossPlatform extends AbsPlatform {
 
         if (pushResult.message === 'Success' && pushResult.code === 0) {
             pushResultCounter.successIncr()
-            const semanticScreeningEnabled = Boolean(userStore.user.preference.afE && userStore.user.preference.af)
+            const semanticScreeningEnabled = Boolean(userStore.user.preference.afE)
             const filterDecision = semanticScreeningEnabled
                 ? AiPower.getCachedFilterDecision(jobDetail)
                 : null;

@@ -40,6 +40,8 @@ public class JobFilterService {
     private static final ObjectReader DECISION_JSON = SAFE_JSON.reader()
             .with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
             .with(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY);
+    private static final java.util.regex.Pattern WHOLE_CODE_FENCE = java.util.regex.Pattern.compile(
+            "^\\s*```(?:json|JSON)?\\s*\\n([\\s\\S]*?)\\n?\\s*```\\s*$");
     private static final String TEMPORARY_FAILURE_MESSAGE = "岗位分析暂时不可用，请稍后重试";
     @Resource
     private AIServiceFacade aiServiceFacade;
@@ -79,7 +81,7 @@ public class JobFilterService {
         }
 
         try {
-            JsonNode rawResult = DECISION_JSON.readTree(answer);
+            JsonNode rawResult = DECISION_JSON.readTree(stripWholeCodeFence(answer));
             if (!hasCompleteDecisionFields(rawResult)) {
                 throw temporaryFailure();
             }
@@ -353,5 +355,14 @@ public class JobFilterService {
         int head = (maxLength - marker.length()) * 2 / 3;
         int tail = maxLength - marker.length() - head;
         return value.substring(0, head) + marker + value.substring(value.length() - tail);
+    }
+
+    /**
+     * Models often wrap an otherwise valid JSON answer in a single ```json fence. Unwrap only that
+     * exact shape; any other prose or extra objects still fail the strict parse and get retried.
+     */
+    static String stripWholeCodeFence(String answer) {
+        java.util.regex.Matcher matcher = WHOLE_CODE_FENCE.matcher(answer);
+        return matcher.matches() ? matcher.group(1) : answer;
     }
 }
