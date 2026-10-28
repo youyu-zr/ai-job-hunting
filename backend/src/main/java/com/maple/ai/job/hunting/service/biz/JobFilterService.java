@@ -330,10 +330,7 @@ public class JobFilterService {
             return "未提供额外筛选条件；按系统宽放行规则结合完整职位信息判断。";
         }
         String normalized = prompt.replaceAll("[\\p{Cntrl}&&[^\\r\\n\\t]]+", " ").trim();
-        if (normalized.length() > 5000) {
-            throw temporaryFailure();
-        }
-        return normalized;
+        return keepHeadAndTail(normalized, 5000);
     }
 
     private String limitData(String value, int maxLength) {
@@ -341,9 +338,20 @@ public class JobFilterService {
             return "未提供";
         }
         String normalized = value.replaceAll("[\\p{Cntrl}&&[^\\r\\n\\t]]+", " ").trim();
-        if (normalized.length() > maxLength) {
-            throw temporaryFailure();
+        return keepHeadAndTail(normalized, maxLength);
+    }
+
+    /**
+     * 超长时保留开头和结尾、省略中间，而不是报错：否则长简历/长岗位描述的用户每次筛选都失败。
+     * 保留结尾是因为岗位风险条款（如收费入职）常写在描述末尾。
+     */
+    static String keepHeadAndTail(String value, int maxLength) {
+        if (value.length() <= maxLength) {
+            return value;
         }
-        return normalized;
+        String marker = "\n……（中间内容过长已省略）……\n";
+        int head = (maxLength - marker.length()) * 2 / 3;
+        int tail = maxLength - marker.length() - head;
+        return value.substring(0, head) + marker + value.substring(value.length() - tail);
     }
 }

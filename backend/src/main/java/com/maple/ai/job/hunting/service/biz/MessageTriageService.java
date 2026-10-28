@@ -333,10 +333,18 @@ public class MessageTriageService {
         values.put("targetCities", preference.getTargetCities());
         try {
             String json = SAFE_JSON.writeValueAsString(values);
-            if (json.length() <= MAX_PREFERENCE_LENGTH) {
-                return json;
+            // 偏好写得很长时，逐步截短每个文字字段，而不是让整条消息分诊失败。
+            int fieldCap = MAX_PREFERENCE_LENGTH;
+            while (json.length() > MAX_PREFERENCE_LENGTH && fieldCap > 50) {
+                fieldCap = fieldCap / 2;
+                for (Map.Entry<String, Object> entry : values.entrySet()) {
+                    if (entry.getValue() instanceof String text && text.length() > fieldCap) {
+                        entry.setValue(text.substring(0, fieldCap));
+                    }
+                }
+                json = SAFE_JSON.writeValueAsString(values);
             }
-            throw new IllegalArgumentException("Preference payload exceeds supported limit");
+            return json;
         } catch (Exception ignored) {
             throw new IllegalStateException("Unable to serialize classifier preferences", ignored);
         }

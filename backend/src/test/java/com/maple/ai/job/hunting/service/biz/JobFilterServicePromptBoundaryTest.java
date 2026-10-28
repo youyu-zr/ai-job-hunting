@@ -221,20 +221,33 @@ class JobFilterServicePromptBoundaryTest {
     }
 
     @Test
-    void oversizedJobDescriptionFailsClosedInsteadOfDroppingTailRisk() {
+    void oversizedJobDescriptionIsShortenedButKeepsTailRisk() {
         JobFilterService service = new JobFilterService();
         RecordingAiServiceFacade ai = new RecordingAiServiceFacade();
         ReflectionTestUtils.setField(service, "aiServiceFacade", ai);
         AIFilterParam param = filterParam("普通岗位职责".repeat(2_000) + "必须先交培训费才能入职");
 
-        ApplicationException error = assertThrows(ApplicationException.class, () -> service.filter(param));
+        service.filter(param);
 
-        assertEquals("岗位分析暂时不可用，请稍后重试", error.getMessage());
-        assertEquals(0, ai.calls.get());
+        assertEquals(1, ai.calls.get());
+        assertTrue(ai.lastPrompt.contains("必须先交培训费才能入职"));
     }
 
     @Test
-    void oversizedHardPreferenceFailsClosedBeforeAiScreening() {
+    void longResumeIsShortenedInsteadOfFailingScreening() {
+        JobFilterService service = new JobFilterService();
+        RecordingAiServiceFacade ai = new RecordingAiServiceFacade();
+        ReflectionTestUtils.setField(service, "aiServiceFacade", ai);
+        AIFilterParam param = filterParam("普通岗位职责");
+        param.setResumeContent("项目经历".repeat(5_000));
+
+        service.filter(param);
+
+        assertEquals(1, ai.calls.get());
+    }
+
+    @Test
+    void oversizedHardPreferenceIsShortenedAndStillScreened() {
         JobFilterService service = new JobFilterService();
         RecordingAiServiceFacade ai = new RecordingAiServiceFacade();
         ReflectionTestUtils.setField(service, "aiServiceFacade", ai);
@@ -242,10 +255,10 @@ class JobFilterServicePromptBoundaryTest {
         param.setPreference(JSON.toJSONString(java.util.Map.of(
                 "unacceptableConditions", "不接受先收费入职" + "x".repeat(9_000))));
 
-        ApplicationException error = assertThrows(ApplicationException.class, () -> service.filter(param));
+        service.filter(param);
 
-        assertEquals("岗位分析暂时不可用，请稍后重试", error.getMessage());
-        assertEquals(0, ai.calls.get());
+        assertEquals(1, ai.calls.get());
+        assertTrue(ai.lastPrompt.contains("不接受先收费入职"));
     }
 
     @Test

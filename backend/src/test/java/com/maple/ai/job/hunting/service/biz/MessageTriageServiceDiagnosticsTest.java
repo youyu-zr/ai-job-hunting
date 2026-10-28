@@ -191,12 +191,7 @@ class MessageTriageServiceDiagnosticsTest {
         MessageTriageResultVO empty = service.classify(" ", null, "", new PreferenceEntity(), 1);
         assertFailureUnchanged(empty);
         assertEquals(List.of(DiagnosticCode.INPUT_REJECTED), diagnostics);
-        diagnostics.clear();
-        PreferenceEntity oversized = new PreferenceEntity();
-        oversized.setJobGoal("x".repeat(5000));
-        MessageTriageResultVO payload = service.classify("Synthetic job", null, "", oversized, 1);
-        assertFailureUnchanged(payload);
-        assertEquals(List.of(DiagnosticCode.PAYLOAD_REJECTED), diagnostics);
+        // 超长偏好现在会被截断后照常分诊，见 MessageTriageServiceTest。
         assertEquals(0, ai.calls);
     }
 
