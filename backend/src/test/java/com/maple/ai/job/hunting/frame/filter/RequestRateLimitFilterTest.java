@@ -40,6 +40,28 @@ class RequestRateLimitFilterTest {
     }
 
     @Test
+    void sustainedVolumeIsCappedPerMinuteButAFullBurstStillPasses() {
+        assertEquals(120, RequestRateLimitFilter.permitsPerMinute("/api/job/seeker/cloned/ask"));
+        assertEquals(120, RequestRateLimitFilter.permitsPerMinute("/api/job/filter/one"));
+        assertEquals(60, RequestRateLimitFilter.permitsPerMinute("/api/job/ai/assistant/generate/greeting"));
+        RequestRateLimitFilter.MinuteBucket bucket = new RequestRateLimitFilter.MinuteBucket(120);
+        long t = 1_000_000_000L;
+        for (int i = 0; i < 120; i++) {
+            assertTrue(bucket.tryTake(t), "burst request " + i);
+        }
+        assertFalse(bucket.tryTake(t));
+        // Half a second refills one token (120 per 60s).
+        assertTrue(bucket.tryTake(t + 500_000_000L));
+        assertFalse(bucket.tryTake(t + 500_000_000L));
+        // After a full idle minute the bucket is full again, but never above capacity.
+        long later = t + 120_000_000_000L;
+        for (int i = 0; i < 120; i++) {
+            assertTrue(bucket.tryTake(later));
+        }
+        assertFalse(bucket.tryTake(later));
+    }
+
+    @Test
     void rateLimiterRejectsImmediateRepeatedRequests() {
         RequestRateLimitFilter filter = new RequestRateLimitFilter();
 

@@ -30,6 +30,11 @@ public class RequestRateLimitFilter implements Filter {
             .expireAfterAccess(1, TimeUnit.HOURS)
             .build();
 
+    private final Cache<String, MinuteBucket> minuteBuckets = CacheBuilder.newBuilder()
+            .maximumSize(10_000)
+            .expireAfterAccess(1, TimeUnit.HOURS)
+            .build();
+
     @Value("${ai.request.max-concurrent:128}")
     private int configuredMaxConcurrentRequests = 128;
 
@@ -86,6 +91,13 @@ public class RequestRateLimitFilter implements Filter {
             reject(response, rule.permitsPerSecond);
             return;
         }
+        if (rule.permitsPerMinute > 0 && !tryAcquireMinute(key, rule.permitsPerMinute)) {
+            if (modelSlotAcquired) {
+                activeModelRequests.release();
+            }
+            reject(response, rule.permitsPerMinute / 60.0);
+            return;
+        }
 
         try {
             filterChain.doFilter(request, response);
@@ -106,6 +118,48 @@ public class RequestRateLimitFilter implements Filter {
             }
         }
         return limiter.tryAcquire();
+    }
+
+    boolean tryAcquireMinute(String key, int permitsPerMinute) {
+        MinuteBucket bucket;
+        try {
+            bucket = minuteBuckets.get(key, () -> new MinuteBucket(permitsPerMinute));
+        } catch (Exception e) {
+            return false;
+        }
+        return bucket.tryTake(System.nanoTime());
+    }
+
+    static int permitsPerMinute(String uri) {
+        Rule rule = ruleFor(uri);
+        return rule == null ? 0 : rule.permitsPerMinute;
+    }
+
+    /** Token bucket: full capacity up front, refilled at capacity/60 per second. */
+    static final class MinuteBucket {
+        private final int capacity;
+        private double tokens;
+        private long lastNanos;
+        private boolean started;
+
+        MinuteBucket(int capacity) {
+            this.capacity = capacity;
+            this.tokens = capacity;
+        }
+
+        synchronized boolean tryTake(long nowNanos) {
+            if (started) {
+                double elapsedSeconds = Math.max(0, nowNanos - lastNanos) / 1_000_000_000.0;
+                tokens = Math.min(capacity, tokens + elapsedSeconds * capacity / 60.0);
+            }
+            started = true;
+            lastNanos = nowNanos;
+            if (tokens >= 1) {
+                tokens -= 1;
+                return true;
+            }
+            return false;
+        }
     }
 
     static double permitsPerSecond(String uri) {
@@ -129,15 +183,15 @@ public class RequestRateLimitFilter implements Filter {
         return switch (uri) {
             // Login is not a model request: making it compete for a model concurrency slot means
             // a busy AI queue locks users out of the product entirely.
-            case "/api/user/silently/login" -> new Rule(10.0, 100.0, true, false);
+            case "/api/user/silently/login" -> new Rule(10.0, 60, 100.0, true, false);
             // Resume import IS a model request on the fallback path: when local text extraction
             // finds nothing usable, UserService hands the file to aiServiceFacade.readFile. Dropping
             // the concurrency slot here would let this route bypass ai.request.max-concurrent.
-            case "/api/user/import/resume" -> new Rule(1.0, 10.0, false, true);
-            case "/api/user/ai/config/test" -> new Rule(1.0, 0, false, true);
-            case "/api/job/filter/one" -> new Rule(20.0, 0, false, true);
-            case "/api/job/ai/assistant/generate/greeting" -> new Rule(10.0, 0, false, true);
-            case "/api/job/seeker/cloned/ask" -> new Rule(30.0, 0, false, true);
+            case "/api/user/import/resume" -> new Rule(1.0, 20, 10.0, false, true);
+            case "/api/user/ai/config/test" -> new Rule(1.0, 20, 0, false, true);
+            case "/api/job/filter/one" -> new Rule(20.0, 120, 0, false, true);
+            case "/api/job/ai/assistant/generate/greeting" -> new Rule(10.0, 60, 0, false, true);
+            case "/api/job/seeker/cloned/ask" -> new Rule(30.0, 120, 0, false, true);
             default -> null;
         };
     }
@@ -164,8 +218,16 @@ public class RequestRateLimitFilter implements Filter {
         response.getWriter().write(JSONUtil.toJsonStr(Response.error(429, "请求过于频繁，请稍后重试")));
     }
 
+    /**
+     * @param permitsPerSecond burst speed limit (Guava, ~1s of storage)
+     * @param permitsPerMinute sustained volume: a bucket of this many tokens refilled evenly over a
+     *                         minute. A person can drain it in one burst (opening a tab full of unread
+     *                         chats) but a loop that keeps firing is cut off within a minute, before
+     *                         it can drain the shared upstream model quota (SiliconFlow TPM is per account).
+     */
     private record Rule(
             double permitsPerSecond,
+            int permitsPerMinute,
             double globalPermitsPerSecond,
             boolean anonymousIdentity,
             boolean modelRequest) {

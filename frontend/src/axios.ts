@@ -251,6 +251,8 @@ request.interceptors.response.use((resp: any) => {
             && error.config.url !== '/api/user/import/resume') {
             const raw = Number(error.response.headers?.['retry-after'])
             const waitMs = Math.min(3000, Math.max(500, Number.isFinite(raw) ? raw * 1000 : 1000))
+            // 留痕：如果某个请求反复撞 429，多半是代码在死循环，日志里能看出来。
+            console.warn(`[AI工作猎手] 服务器限流 429，${waitMs}ms 后重发一次：${error.config.url}`)
             return new Promise(resolve => setTimeout(resolve, waitMs))
                 .then(() => request({...error.config, __retriedAfter429: true} as any))
         }
