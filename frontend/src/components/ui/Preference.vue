@@ -300,8 +300,8 @@
             </el-text>
 
             <el-form-item>
-                <el-checkbox style="padding-top: 6px" v-model="userStore.user.preference.hiaE" label="" size="large">高意向时暂停AI坐席</el-checkbox>
-                <el-tooltip effect="dark" placement="top" content="开启后，AI完成普通回复后会复核岗位匹配和 HR 的明确推进；高意向时暂停当前岗位会话。普通联系方式和面试安排沟通、薪资与地点信息不受此开关影响；具体面试时间或明确承诺仍需本人确认。">
+                <el-checkbox style="padding-top: 6px" v-model="userStore.user.preference.hiaE" label="" size="large">高意向岗位提醒我</el-checkbox>
+                <el-tooltip effect="dark" placement="top" content="HR 主动约时间、要简历、问到岗，或已经来回聊了 4 轮以上，就弹窗提醒你（配置了邮箱也会发邮件）。只提醒，AI 继续聊；每个岗位只提醒一次。联系方式、面试时间、薪资表态等要不要停下，在「停下来叫我」里单独设置，不受这个开关影响。">
                     <el-text type="primary" style="cursor: help;">查看规则</el-text>
                 </el-tooltip>
             </el-form-item>

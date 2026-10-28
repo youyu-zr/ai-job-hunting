@@ -34,6 +34,18 @@ public class JobSeekerClonedResultVO {
     /** Stable machine-readable reason when answerTypeList contains STOP. */
     private String stopReason;
 
+    /**
+     * 「停下来叫我」命中的事件（StopEventPolicy.Event 名）。有值时前端要提醒用户：
+     * 可能同时带一句过渡话（MSG_TEXT），也可能是纯 STOP。
+     */
+    private String handoffEvent;
+
+    /** 给用户看的事件说明。 */
+    private String handoffLabel;
+
+    /** 高意向提醒：只提醒，不停 AI。 */
+    private boolean highInterestNotice;
+
     /** Whether this result represents a retryable processing failure. */
     private boolean retryable;
 

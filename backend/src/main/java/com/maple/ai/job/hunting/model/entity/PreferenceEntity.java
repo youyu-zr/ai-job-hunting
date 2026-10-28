@@ -227,4 +227,59 @@ public class PreferenceEntity {
 
     /** Number of consecutive location mismatches before pausing delivery. */
     private Integer locationMismatchThreshold;
+
+    // ---- 偏好页 v3 结构化字段（2026-10-29）。null = 用户没填，按默认处理。----
+
+    /** 住在哪：城市 + 区/街道/地铁站，交给 AI 估算通勤。 */
+    private String homeCity;
+
+    private String homeArea;
+
+    /** 单程通勤上限（分钟），null/0 = 不限。 */
+    private Integer commuteMaxMinutes;
+
+    /** 是否接受远程 / 外地岗位。 */
+    private Boolean remoteOk;
+
+    private Boolean relocateOk;
+
+    /** 期望月薪区间与底线（单位 K），底线不对 HR 说出。 */
+    private Integer salaryMinK;
+
+    private Integer salaryMaxK;
+
+    private Integer salaryFloorK;
+
+    /** 想做 / 坚决不做的方向标签。 */
+    private List<String> wantTags;
+
+    private List<String> avoidTags;
+
+    /** 其他底线，例如「大小周」「单休」「夜班」「常出差」「试用期超6个月」「不交社保」「入职交钱」。 */
+    private List<String> dealbreakers;
+
+    /** 不投、不回的公司（现公司、前公司及关联公司）。 */
+    private List<String> blockedCompanies;
+
+    /** 最快到岗时间：随时 / 一周内 / 两周内 / 一个月内。 */
+    private String arrivalTime;
+
+    /**
+     * 「停下来叫我」各事件的处理方式：PAUSE（停下叫我）/ DECLINE（AI 先婉拒或问清）/ ALLOW（让 AI 处理）。
+     * null 时按 {@link com.maple.ai.job.hunting.utils.StopEventPolicy} 里的默认值。
+     */
+    private String stopInterview;
+
+    private String stopOffer;
+
+    private String stopSalary;
+
+    private String stopContact;
+
+    private String stopResume;
+
+    private String stopPersonal;
+
+    /** 停下时先替你回一句不做承诺的过渡话（每个会话一次）。null = 开。 */
+    private Boolean holdReplyE;
 }

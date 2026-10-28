@@ -1,6 +1,8 @@
 import type {PreferenceConfig} from "./types";
 
-export const PERSONAL_PREFERENCE_DEFAULTS_VERSION = "personal-preferences-20261015-v2";
+export const PERSONAL_PREFERENCE_DEFAULTS_VERSION = "personal-preferences-20261029-v3";
+/** v2 → v3：高意向从「暂停 AI」改成「只提醒」，无副作用，默认打开（与服务端 PreferenceDefaults 一致）。 */
+const V2_PERSONAL_PREFERENCE_DEFAULTS_VERSION = "personal-preferences-20261015-v2";
 const LEGACY_PERSONAL_PREFERENCE_DEFAULTS_VERSION = "personal-preferences-20261011-v1";
 
 export const PERSONAL_PREFERENCE_DEFAULTS = {
@@ -14,6 +16,11 @@ export const PERSONAL_PREFERENCE_DEFAULTS = {
 export function applyPersonalPreferenceDefaults(preference: PreferenceConfig): PreferenceConfig {
     const version = String(preference.pdpV || "").trim();
     if (version === PERSONAL_PREFERENCE_DEFAULTS_VERSION) {
+        return preference;
+    }
+    if (version === V2_PERSONAL_PREFERENCE_DEFAULTS_VERSION) {
+        preference.hiaE = true;
+        preference.pdpV = PERSONAL_PREFERENCE_DEFAULTS_VERSION;
         return preference;
     }
     if (version && version !== LEGACY_PERSONAL_PREFERENCE_DEFAULTS_VERSION) {
@@ -30,6 +37,7 @@ export function applyPersonalPreferenceDefaults(preference: PreferenceConfig): P
             preference[field] = value;
         }
     }
+    preference.hiaE = true;
     preference.pdpV = PERSONAL_PREFERENCE_DEFAULTS_VERSION;
     return preference;
 }

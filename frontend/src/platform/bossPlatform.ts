@@ -49,6 +49,38 @@ export class BossOption {
     static bossUserInfoMap: Map<number, BossUserInfo> = new Map();
     static logRecorder: LogRecorder = new LogRecorder('recorder');
     static messageCache = new MessageCache();
+
+    /** 同一件事 10 分钟内只弹一次（去重缓存返回同一结果、补扫重发时不重复打扰）。 */
+    static shownNotices = new Map<string, number>();
+
+    static showOnce(key: string, show: () => void): void {
+        const now = Date.now();
+        for (const [k, at] of BossOption.shownNotices) {
+            if (now - at > 10 * 60 * 1000) BossOption.shownNotices.delete(k);
+        }
+        if (BossOption.shownNotices.has(key)) return;
+        BossOption.shownNotices.set(key, now);
+        show();
+    }
+
+    static showHandoffNotice(jobKey: string, hrText: string, data: any,
+                             outcome: 'paused-with-hold' | 'paused-silent' | 'declined' | 'decline-failed'): void {
+        const label = String(data?.handoffLabel || '').trim() || '需要你确认的事项';
+        const event = String(data?.handoffEvent || 'CONFIRM').trim();
+        const message = {
+            'paused-with-hold': `${label}。AI 先回了一句「我确认一下，尽快回复您」，这个会话已暂停自动回复，请打开会话亲自回复。`,
+            'paused-silent': `${label}。这个会话已暂停自动回复，AI 没有回这条，请打开会话亲自处理。`,
+            'declined': label,
+            'decline-failed': `${label}。这句没发出去，请打开会话看一下。`,
+        }[outcome];
+        BossOption.showOnce(`handoff:${jobKey}:${event}:${hrText}`, () => ElNotification({
+            type: 'warning',
+            title: outcome === 'declined' ? 'AI 已先婉拒/问清一次' : '这条消息需要你处理',
+            message,
+            duration: 0,
+            showClose: true,
+        }));
+    }
     private static readonly messageMergeQueue = new MessageMergeQueue<BossMessageMergeItem>(3500);
     private static unreadScanStarted = false;
     private static unreadScanRunning = false;
@@ -479,13 +511,7 @@ export class BossOption {
                     return true;
                 }
                 if (stopReason === 'USER_CONFIRMATION_REQUIRED') {
-                    ElNotification({
-                        type: 'warning',
-                        title: '这条消息需要你确认',
-                        message: '当前会话已暂停自动回复，请查看具体面试或承诺事项。',
-                        duration: 0,
-                        showClose: true,
-                    });
+                    BossOption.showHandoffNotice(jobKey, mergedText, data, 'paused-silent');
                     this.markBatchMessagesAsCompleted(batch);
                     return true;
                 }
@@ -513,6 +539,29 @@ export class BossOption {
                 return false;
             }
 
+            // 「停下来叫我」：服务端已暂停这个会话，并可能附一句不做承诺的过渡话。
+            // 过渡话是服务端暂停后才产生的，所以发送前不能再用「服务端已暂停」拦它，
+            // 改为核对：生成期间本页没有手动暂停/关总开关，且服务端总开关仍开着。
+            const handoffEvent = String(data?.handoffEvent || '').trim();
+            const handoffPaused = Boolean(handoffEvent)
+                && String(data?.stopReason || '').trim().toUpperCase() === 'USER_CONFIRMATION_REQUIRED';
+            const holdReplyAllowed = handoffPaused && canDeliverLocally();
+            const canDeliverHoldReplyNow = () => holdReplyAllowed
+                && Boolean(userStore?.user?.aiSeatStatus)
+                && getAiSeatStatusRevision() === turnSeatRevision;
+            const canDeliverHoldReply = async () => {
+                if (!canDeliverHoldReplyNow()) {
+                    return false;
+                }
+                const latestStatus = await this.loadAiSeatRuntimeStatus(jobKey);
+                return Boolean(latestStatus?.globalEnabled)
+                    && latestStatus?.globalRevision === initialStatus.globalRevision;
+            };
+            if (handoffPaused && !ConversationPauseRegistry.isPaused(jobKey)) {
+                ConversationPauseRegistry.pause(jobKey);
+            }
+            let handoffReplySent = false;
+
             // 文本回复
             if (answerTypeList.includes(JobSeekerClonedAnswerTypeEnum.MSG_TEXT)) {
                 const replyAlreadySent = batch.items.some(item =>
@@ -526,7 +575,7 @@ export class BossOption {
                         data.answerContent,
                         AiPower.getCachedFilterDecision(bossUserInfo),
                     )
-                    if (!canDeliverTurn()) {
+                    if (!(handoffPaused ? canDeliverHoldReplyNow() : canDeliverTurn())) {
                         // 用户在生成期间暂停或恢复了会话：这条回复已过期，
                         // 或关闭/重新开启了总开关；标记完成以免断线补扫重复发送。
                         BossOption.logRecorder.info("【自动回复已取消】生成期间总开关或会话状态发生变化，bossId:", bossUserInfo.bossId);
@@ -538,13 +587,32 @@ export class BossOption {
                         data.answerContent + Tools.getEndChar(),
                         undefined,
                         html,
-                        canDeliverImmediatelyBeforeSend,
+                        handoffPaused ? canDeliverHoldReply : canDeliverImmediatelyBeforeSend,
                     )
                     if (!sent) {
+                        if (handoffEvent) {
+                            BossOption.showHandoffNotice(jobKey, mergedText, data, handoffPaused ? 'paused-silent' : 'decline-failed');
+                        }
                         return markBlockedTurn();
                     }
+                    handoffReplySent = true;
                     this.markBatchRepliesAsSent(batch);
                 }
+            }
+            // 发送结果确定之后再提醒，文案才不会说错。
+            if (handoffEvent) {
+                BossOption.showHandoffNotice(jobKey, mergedText, data, handoffReplySent
+                    ? (handoffPaused ? 'paused-with-hold' : 'declined')
+                    : (handoffPaused ? 'paused-silent' : 'decline-failed'));
+            }
+            if (data?.highInterestNotice === true) {
+                BossOption.showOnce(`high:${jobKey}`, () => ElNotification({
+                    type: 'success',
+                    title: '高意向岗位提醒',
+                    message: `${bossUserInfo.jobTitle || '这个岗位'}：HR 在推进，AI 会继续聊，建议你亲自看一眼。`,
+                    duration: 0,
+                    showClose: true,
+                }));
             }
             // boss操作
             if (answerTypeList.includes(JobSeekerClonedAnswerTypeEnum.BOSS_OPERATION)) {

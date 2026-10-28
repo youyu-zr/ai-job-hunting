@@ -95,6 +95,30 @@ public class AIServiceFacade {
     }
 
 
+    public void replaceLastSessionAnswer(String sessionId, String replacement) {
+        if (sessionId == null) {
+            return;
+        }
+        try {
+            aiServiceMap.get(appBizConfig.getSceneUseAiMap().getOrDefault("session", "openai-pool"))
+                    .replaceLastSessionAnswer(sessionId, replacement);
+        } catch (RuntimeException e) {
+            log.warn("会话历史替换失败 sessionId:{} errorType:{}", sessionId, e.getClass().getSimpleName());
+        }
+    }
+
+    public void appendSessionExchange(String sessionId, String hrMessage, String reply) {
+        if (sessionId == null) {
+            return;
+        }
+        try {
+            aiServiceMap.get(appBizConfig.getSceneUseAiMap().getOrDefault("session", "openai-pool"))
+                    .appendSessionExchange(sessionId, hrMessage, reply);
+        } catch (RuntimeException e) {
+            log.warn("会话历史追加失败 sessionId:{} errorType:{}", sessionId, e.getClass().getSimpleName());
+        }
+    }
+
     @Nonnull
     public ChatSessionResult debugSessionChat(String sessionId, String ask) {
         AIService aiService = aiServiceMap.get(appBizConfig.getSceneUseAiMap().getOrDefault("session", "openai-pool"));

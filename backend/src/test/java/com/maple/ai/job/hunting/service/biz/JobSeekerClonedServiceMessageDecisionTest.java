@@ -1,6 +1,7 @@
 package com.maple.ai.job.hunting.service.biz;
 
 import com.alibaba.fastjson.JSONObject;
+import com.maple.ai.job.hunting.utils.StopEventPolicy;
 import com.maple.ai.job.hunting.common.Header;
 import com.maple.ai.job.hunting.common.HeaderContext;
 import com.maple.ai.job.hunting.entity.MsgSessionDO;
@@ -55,10 +56,31 @@ class JobSeekerClonedServiceMessageDecisionTest {
     }
 
     @Test
-    void normalContactSalaryAndLocationMessagesUsePreferencesWithoutPausing() {
+    void byDefaultContactAndSalaryDecisionsPauseWithAHoldReplyWhileOrdinaryQuestionsReachAi() {
+        Fixture fixture = new Fixture();
+        fixture.preference(new PreferenceEntity());
+        fixture.resume("resume text");
+        fixture.triageResult(Category.NORMAL_JOB, Action.REPLY);
+
+        JobSeekerClonedResultVO contact = fixture.ask("方便留个微信吗？", "job-contact", 1);
+        JobSeekerClonedResultVO salary = fixture.ask("薪资是6K，可以接受吗？", "job-salary", 1);
+        fixture.ask("工作地点在上海，能接受吗？", "job-location", 1);
+
+        assertEquals("CONTACT", contact.getHandoffEvent());
+        assertEquals("SALARY_DECISION", salary.getHandoffEvent());
+        assertEquals("USER_CONFIRMATION_REQUIRED", salary.getStopReason());
+        assertEquals("收到，我确认一下，尽快回复您。", salary.getAnswerContent());
+        assertEquals(List.of("job-contact:true", "job-salary:true"), fixture.sessions.pausedJobs);
+        assertEquals(1, fixture.ai.sessionChatCalls.get());
+    }
+
+    @Test
+    void contactAndSalaryLetAiHandleThemWhenTheUserChoseAllow() {
         Fixture fixture = new Fixture();
         PreferenceEntity preference = new PreferenceEntity();
         preference.setCommunicationPreferences("微信由本人决定");
+        preference.setStopContact("ALLOW");
+        preference.setStopSalary("ALLOW");
         fixture.preference(preference);
         fixture.resume("resume text");
         fixture.triageResult(Category.NORMAL_JOB, Action.REPLY);
@@ -81,10 +103,12 @@ class JobSeekerClonedServiceMessageDecisionTest {
         fixture.triageResult(Category.NORMAL_JOB, Action.REPLY);
         fixture.ai.nextAnswer = "可以的，我的电话是 138 0013 8000，随时联系。";
 
-        JobSeekerClonedResultVO held = fixture.ask("方便留个电话吗？", "job-phone-held", 1);
+        // 问题本身不是「要联系方式」，所以走到 AI；是 AI 自己在回复里写出了号码，由发送前检查拦下。
+        JobSeekerClonedResultVO held = fixture.ask("后续怎么联系您比较方便？", "job-phone-held", 1);
 
         assertEquals("USER_CONFIRMATION_REQUIRED", held.getStopReason());
-        assertEquals("", held.getAnswerContent());
+        assertEquals("CONTACT", held.getHandoffEvent());
+        assertFalse(held.getAnswerContent().contains("138"));
         assertEquals(List.of("job-phone-held:true"), fixture.sessions.pausedJobs);
 
         Fixture allowed = new Fixture();
@@ -94,7 +118,7 @@ class JobSeekerClonedServiceMessageDecisionTest {
         allowed.triageResult(Category.NORMAL_JOB, Action.REPLY);
         allowed.ai.nextAnswer = "可以的，我的电话是 13800138000。";
 
-        JobSeekerClonedResultVO sent = allowed.ask("方便留个电话吗？", "job-phone-allowed", 1);
+        JobSeekerClonedResultVO sent = allowed.ask("后续怎么联系您比较方便？", "job-phone-allowed", 1);
 
         assertEquals("可以的，我的电话是 13800138000。", sent.getAnswerContent());
         assertTrue(allowed.sessions.pausedJobs.isEmpty());
@@ -455,6 +479,31 @@ class JobSeekerClonedServiceMessageDecisionTest {
         assertEquals(1, fixture.triage.calls.get());
         assertEquals(1, result.getOperationTypeList().size());
         assertEquals(0, fixture.ai.sessionChatCalls.get());
+    }
+
+    @Test
+    void resumeRequestFollowsTheUsersResumeSetting() {
+        Fixture paused = new Fixture();
+        PreferenceEntity pause = new PreferenceEntity();
+        pause.setStopResume("PAUSE");
+        paused.preference(pause);
+        paused.triageResult(Category.NORMAL_JOB, Action.REPLY);
+        JobSeekerClonedResultVO held = paused.ask("方便发一份简历过来吗？", "job-resume-pause", 1);
+        assertEquals("RESUME", held.getHandoffEvent());
+        assertTrue(held.getOperationTypeList() == null || held.getOperationTypeList().isEmpty());
+        assertEquals(List.of("job-resume-pause:true"), paused.sessions.pausedJobs);
+
+        Fixture declined = new Fixture();
+        PreferenceEntity decline = new PreferenceEntity();
+        decline.setStopResume("DECLINE");
+        declined.preference(decline);
+        declined.triageResult(Category.NORMAL_JOB, Action.REPLY);
+        JobSeekerClonedResultVO first = declined.ask("方便发一份简历过来吗？", "job-resume-decline", 1);
+        assertEquals(StopEventPolicy.declineText(StopEventPolicy.Event.RESUME), first.getAnswerContent());
+        assertTrue(declined.sessions.pausedJobs.isEmpty());
+        JobSeekerClonedResultVO second = declined.ask("简历发一下吧", "job-resume-decline", 1);
+        assertEquals("USER_CONFIRMATION_REQUIRED", second.getStopReason());
+        assertEquals(0, declined.ai.sessionChatCalls.get());
     }
 
     @Test

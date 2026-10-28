@@ -127,6 +127,35 @@ public class OpenAIService extends AbstractAIService {
         return new ChatSessionResult(sessionId, result);
     }
 
+    @Override
+    public void replaceLastSessionAnswer(String sessionId, String replacement) {
+        List<Message> messageList = getMsgSessionMap().get(sessionId);
+        if (messageList == null || messageList.isEmpty()) {
+            return;
+        }
+        int last = messageList.size() - 1;
+        if (messageList.get(last).getMessageType() != MessageType.ASSISTANT) {
+            return;
+        }
+        if (replacement == null || replacement.isBlank()) {
+            messageList.remove(last);
+        } else {
+            messageList.set(last, new OpenaiMessage(MessageType.ASSISTANT, replacement));
+        }
+        persistentMessage(sessionId, messageList);
+    }
+
+    @Override
+    public void appendSessionExchange(String sessionId, String hrMessage, String reply) {
+        List<Message> messageList = getMsgSessionMap().computeIfAbsent(sessionId, k -> new CopyOnWriteArrayList<>());
+        if (messageList.isEmpty()) {
+            messageList.add(new OpenaiMessage(MessageType.SYSTEM, buildSystemFirstPrompt()));
+        }
+        messageList.add(new OpenaiMessage(MessageType.USER, hrMessage));
+        messageList.add(new OpenaiMessage(MessageType.ASSISTANT, reply));
+        persistentMessage(sessionId, messageList);
+    }
+
     protected void persistentMessage(String sessionId, List<Message> messageList) {
         // 数据入库，现在每次存储，调用量大之后，定时存储
         msgSessionMapper.updateMsgContextAndAiType(sessionId, JSONUtil.toJsonStr(messageList), AITypeEnum.OPENAI);
