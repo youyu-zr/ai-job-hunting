@@ -31,13 +31,12 @@ class AIServiceFacadePromptRolesTest {
     }
 
     @Test
-    void preservesEntitlementFailureForRoleSeparatedRequest() {
-        AIServiceFacade facade = facade(mock(AIService.class), false);
+    void userWithoutAnyProductRecordStillReachesTheModel() {
+        AIService aiService = mock(AIService.class);
+        when(aiService.askAndAnswer("SYSTEM rules", "USER data")).thenReturn("ok");
+        AIServiceFacade facade = facade(aiService, false);
 
-        ApplicationException error = assertThrows(ApplicationException.class,
-                () -> facade.askAndAnswer("SYSTEM rules", "USER data"));
-
-        assertEquals("AI产品能力已过期", error.getMessage());
+        assertEquals("ok", facade.askAndAnswer("SYSTEM rules", "USER data"));
     }
 
     @Test
