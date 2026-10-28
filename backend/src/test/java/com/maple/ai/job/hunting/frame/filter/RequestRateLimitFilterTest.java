@@ -28,15 +28,15 @@ class RequestRateLimitFilterTest {
 
     @Test
     void expensiveRoutesHavePerIdentityRateLimits() {
-        assertEquals(1.2, RequestRateLimitFilter.permitsPerSecond("/api/user/silently/login"));
-        assertEquals(0.1, RequestRateLimitFilter.permitsPerSecond("/api/user/import/resume"));
-        assertEquals(0.1, RequestRateLimitFilter.permitsPerSecond("/api/user/ai/config/test"));
-        assertEquals(5.0, RequestRateLimitFilter.permitsPerSecond("/api/job/filter/one"));
-        assertEquals(3.0, RequestRateLimitFilter.permitsPerSecond("/api/job/ai/assistant/generate/greeting"));
-        assertEquals(12.0, RequestRateLimitFilter.permitsPerSecond("/api/job/seeker/cloned/ask"));
+        assertEquals(10.0, RequestRateLimitFilter.permitsPerSecond("/api/user/silently/login"));
+        assertEquals(1.0, RequestRateLimitFilter.permitsPerSecond("/api/user/import/resume"));
+        assertEquals(1.0, RequestRateLimitFilter.permitsPerSecond("/api/user/ai/config/test"));
+        assertEquals(20.0, RequestRateLimitFilter.permitsPerSecond("/api/job/filter/one"));
+        assertEquals(10.0, RequestRateLimitFilter.permitsPerSecond("/api/job/ai/assistant/generate/greeting"));
+        assertEquals(30.0, RequestRateLimitFilter.permitsPerSecond("/api/job/seeker/cloned/ask"));
         assertEquals(0, RequestRateLimitFilter.permitsPerSecond("/api/user/userinfo"));
-        assertEquals(20.0, RequestRateLimitFilter.globalPermitsPerSecond("/api/user/silently/login"));
-        assertEquals(2.0, RequestRateLimitFilter.globalPermitsPerSecond("/api/user/import/resume"));
+        assertEquals(100.0, RequestRateLimitFilter.globalPermitsPerSecond("/api/user/silently/login"));
+        assertEquals(10.0, RequestRateLimitFilter.globalPermitsPerSecond("/api/user/import/resume"));
     }
 
     @Test
@@ -106,8 +106,8 @@ class RequestRateLimitFilterTest {
     @ParameterizedTest
     @CsvSource({
             "/api/user/silently/login,1",
-            "/api/user/import/resume,10",
-            "/api/user/ai/config/test,10"
+            "/api/user/import/resume,1",
+            "/api/user/ai/config/test,1"
     })
     void repeatedIdentityRequestAdvertisesItsConfiguredInterval(String uri, String retrySeconds) throws Exception {
         RequestRateLimitFilter filter = new RequestRateLimitFilter();
@@ -150,7 +150,7 @@ class RequestRateLimitFilterTest {
 
             MockHttpServletRequest second = request("/api/user/import/resume", null, "untrusted-extra-proof");
             second.setRemoteAddr("192.0.2.99");
-            assertRateRejection(send(filter, second), "10");
+            assertRateRejection(send(filter, second), "1");
         } finally {
             HeaderContext.clear();
         }

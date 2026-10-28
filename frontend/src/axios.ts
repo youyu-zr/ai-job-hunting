@@ -245,6 +245,16 @@ request.interceptors.response.use((resp: any) => {
             return Promise.reject(error)
         }
 
+        // 偶发 429（瞬间并发、服务器忙）静默等一下重发一次，正常使用不弹错。
+        // 简历上传不自动重发，避免重复导入。
+        if (error.response?.status === 429 && error.config && !error.config.__retriedAfter429
+            && error.config.url !== '/api/user/import/resume') {
+            const raw = Number(error.response.headers?.['retry-after'])
+            const waitMs = Math.min(3000, Math.max(500, Number.isFinite(raw) ? raw * 1000 : 1000))
+            return new Promise(resolve => setTimeout(resolve, waitMs))
+                .then(() => request({...error.config, __retriedAfter429: true} as any))
+        }
+
         // 获取后端返回的错误信息
         if (typeof error.response?.data?.message === "string" && error.response.data.message.trim()) {
             error.message = error.response.data.message;

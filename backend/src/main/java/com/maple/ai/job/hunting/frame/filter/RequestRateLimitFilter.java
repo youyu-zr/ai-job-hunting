@@ -30,10 +30,10 @@ public class RequestRateLimitFilter implements Filter {
             .expireAfterAccess(1, TimeUnit.HOURS)
             .build();
 
-    @Value("${ai.request.max-concurrent:64}")
-    private int configuredMaxConcurrentRequests = 64;
+    @Value("${ai.request.max-concurrent:128}")
+    private int configuredMaxConcurrentRequests = 128;
 
-    private volatile Semaphore activeModelRequests = new Semaphore(64, true);
+    private volatile Semaphore activeModelRequests = new Semaphore(128, true);
 
     @PostConstruct
     void initializeConcurrencyLimit() {
@@ -119,26 +119,25 @@ public class RequestRateLimitFilter implements Filter {
     }
 
     /**
-     * Limits are set to roughly twice the highest rate a single real user produces (measured from the
-     * frontend call sites: scan batches, recommend-page paging, unread re-scans), so a normal user
-     * never sees a 429; they only stop runaway loops and scripted abuse.
+     * These limits only exist to stop a runaway loop (a bug that fires the same request forever) or
+     * scripted abuse. They are set far above anything a person driving a browser tab can produce:
+     * nginx logs 2026-10-14..28 show the busiest single IP doing 4 logins in one second / 27 in a
+     * minute, and the other routes are bounded by BOSS page actions (one message, one job card).
+     * The upstream model provider (SiliconFlow, per-account RPM 1000+) is the real ceiling.
      */
     private static Rule ruleFor(String uri) {
         return switch (uri) {
             // Login is not a model request: making it compete for a model concurrency slot means
-            // a busy AI queue locks users out of the product entirely. Peak: page load + session
-            // recovery retry within ~2s -> 0.6/s, doubled.
-            case "/api/user/silently/login" -> new Rule(1.2, 20.0, true, false);
+            // a busy AI queue locks users out of the product entirely.
+            case "/api/user/silently/login" -> new Rule(10.0, 100.0, true, false);
             // Resume import IS a model request on the fallback path: when local text extraction
             // finds nothing usable, UserService hands the file to aiServiceFacade.readFile. Dropping
             // the concurrency slot here would let this route bypass ai.request.max-concurrent.
-            case "/api/user/import/resume" -> new Rule(0.1, 2.0, false, true);
-            case "/api/user/ai/config/test" -> new Rule(0.1, 0, false, true);
-            // Peak: one job card screened every ~0.4s while paging the recommend list.
-            case "/api/job/filter/one" -> new Rule(5.0, 0, false, true);
-            case "/api/job/ai/assistant/generate/greeting" -> new Rule(3.0, 0, false, true);
-            // Peak: an unread re-scan replays a batch of up to ~6 contacts back to back.
-            case "/api/job/seeker/cloned/ask" -> new Rule(12.0, 0, false, true);
+            case "/api/user/import/resume" -> new Rule(1.0, 10.0, false, true);
+            case "/api/user/ai/config/test" -> new Rule(1.0, 0, false, true);
+            case "/api/job/filter/one" -> new Rule(20.0, 0, false, true);
+            case "/api/job/ai/assistant/generate/greeting" -> new Rule(10.0, 0, false, true);
+            case "/api/job/seeker/cloned/ask" -> new Rule(30.0, 0, false, true);
             default -> null;
         };
     }
