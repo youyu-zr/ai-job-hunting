@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       axios:
-        specifier: ^1.6.8
-        version: 1.6.8(debug@4.3.4(supports-color@7.2.0))
+        specifier: ^1.20.0
+        version: 1.20.0(debug@4.3.4(supports-color@7.2.0))(supports-color@7.2.0)
       element-plus:
         specifier: ^2.6.3
         version: 2.7.0(vue@3.4.21(typescript@5.4.5))
@@ -56,7 +56,7 @@ importers:
         version: 1.3.3(rollup@4.14.2)(vite@5.2.8(@types/node@20.12.7))
       vite-plugin-md:
         specifier: ^0.21.5
-        version: 0.21.5(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(happy-dom@8.9.0)(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7))
+        version: 0.21.5(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7))
       vite-plugin-monkey:
         specifier: ^3.5.1
         version: 3.5.2(vite@5.2.8(@types/node@20.12.7))
@@ -661,6 +661,10 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
+  agent-base@6.0.2:
+    resolution: {integrity: sha512-RZNwNclF7+MS/8bDg70amg32dyeZGZxiDuQmZxKLAlQjr3jGyLx+4Kkk58UO7D2QdgFIQCovuSuZESne6RG6XQ==}
+    engines: {node: '>= 6.0.0'}
+
   ansi-styles@4.3.0:
     resolution: {integrity: sha512-zbB9rCJAT1rbjiVDb2hqKFHNYLxgtk8NURxZ3IZwD3F6NtxbXZQCnnSi1Lkx+IDohdPlFp222wVALIheZJQSEg==}
     engines: {node: '>=8'}
@@ -700,8 +704,8 @@ packages:
     resolution: {integrity: sha512-wvUjBtSGN7+7SjNpq/9M2Tg350UZD3q62IFZLbRAR1bSMlCo1ZaeW+BJ+D090e4hIIZLBcTDWe4Mh4jvUDajzQ==}
     engines: {node: '>= 0.4'}
 
-  axios@1.6.8:
-    resolution: {integrity: sha512-v/ZHtJDU39mDpyBoFVkETcd/uNdxrWRrg3bKpOKzXFA6Bvqopts6ALSMU3y6ijYxbw2B+wPrIv46egTzJXCLGQ==}
+  axios@1.20.0:
+    resolution: {integrity: sha512-r8aOh8j9cGKpgQAqpzrUHnSIc6a59Y3Xf/cv8sy1DrHCkZHzQGEuoq1tARk6qSyDdtQGSDgpb9kFlruzPvrgwg==}
 
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
@@ -922,6 +926,10 @@ packages:
     resolution: {integrity: sha512-FGgH2h8zKNim9ljj7dankFPcICIK9Cp5bm+c2gQSYePhpaG5+esrLODihIorn+Pe6FGJzWhXQotPv73jTaldXA==}
     engines: {node: '>= 0.4'}
 
+  es-set-tostringtag@2.1.0:
+    resolution: {integrity: sha512-j6vWzfrGVfyXxge+O0x5sh6cvxAog0a/4Rdd2K36zCMV5eJ+/+tOAngRO8cODMNWbVRdVlmGZQL2YS3yR8bIUA==}
+    engines: {node: '>= 0.4'}
+
   es6-object-assign@1.1.0:
     resolution: {integrity: sha512-MEl9uirslVwqQU369iHNWZXsI8yaZYGg/D65aOgZkeyFJwHYSxilf7rQzXKI7DdDuBPrBXbfk3sl9hJhmd5AUw==}
 
@@ -1005,8 +1013,8 @@ packages:
     resolution: {integrity: sha512-qOo9F+dMUmC2Lcb4BbVvnKJxTPjCm+RRpe4gDuGrzkL7mEVl/djYSu2OdQ2Pa302N4oqkSg9ir6jaLWJ2USVpQ==}
     engines: {node: '>=8'}
 
-  follow-redirects@1.15.6:
-    resolution: {integrity: sha512-wWN62YITEaOpSK584EZXJafH1AGpO8RVgElfkuXbTOrPX4fIfOyEpW/CsiNd8JdYrAoOvafRTOEnvsO++qCqFA==}
+  follow-redirects@1.16.2:
+    resolution: {integrity: sha512-/kVP2U8z596Ia0gwFrwyIeo74ta5aVmSeU1FfAUMAmcEP5EP7zydmag3SLiN64NaRKef3lxsq7i/g7ltJQDGow==}
     engines: {node: '>=4.0'}
     peerDependencies:
       debug: '*'
@@ -1018,8 +1026,8 @@ packages:
     resolution: {integrity: sha512-dKx12eRCVIzqCxFGplyFKJMPvLEWgmNtUrpTiJIR5u97zEhRG8ySrtboPHZXx7daLxQVrl643cTzbab2tkQjxg==}
     engines: {node: '>= 0.4'}
 
-  form-data@4.0.0:
-    resolution: {integrity: sha512-ETEklSGi5t0QMZuiXoA/Q6vcnxcLQP5vdugSpuAyi6SVGi2clPPp+xgEhuMaHC+zGgn31Kd235W35f7Hykkaww==}
+  form-data@4.0.6:
+    resolution: {integrity: sha512-vKatAh4SlVfgbv+YtmhiRjhEMJsYpsG1Y2rMQtR+SVSbytsSD1YGzDIcrAJmdFec88u/+VoGmxnl+80gL1tRCQ==}
     engines: {node: '>= 6'}
 
   fp-ts@2.16.9:
@@ -1078,12 +1086,20 @@ packages:
     resolution: {integrity: sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==}
     engines: {node: '>= 0.4'}
 
+  hasown@2.0.4:
+    resolution: {integrity: sha512-T2UbfbBEF32wiepXIsMlTW9+dDYC6wMh/t/vYA4tuOMKqWz/n3vr1NFSxQiyP+zk2mXsoMA/i/7qV6LKut1t1A==}
+    engines: {node: '>= 0.4'}
+
   he@1.2.0:
     resolution: {integrity: sha512-F/1DnUGPopORZi0ni+CvrCgHQ5FyEAHRLSApuYWMmrbSwoN2Mn/7k+Gl38gJnR7yyDZk6WLXwiGod1JOWNDKGw==}
     hasBin: true
 
   htmlparser2@9.1.0:
     resolution: {integrity: sha512-5zfg6mHUoaer/97TxnGpxmbR7zJtPwIYFMZ/H5ucTlPZhKvtum05yiPK3Mgai3a0DyVxv7qYqoweaEd2nrYQzQ==}
+
+  https-proxy-agent@5.0.1:
+    resolution: {integrity: sha512-dFcAjpTQFgoLMzC2VwU+C/CbS7uRL0lWmxDITmqm7C+7F0Odmj6s9l6alZc6AELXhrnggM2CeWSXHGOdX2YtwA==}
+    engines: {node: '>= 6'}
 
   human-signals@2.1.0:
     resolution: {integrity: sha512-B4FFZ6q/T2jhhksgkbEW3HBvWIfDW85snkQgawt07S7J5QXTk6BkNV+0yAeZrM5QpMAdYlocGoljn0sJ/WQkFw==}
@@ -1468,8 +1484,9 @@ packages:
     resolution: {integrity: sha512-dYDWdjSl5RNb7SgPxGQcRU+GtvP7s2fpkrY0r432PcOIaZ0/rBcxEZnQN67iJhFuQiVw754JDoPruPCNdGsbjg==}
     engines: {node: '>=12.0.0'}
 
-  proxy-from-env@1.1.0:
-    resolution: {integrity: sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg==}
+  proxy-from-env@2.1.0:
+    resolution: {integrity: sha512-cJ+oHTW1VAEa8cJslgmUZrc+sjRKgAKl3Zyse6+PV38hZe/V6Z14TbCuXcan9F9ghlz4QrFr2c92TNF82UkYHA==}
+    engines: {node: '>=10'}
 
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
@@ -2294,21 +2311,20 @@ snapshots:
       - '@vue/composition-api'
       - vue
 
-  '@yankeeinlondon/builder-api@1.4.1(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(happy-dom@8.9.0)(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7))':
+  '@yankeeinlondon/builder-api@1.4.1(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7))':
     dependencies:
       '@types/markdown-it': 12.2.3
       '@yankeeinlondon/happy-wrapper': 2.10.1(supports-color@7.2.0)
       fp-ts: 2.16.9
-      inferred-types: 0.37.6(happy-dom@8.9.0)(supports-color@7.2.0)
+      inferred-types: 0.37.6
       markdown-it: 13.0.2
-      vite-plugin-md: 0.22.5(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(happy-dom@8.9.0)(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7))
+      vite-plugin-md: 0.22.5(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7))
     transitivePeerDependencies:
       - '@edge-runtime/vm'
       - '@vitejs/plugin-vue'
       - '@vitest/browser'
       - '@vitest/ui'
       - encoding
-      - happy-dom
       - jsdom
       - less
       - lightningcss
@@ -2319,26 +2335,13 @@ snapshots:
       - terser
       - vite
 
-  '@yankeeinlondon/gray-matter@6.2.1(happy-dom@8.9.0)(supports-color@7.2.0)':
+  '@yankeeinlondon/gray-matter@6.2.1':
     dependencies:
-      inferred-types: 0.37.6(happy-dom@8.9.0)(supports-color@7.2.0)
+      inferred-types: 0.37.6
       js-yaml: 4.1.0
       kind-of: 6.0.3
       section-matter: 1.0.0
       strip-bom-string: 1.0.0
-    transitivePeerDependencies:
-      - '@edge-runtime/vm'
-      - '@vitest/browser'
-      - '@vitest/ui'
-      - happy-dom
-      - jsdom
-      - less
-      - lightningcss
-      - sass
-      - stylus
-      - sugarss
-      - supports-color
-      - terser
 
   '@yankeeinlondon/happy-wrapper@2.10.1(supports-color@7.2.0)':
     dependencies:
@@ -2364,6 +2367,12 @@ snapshots:
   acorn@8.11.3: {}
 
   acorn@8.8.2: {}
+
+  agent-base@6.0.2(supports-color@7.2.0):
+    dependencies:
+      debug: 4.3.4(supports-color@7.2.0)
+    transitivePeerDependencies:
+      - supports-color
 
   ansi-styles@4.3.0:
     dependencies:
@@ -2399,13 +2408,15 @@ snapshots:
     dependencies:
       possible-typed-array-names: 1.1.0
 
-  axios@1.6.8(debug@4.3.4(supports-color@7.2.0)):
+  axios@1.20.0(debug@4.3.4(supports-color@7.2.0))(supports-color@7.2.0):
     dependencies:
-      follow-redirects: 1.15.6(debug@4.3.4(supports-color@7.2.0))
-      form-data: 4.0.0
-      proxy-from-env: 1.1.0
+      follow-redirects: 1.16.2(debug@4.3.4(supports-color@7.2.0))
+      form-data: 4.0.6
+      https-proxy-agent: 5.0.1(supports-color@7.2.0)
+      proxy-from-env: 2.1.0
     transitivePeerDependencies:
       - debug
+      - supports-color
 
   balanced-match@1.0.2: {}
 
@@ -2434,7 +2445,7 @@ snapshots:
     dependencies:
       bumpp: 8.2.1
       callsites: 4.2.0
-      inferred-types: 0.37.6(happy-dom@8.9.0)(supports-color@7.2.0)
+      inferred-types: 0.37.6
       vitest: 0.25.8(happy-dom@8.9.0)(supports-color@7.2.0)
     transitivePeerDependencies:
       - '@edge-runtime/vm'
@@ -2662,6 +2673,13 @@ snapshots:
     dependencies:
       es-errors: 1.3.0
 
+  es-set-tostringtag@2.1.0:
+    dependencies:
+      es-errors: 1.3.0
+      get-intrinsic: 1.2.7
+      has-tostringtag: 1.0.2
+      hasown: 2.0.2
+
   es6-object-assign@1.1.0: {}
 
   esbuild@0.18.20:
@@ -2792,7 +2810,7 @@ snapshots:
     dependencies:
       to-regex-range: 5.0.1
 
-  follow-redirects@1.15.6(debug@4.3.4(supports-color@7.2.0)):
+  follow-redirects@1.16.2(debug@4.3.4(supports-color@7.2.0)):
     optionalDependencies:
       debug: 4.3.4(supports-color@7.2.0)
 
@@ -2800,10 +2818,12 @@ snapshots:
     dependencies:
       is-callable: 1.2.7
 
-  form-data@4.0.0:
+  form-data@4.0.6:
     dependencies:
       asynckit: 0.4.0
       combined-stream: 1.0.8
+      es-set-tostringtag: 2.1.0
+      hasown: 2.0.4
       mime-types: 2.1.35
 
   fp-ts@2.16.9: {}
@@ -2869,6 +2889,10 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
+  hasown@2.0.4:
+    dependencies:
+      function-bind: 1.1.2
+
   he@1.2.0: {}
 
   htmlparser2@9.1.0:
@@ -2878,6 +2902,13 @@ snapshots:
       domutils: 3.1.0
       entities: 4.5.0
 
+  https-proxy-agent@5.0.1(supports-color@7.2.0):
+    dependencies:
+      agent-base: 6.0.2(supports-color@7.2.0)
+      debug: 4.3.4(supports-color@7.2.0)
+    transitivePeerDependencies:
+      - supports-color
+
   human-signals@2.1.0: {}
 
   human-signals@4.3.1: {}
@@ -2886,22 +2917,9 @@ snapshots:
     dependencies:
       safer-buffer: 2.1.2
 
-  inferred-types@0.37.6(happy-dom@8.9.0)(supports-color@7.2.0):
+  inferred-types@0.37.6:
     dependencies:
       brilliant-errors: 0.7.3(happy-dom@8.9.0)(supports-color@7.2.0)
-    transitivePeerDependencies:
-      - '@edge-runtime/vm'
-      - '@vitest/browser'
-      - '@vitest/ui'
-      - happy-dom
-      - jsdom
-      - less
-      - lightningcss
-      - sass
-      - stylus
-      - sugarss
-      - supports-color
-      - terser
 
   inherits@2.0.4: {}
 
@@ -3132,7 +3150,7 @@ snapshots:
   native-dash@1.25.0(happy-dom@8.9.0)(supports-color@7.2.0):
     dependencies:
       brilliant-errors: 0.7.3(happy-dom@8.9.0)(supports-color@7.2.0)
-      inferred-types: 0.37.6(happy-dom@8.9.0)(supports-color@7.2.0)
+      inferred-types: 0.37.6
     transitivePeerDependencies:
       - '@edge-runtime/vm'
       - '@vitest/browser'
@@ -3267,7 +3285,7 @@ snapshots:
       '@types/node': 20.12.7
       long: 5.3.2
 
-  proxy-from-env@1.1.0: {}
+  proxy-from-env@2.1.0: {}
 
   queue-microtask@1.2.3: {}
 
@@ -3512,10 +3530,10 @@ snapshots:
     transitivePeerDependencies:
       - rollup
 
-  vite-plugin-md@0.21.5(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(happy-dom@8.9.0)(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7)):
+  vite-plugin-md@0.21.5(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7)):
     dependencies:
-      '@yankeeinlondon/builder-api': 1.4.1(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(happy-dom@8.9.0)(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7))
-      '@yankeeinlondon/gray-matter': 6.2.1(happy-dom@8.9.0)(supports-color@7.2.0)
+      '@yankeeinlondon/builder-api': 1.4.1(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7))
+      '@yankeeinlondon/gray-matter': 6.2.1
       '@yankeeinlondon/happy-wrapper': 2.10.1(supports-color@7.2.0)
       markdown-it: 13.0.2
       source-map-js: 1.2.0
@@ -3526,7 +3544,6 @@ snapshots:
       - '@vitest/browser'
       - '@vitest/ui'
       - encoding
-      - happy-dom
       - jsdom
       - less
       - lightningcss
@@ -3536,11 +3553,11 @@ snapshots:
       - supports-color
       - terser
 
-  vite-plugin-md@0.22.5(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(happy-dom@8.9.0)(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7)):
+  vite-plugin-md@0.22.5(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7)):
     dependencies:
       '@vitejs/plugin-vue': 5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5))
-      '@yankeeinlondon/builder-api': 1.4.1(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(happy-dom@8.9.0)(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7))
-      '@yankeeinlondon/gray-matter': 6.2.1(happy-dom@8.9.0)(supports-color@7.2.0)
+      '@yankeeinlondon/builder-api': 1.4.1(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7))
+      '@yankeeinlondon/gray-matter': 6.2.1
       '@yankeeinlondon/happy-wrapper': 2.10.1(supports-color@7.2.0)
       markdown-it: 13.0.2
       source-map-js: 1.2.0
@@ -3550,7 +3567,6 @@ snapshots:
       - '@vitest/browser'
       - '@vitest/ui'
       - encoding
-      - happy-dom
       - jsdom
       - less
       - lightningcss
