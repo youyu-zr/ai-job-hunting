@@ -269,14 +269,14 @@ class MessageTriageServiceTest {
     }
 
     @Test
-    void oversizedPreferenceIsRejectedBeforeCallingClassifier() {
-        ai.response = response(Category.NORMAL_JOB, Action.REPLY, "不应调用模型");
-        preference.setJobGoal("P".repeat(5_000));
+    void oversizedPreferenceIsShortenedAndStillClassified() {
+        ai.response = response(Category.NORMAL_JOB, Action.REPLY, "普通岗位");
+        preference.setJobGoal("P".repeat(20_000));
 
         MessageTriageResultVO result = classify("岗位消息", 1);
 
-        assertEquals(0, ai.calls);
-        assertProcessingError(result);
+        assertEquals(1, ai.calls);
+        assertEquals(Category.NORMAL_JOB, result.getCategory());
     }
 
     @Test

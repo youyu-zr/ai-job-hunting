@@ -60,7 +60,8 @@ public class HighInterestAIReviewService {
             return parseDecision(aiServiceFacade.askAndAnswer(buildQuestion(
                     param,
                     resumeContent,
-                    JSON.toJSONString(preference == null ? new PreferenceEntity() : preference),
+                    // 只给回复口径的偏好：不含薪资底线、屏蔽公司和详细住址（复核理由会进提醒邮件）。
+                    reviewPreference(preference),
                     summarizeConversation(sessionContext),
                     aiAnswer)));
         } catch (Exception e) {
@@ -69,6 +70,20 @@ public class HighInterestAIReviewService {
                     LogValueSanitizer.sanitize(e.getMessage(), 200));
             return Decision.invalid("高意向AI复核失败，等待人工查看");
         }
+    }
+
+    static String reviewPreference(PreferenceEntity preference) {
+        if (preference == null) {
+            return "{}";
+        }
+        JSONObject view = new JSONObject(true);
+        view.put("jobGoal", preference.getJobGoal());
+        view.put("unacceptableConditions", preference.getUnacceptableConditions());
+        view.put("clarifyConditions", preference.getClarifyConditions());
+        view.put("salaryRange", preference.getSr());
+        view.put("targetCities", preference.getTargetCities());
+        view.put("structuredPreference", com.maple.ai.job.hunting.utils.StructuredPreferenceText.forReply(preference, false));
+        return view.toJSONString();
     }
 
     static String buildQuestion(JobSeekerClonedParam param,

@@ -20,6 +20,31 @@ test("waits for the BOSS UID and login token before returning identity", async (
     assert.equal(reads, 5);
 });
 
+test("prefers the live bst cookie over a stale page token", async () => {
+    const identity = await waitForBossIdentity(
+        () => ({uid: "boss-1", token: "stale-page-token"}),
+        "",
+        1,
+        0,
+        () => "live-cookie-token",
+    );
+
+    assert.deepEqual(identity, {accountId: "boss-1", token: "live-cookie-token"});
+});
+
+test("does not fall back to a stale page token when the live cookie reader is provided but empty", async () => {
+    await assert.rejects(
+        waitForBossIdentity(
+            () => ({uid: "boss-1", token: "stale-page-token"}),
+            "",
+            1,
+            0,
+            () => null,
+        ),
+        /未能读取 BOSS 登录身份/,
+    );
+});
+
 test("does not proceed with a different BOSS account than the expected account", async () => {
     await assert.rejects(
         waitForBossIdentity(() => ({uid: "boss-2", token: "live-token"}), "boss-1", 2, 0),

@@ -39,14 +39,17 @@ class JobSeekerClonedServiceHumanHandoffTest {
     }
 
     @Test
-    void ordinaryContactExchangeContinuesIntoAiWithoutPausingTheJob() {
+    void contactExchangeContinuesIntoAiWhenTheUserLetsAiHandleIt() {
         UserInfoVO user = new UserInfoVO();
         user.setId(42L);
         HeaderContext.setHeader(new Header(user, "request", "/api/job/seeker/cloned/ask", null, false, null, null));
 
         UserInfoMapper userInfoMapper = mock(UserInfoMapper.class);
         UserResumeMapper userResumeMapper = mock(UserResumeMapper.class);
-        when(userInfoMapper.selectPreferenceOptByUserId(42L)).thenReturn(Optional.empty());
+        com.maple.ai.job.hunting.model.entity.PreferenceEntity preference =
+                new com.maple.ai.job.hunting.model.entity.PreferenceEntity();
+        preference.setStopContact("ALLOW");
+        when(userInfoMapper.selectPreferenceOptByUserId(42L)).thenReturn(Optional.of(preference));
 
         RecordingMsgSessionService sessions = new RecordingMsgSessionService(
                 mock(MsgSessionMapper.class), userInfoMapper);

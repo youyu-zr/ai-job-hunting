@@ -42,38 +42,32 @@ test('chat page has no multi-contact message sending entry', () => {
     assert.match(bossMessage, /恢复当前会话/, 'manual resume control must remain');
 });
 
-test('the preference toggle is explicitly limited to high-interest handoff', () => {
-    assert.match(preference, /高意向时暂停AI坐席/, 'toggle name must describe its actual scope');
+test('the high-interest toggle only notifies and does not control stop events', () => {
+    assert.match(preference, /高意向岗位提醒我/, 'toggle name must describe its actual scope');
     assert.doesNotMatch(preference, /关键事项暂停AI坐席/, 'toggle must not imply it controls deterministic gates');
+    assert.match(preference, /只提醒，AI 继续聊/, 'high interest must not pause the AI');
     assert.match(preference, /联系方式[\s\S]*面试[\s\S]*薪资[\s\S]*不受.*开关/,
         'the independent hard gates must be described');
 });
 
-test('only concrete commitments pause the current job session before reply generation', () => {
+test('stop events are classified before reply generation and AI output is checked before sending', () => {
     const triageIndex = clonedService.indexOf('messageTriageService.classify(');
+    const detectIndex = clonedService.indexOf('decideStopEvent(jobSeekerClonedParam, preferenceEntityOpt, jobKey, triage)');
     const confirmationActionIndex = clonedService.indexOf(
-        'if (triage.getAction() == Action.NEEDS_USER_CONFIRMATION)',
-    );
-    const commitmentGateIndex = clonedService.indexOf(
-        'if (isConcreteCurrentCommitment(jobSeekerClonedParam.getQuestion()))',
+        'if (triage.getCategory() == Category.PLATFORM_EVENT)',
     );
     const aiCallIndex = clonedService.indexOf('aiServiceFacade.sessionChat');
-    assert.ok(triageIndex >= 0 && triageIndex < commitmentGateIndex,
-        'server AI must classify HR meaning before applying personal-commitment rules');
-    assert.ok(commitmentGateIndex < aiCallIndex,
-        'concrete personal commitments must stop before reply generation');
-    assert.ok(triageIndex < confirmationActionIndex && confirmationActionIndex < aiCallIndex,
-        'the authoritative confirmation action must stop before reply generation');
-    assert.match(clonedService.slice(confirmationActionIndex, commitmentGateIndex),
-        /return pauseForUserConfirmation\(jobKey\)/);
-    assert.match(clonedService.slice(commitmentGateIndex, aiCallIndex),
-        /return pauseForUserConfirmation\(jobKey\)/);
+    const outboundGuardIndex = clonedService.indexOf('OutboundCommitmentGuard.find(answer');
+    assert.ok(triageIndex >= 0 && triageIndex < detectIndex,
+        'server AI must classify HR meaning before applying stop-event rules');
+    assert.ok(detectIndex < confirmationActionIndex && confirmationActionIndex < aiCallIndex,
+        'stop events and the authoritative confirmation action must be handled before reply generation');
+    assert.ok(outboundGuardIndex > aiCallIndex,
+        'AI output must be checked for unauthorized commitments before it is sent');
     const pauseHelperStart = clonedService.indexOf(
-        'private JobSeekerClonedResultVO pauseForUserConfirmation(String jobKey)',
+        'String jobKey, StopEventPolicy.Event event, boolean allowHoldReply)',
     );
-    const pauseHelperEnd = clonedService.indexOf(
-        'private JobSeekerClonedResultVO retryableProcessingFailure()', pauseHelperStart,
-    );
+    const pauseHelperEnd = clonedService.indexOf('private boolean isHighInterestSignal', pauseHelperStart);
     assert.ok(pauseHelperStart >= 0 && pauseHelperEnd > pauseHelperStart);
     const pauseHelper = clonedService.slice(pauseHelperStart, pauseHelperEnd);
     assert.match(pauseHelper, /if \(!msgSessionService\.trySetMsgSessionStop\(jobKey, true\)\)/);

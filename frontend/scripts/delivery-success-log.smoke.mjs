@@ -9,7 +9,7 @@ const platform = readFileSync(new URL('../src/platform/platform.ts', import.meta
 // record. The standalone "AI screening passed" record is redundant in that flow.
 assert.match(
   platform,
-  /const semanticScreeningEnabled = Boolean\(userStore\.user\.preference\.afE && userStore\.user\.preference\.af\)[\s\S]*?const filterDecision = semanticScreeningEnabled[\s\S]*?AiPower\.getCachedFilterDecision\(jobDetail\)[\s\S]*?formatAiFilterReasonForDelivery\(filterDecision\)[\s\S]*?formatDeliverySuccessLog\(\{/,
+  /const semanticScreeningEnabled = Boolean\(userStore\.user\.preference\.afE\)[\s\S]*?const filterDecision = semanticScreeningEnabled[\s\S]*?AiPower\.getCachedFilterDecision\(jobDetail\)[\s\S]*?formatAiFilterReasonForDelivery\(filterDecision\)[\s\S]*?formatDeliverySuccessLog\(\{/,
   'successful delivery should render the cached AI screening reason',
 );
 assert.doesNotMatch(platform, /AI岗位分析通过/);

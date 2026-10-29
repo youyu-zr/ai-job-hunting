@@ -14,6 +14,7 @@ import {
 } from "./utils/sessionContext";
 import {installBossIdentityTransport} from "./utils/bossIdentityTransport";
 import {applicationResponseError, markRequestErrorNotified, rateLimitMessage} from "./utils/resumeImportError";
+import {canReplayAfterRelogin, recoverSession} from "./utils/sessionRecovery";
 
 
 /**
@@ -50,9 +51,9 @@ request.interceptors.request.use(req => {
             throw new AxiosError("当前账号或服务器地址无效，请填写完整的 HTTP(S) 服务地址后重试", "RESUME_SCOPE_INVALID", req)
         }
         if (expectedIdentity && (serverUrl !== expectedIdentity.serverUrl
-            || accountId !== expectedIdentity.accountId
-            || String(Tools.window?._PAGE?.token ?? "").trim() !== expectedIdentity.token)) {
-            throw new AxiosError("BOSS账号、登录身份或服务器已变更，请重新导入", AxiosError.ERR_CANCELED, req)
+            || accountId !== expectedIdentity.accountId)) {
+            // BOSS 自己轮换 cookie 不算换人；只有换账号/换服务器才取消。
+            throw new AxiosError("BOSS账号或服务器已变更，请重新导入", AxiosError.ERR_CANCELED, req)
         }
         req.baseURL = destination
         ;(req as any).__aiSessionScope = scope
@@ -86,8 +87,7 @@ function isCurrentSessionRequest(config: any): boolean {
 function isCurrentImportRequest(config: any): boolean {
     const expected = config?.bossIdentityContext;
     return !expected || (isCurrentSessionRequest(config)
-        && isCurrentServerRequest(config)
-        && String(Tools.window?._PAGE?.token ?? "").trim() === expected.token);
+        && isCurrentServerRequest(config));
 }
 
 function notifyRequestError(error: any, options: any): void {
@@ -96,6 +96,28 @@ function notifyRequestError(error: any, options: any): void {
     }
     ElMessage(options);
     markRequestErrorNotified(error);
+}
+
+/**
+ * 会话失效（服务器重启 / 闲置过期）时自动重登，并把原请求重放一次。
+ * 重登失败才提示用户，这样页面挂着也能继续回复。
+ */
+function replayAfterRelogin(config: any, error: any, notifyOnFailure: boolean): Promise<any> {
+    if (!canReplayAfterRelogin(config) || !isCurrentSessionRequest(config)) {
+        return Promise.reject(error)
+    }
+    return recoverSession().then(ok => {
+        if (ok && isCurrentSessionRequest(config)) {
+            return request({...config, __retriedAfterRelogin: true} as any)
+        }
+        if (notifyOnFailure) {
+            notifyRequestError(error, {
+                type: "error",
+                message: "登录过期，自动重新登录失败，请刷新页面重试"
+            });
+        }
+        return Promise.reject(error)
+    })
 }
 
 function handlerErrorCode(result: any) {
@@ -140,6 +162,11 @@ request.interceptors.response.use((resp: any) => {
             )
             if (isCurrentSessionRequest(resp.config) && authorizationIsCurrent) {
                 LoginStore().loginFailForScope(scope || null)
+            }
+            if (canReplayAfterRelogin(resp.config)) {
+                return replayAfterRelogin(resp.config, error, authorizationIsCurrent)
+            }
+            if (isCurrentSessionRequest(resp.config) && authorizationIsCurrent) {
                 notifyRequestError(error, {
                     type: "error",
                     message: "登录过期，请刷新页面重试"
@@ -178,6 +205,9 @@ request.interceptors.response.use((resp: any) => {
             if (isCurrentSessionRequest(error.config) && authorizationIsCurrent) {
                 LoginStore().loginFailForScope(scope || null)
             }
+            if (canReplayAfterRelogin(error.config)) {
+                return replayAfterRelogin(error.config, error, authorizationIsCurrent)
+            }
         }
 
         // 到达前端axios设置的超时时间
@@ -213,6 +243,18 @@ request.interceptors.response.use((resp: any) => {
             })
             // 使请求不进入正常的响应处理函数
             return Promise.reject(error)
+        }
+
+        // 偶发 429（瞬间并发、服务器忙）静默等一下重发一次，正常使用不弹错。
+        // 简历上传不自动重发，避免重复导入。
+        if (error.response?.status === 429 && error.config && !error.config.__retriedAfter429
+            && error.config.url !== '/api/user/import/resume') {
+            const raw = Number(error.response.headers?.['retry-after'])
+            const waitMs = Math.min(3000, Math.max(500, Number.isFinite(raw) ? raw * 1000 : 1000))
+            // 留痕：如果某个请求反复撞 429，多半是代码在死循环，日志里能看出来。
+            console.warn(`[AI工作猎手] 服务器限流 429，${waitMs}ms 后重发一次：${error.config.url}`)
+            return new Promise(resolve => setTimeout(resolve, waitMs))
+                .then(() => request({...error.config, __retriedAfter429: true} as any))
         }
 
         // 获取后端返回的错误信息

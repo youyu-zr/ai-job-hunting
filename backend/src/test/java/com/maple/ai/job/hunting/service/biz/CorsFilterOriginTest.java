@@ -155,7 +155,9 @@ class CorsFilterOriginTest {
         CorsFilter cors = new CorsFilter();
         RequestRateLimitFilter rate = new RequestRateLimitFilter();
         ReflectionTestUtils.setField(rate, "activeModelRequests", new Semaphore(0));
-        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/user/import/resume");
+        // A model-backed route: the exhausted concurrency slot is what produces the rejection now
+        // that login and resume import no longer consume one.
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/job/filter/one");
         request.addHeader("Origin", "https://www.zhipin.com");
         request.addHeader("X-Boss-Token", "synthetic-proof");
         request.addParameter("uniqueId", "synthetic-uid");
@@ -168,7 +170,7 @@ class CorsFilterOriginTest {
         assertEquals(429, response.getStatus());
         assertEquals("https://www.zhipin.com", response.getHeader(ALLOW_ORIGIN));
         assertEquals("Authorization, Retry-After", response.getHeader("Access-Control-Expose-Headers"));
-        assertEquals("10", response.getHeader("Retry-After"));
+        assertEquals("1", response.getHeader("Retry-After"));
         assertFalse(chainCalled.get());
     }
 }

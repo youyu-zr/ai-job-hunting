@@ -58,7 +58,6 @@
     - 仅用于AI坐席定制化回复
     " placement="bottom">
         <el-button :icon="Upload as any" type="primary" @click="handlerImport"
-                   :disabled="!serverStore.isOnline"
                    :loading="importResumeLoading"><p
             style="font-size: 15px">导入简历</p>
         </el-button>
@@ -73,19 +72,18 @@
     </el-tooltip>
 
     <el-tooltip effect="dark" raw-content content="
-    AI坐席：登录并自动开通内测权限后可开启。<br/>
+    AI坐席：登录后即可开启。<br/>
     - 开始投递和开启 AI 坐席前，请先导入本人简历。<br/>
     - 根据简历、求职要求和岗位信息回复HR。<br/>
     - HR索要简历时才通过平台发送简历。<br/>
     - 联系方式交换、明确面试安排及需要本人承诺的事项会暂停当前岗位会话。<br/>
     " placement="bottom">
-        <el-button :icon="Service as any" color="#626aef" :disabled="!serverStore.isOnline">
+        <el-button :icon="Service as any" color="#626aef">
             <p style="font-size: 15px">
                 <span>AI坐席 </span>
                 <el-switch active-text="开" inactive-text="关" inline-prompt
                            style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
                            :model-value="Boolean(userStore.user.aiSeatStatus)"
-                           :disabled="!serverStore.isOnline"
                            @update:model-value="handlerAISeatStatusChange"/>
             </p>
         </el-button>
@@ -138,8 +136,13 @@ import {ElNotification} from "element-plus";
 import {LogRecorder} from "../../logging/record";
 import {getLatestPushLogs, getRecordLevelClass} from "../../logging/queries";
 import {serializeAiSeatStatus, shouldApplyAiSeatRollback} from "../../stores/seatState";
-import {isUserConfigReady, rememberAiSeatStatus, userRemoteLoad} from "../../stores/remote";
-import {waitForBossIdentity} from "../../utils/bossIdentity";
+import {
+    isApplicationSessionReady,
+    isUserConfigReady,
+    rememberAiSeatStatus,
+    userRemoteLoad
+} from "../../stores/remote";
+import {waitForBossIdentity, INTERACTIVE_ATTEMPTS} from "../../utils/bossIdentity";
 import type {BossIdentity} from "../../utils/bossIdentity";
 import {userSessionScope} from "../../utils/sessionContext";
 import {applicationResponseError, resumeImportErrorNotice} from "../../utils/resumeImportError";
@@ -303,29 +306,51 @@ const handlerImport = async () => {
     const requestedServerUrl = serverStore.baseUrl;
     let identity: BossIdentity | undefined;
     let stage: ResumeImportStage = "identity";
+    const currentBossToken = () =>
+        String(Tools.getCookieValue("bst") ?? "").trim();
+    // 只有「换了 BOSS 账号」或「换了服务器」才算上下文变了；BOSS 自己轮换 cookie 不算。
     const contextIsCurrent = () =>
         serverStore.baseUrl === requestedServerUrl
         && (!identity
             ? !expectedAccountId || String(Tools.window?._PAGE?.uid ?? "").trim() === expectedAccountId
-            : String(Tools.window?._PAGE?.uid ?? "").trim() === identity.accountId
-                && String(Tools.window?._PAGE?.token ?? "").trim() === identity.token);
+            : String(Tools.window?._PAGE?.uid ?? "").trim() === identity.accountId);
+    const CONTEXT_SWITCHED = "RESUME_CONTEXT_SWITCHED";
+    const ensureContext = () => {
+        if (!contextIsCurrent()) {
+            throw Object.assign(new Error("账号或服务器已切换"), {code: CONTEXT_SWITCHED});
+        }
+    };
 
     try {
-        identity = await waitForBossIdentity(() => Tools.window?._PAGE, expectedAccountId);
-        if (!contextIsCurrent()) {
-            return;
-        }
+        identity = await waitForBossIdentity(
+            () => Tools.window?._PAGE,
+            expectedAccountId,
+            // The user is waiting on the button they just pressed, so this path gets a longer
+            // budget than the reactive loads: a slow page must not turn their click into a failure.
+            INTERACTIVE_ATTEMPTS,
+            undefined,
+            currentBossToken,
+            () => Tools.window?._PAGE,
+        );
+        ensureContext();
         const {accountId: bossUserId, token} = identity;
         if (!userSessionScope(bossUserId, requestedServerUrl)) {
             throw Object.assign(new Error("当前账号或服务器地址无效"), {code: "RESUME_SCOPE_INVALID"});
         }
+        // The import endpoint authorizes with the application session, not with the BOSS
+        // credential, so a rotated cookie is not a reason to re-login or to refuse the import.
+        if (!isApplicationSessionReady()) {
+            await userRemoteLoad();
+        }
+        if (!isApplicationSessionReady()) {
+            throw Object.assign(new Error("AI 工作猎手账号尚未连接完成"), {code: "APP_SESSION_NOT_READY"});
+        }
+        ensureContext();
         resumeImportAttempted = true;
         resumeImportStatus.value = '未成功导入简历';
         stage = "lookup";
         const resumeInfoResp = await axiosOriginal.get("https://www.zhipin.com/wapi/zpgeek/resume/sidebar.json", {headers: {"Zp_token": token}} as {});
-        if (!contextIsCurrent()) {
-            return;
-        }
+        ensureContext();
         const zpData = resumeInfoResp.data?.zpData;
         if (!Array.isArray(zpData?.attachmentList)) {
             throw new Error("附件列表响应无效");
@@ -342,9 +367,7 @@ const handlerImport = async () => {
             "https://docdownload.zhipin.com/wflow/zpgeek/download/download4geek?resumeId=" + resumeId,
             {headers: {"Zp_token": token}, responseType: 'arraybuffer'} as {},
         );
-        if (!contextIsCurrent()) {
-            return;
-        }
+        ensureContext();
         if (resumeFileResp?.status !== 200
             || Object.prototype.toString.call(resumeFileResp.response) !== "[object ArrayBuffer]"
             || resumeFileResp.response.byteLength === 0) {
@@ -354,16 +377,13 @@ const handlerImport = async () => {
         const formData = new FormData();
         formData.append("file", fileBlob);
         formData.append("resumeId", resumeId);
-        formData.append("uniqueId", bossUserId);
         stage = "upload";
         const importResp = await axios.post("/api/user/import/resume", formData, {
             timeout: 120000,
-            headers: {'Content-Type': "multipart/form-data", "Zp_token": token},
+            headers: {'Content-Type': "multipart/form-data"},
             bossIdentityContext: {...identity, serverUrl: requestedServerUrl},
         });
-        if (!contextIsCurrent()) {
-            return;
-        }
+        ensureContext();
         if (importResp.data.code !== 200) {
             throw applicationResponseError(importResp);
         }
@@ -374,9 +394,7 @@ const handlerImport = async () => {
         } catch {
             logger.warn('简历已保存，但登录状态刷新失败');
         }
-        if (!contextIsCurrent()) {
-            return;
-        }
+        ensureContext();
         userStore.user.resumeId = resumeId;
         resumeImportStatus.value = '成功导入简历';
         const refreshWarning = loginSessionReady ? '' : '；请刷新页面重新连接';
@@ -386,13 +404,27 @@ const handlerImport = async () => {
         if (!importResp.data?.data?.email) {
             resumeImportStatus.value = '成功导入简历';
         }
+        // 自动识别的微信号要让本人核对一眼：识别错了，以后 AI 发给 HR 的就是错号。
+        const recognizedWechat = String(importResp.data?.data?.wechatId ?? '').trim();
+        const aiMayShareContact = userStore.user.preference?.stopContact === 'ALLOW'
+            && Boolean(userStore.user.preference?.contactShareE);
+        const wechatNotice = recognizedWechat
+            ? `；识别到微信号 ${recognizedWechat}，已填进偏好设置，不对请改`
+                + (aiMayShareContact ? '（你已允许 AI 在 HR 要微信时发这个号，请务必核对）' : '（默认不发给 HR）')
+            : '';
         ElMessage({
-            message: `简历保存成功，内测权限已自动开通${refreshWarning}${emailWarning}`,
+            message: `简历保存成功${refreshWarning}${emailWarning}${wechatNotice}`,
             type: loginSessionReady && importResp.data?.data?.email ? 'success' : 'warning',
-            duration: 3000
+            duration: recognizedWechat ? 6000 : 3000
         });
     } catch (error: any) {
-        if (!contextIsCurrent()) {
+        if (error?.code === CONTEXT_SWITCHED || !contextIsCurrent()) {
+            // 不要静默：明确告诉用户本次导入取消了，且不改动新账号的导入状态。
+            ElMessage({
+                message: "检测到 BOSS 账号或服务器已切换，本次导入已取消，请在当前账号下重新点击「导入简历」",
+                type: 'warning',
+                duration: 5000
+            });
             return;
         }
         resumeImportStatus.value = '未成功导入简历';
@@ -466,13 +498,24 @@ const startPush = () => {
 
     let pushResultPromise = platform.startPush();
 
-    //   投递结果处理
-    pushResultPromise.then(() => {
-        ElMessage({
-            message: "批量投递完成",
-            type: 'success',
-            duration: 3000
-        })
+    //   投递结果处理：成功或出错都要把按钮恢复，出错时说清楚原因。
+    const finishPush = (failed?: any) => {
+        if (failed) {
+            logger.error('投递中断', failed);
+            ElMessage({
+                message: /稍等/.test(String(failed?.message))
+                    ? String(failed.message)
+                    : "投递中断：读取岗位列表失败，BOSS 页面可能已改版，请刷新页面后重试",
+                type: 'error',
+                duration: 5000
+            })
+        } else {
+            ElMessage({
+                message: "批量投递结束，详情见投递记录",
+                type: 'success',
+                duration: 3000
+            })
+        }
         setTimeout(() => {
             updateLatestPushRecords();
             pushStatus.value = PushStatus.PAUSE;
@@ -481,7 +524,8 @@ const startPush = () => {
             // 给 websocket 回执留出时间，再停止本次投递记录刷新。
             stopRecordsAfterSettling();
         }, 200)
-    })
+    };
+    pushResultPromise.then(() => finishPush(), error => finishPush(error || new Error("unknown")));
 }
 const pausePush = () => {
     platform.pausePush()

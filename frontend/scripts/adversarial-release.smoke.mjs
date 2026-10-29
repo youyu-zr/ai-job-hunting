@@ -13,15 +13,14 @@ const platform = readFileSync(new URL('../src/platform/platform.ts', import.meta
 const panel = readFileSync(new URL('../src/components/ui/AiJob.vue', import.meta.url), 'utf8');
 const aiPower = readFileSync(new URL('../src/platform/aiPower.ts', import.meta.url), 'utf8');
 
-// Release-gate decision boundaries: only missing, explicitly filtered, or
-// high-risk results stop. HUMAN_REVIEW is an instruction to clarify in chat,
-// not a hard delivery rejection.
+// The screening API contract permits only DELIVER or FILTER. Missing facts
+// are normalized to DELIVER by the server; malformed or legacy actions fail closed.
 assert.equal(shouldBlockAfterAiFilter(null), true);
 assert.equal(shouldBlockAfterAiFilter({filter: false, recommendedAction: 'DELIVER', riskLevel: 'LOW'}), false);
-assert.equal(shouldBlockAfterAiFilter({filter: false, recommendedAction: 'CHAT_FIRST', riskLevel: 'MEDIUM'}), false);
+assert.equal(shouldBlockAfterAiFilter({filter: false, recommendedAction: 'DELIVER', riskLevel: 'MEDIUM'}), false);
 assert.equal(shouldBlockAfterAiFilter({filter: false, recommendedAction: 'DELIVER', riskLevel: 'HIGH'}), true);
 assert.equal(shouldBlockAfterAiFilter({filter: true, recommendedAction: 'DELIVER', riskLevel: 'LOW'}), true);
-assert.equal(shouldBlockAfterAiFilter({filter: false, recommendedAction: 'HUMAN_REVIEW', riskLevel: 'MEDIUM'}), false);
+assert.equal(shouldBlockAfterAiFilter({filter: false, recommendedAction: 'UNKNOWN', riskLevel: 'MEDIUM'}), true);
 assert.equal(shouldBlockAfterAiFilter({filter: false, recommendedAction: 'FILTER', riskLevel: 'MEDIUM'}), true);
 
 // A long result must retain every explanation and risk signal in the final
@@ -47,7 +46,7 @@ assert.doesNotMatch(panel, /v-html=".*push.*record/i);
 // and must not create a duplicate standalone "screening passed" record.
 assert.match(platform, /semanticScreeningEnabled[\s\S]*?getCachedFilterDecision\(jobDetail\)[\s\S]*?formatDeliverySuccessLog\(\{/);
 assert.doesNotMatch(platform, /AI岗位分析通过/);
-assert.match(aiPower, /return `\$\{accountKey\}:\$\{this\.shortHash\(profileVersion\)\}`/);
+assert.match(aiPower, /return `\$\{serverUrl\}:\$\{accountKey\}:\$\{this\.shortHash\(profileVersion\)\}`/);
 
 // Internal send traces are translated into user-facing text instead of
 // exposing their English implementation markers in the delivery panel.

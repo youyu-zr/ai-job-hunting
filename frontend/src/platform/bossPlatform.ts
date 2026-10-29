@@ -4,7 +4,9 @@ import {MessageCache, Tools} from "./utils";
 import {MessageMergeBatch, MessageMergeQueue} from "./messageMerge";
 import {batchPlatformBodyTypeOf} from "./messageBatchMetadata";
 import {UserStore} from '../stores'
-import {rememberAiSeatStatus} from '../stores/remote'
+import {isApplicationSessionReady, rememberAiSeatStatus} from '../stores/remote'
+import {recoverSession} from '../utils/sessionRecovery'
+import {UnreadRetryBackoff} from './unreadRetryBackoff'
 import logging from "../logging";
 import logger from "../logging";
 import {LogRecorder} from "../logging/record";
@@ -47,9 +49,44 @@ export class BossOption {
     static bossUserInfoMap: Map<number, BossUserInfo> = new Map();
     static logRecorder: LogRecorder = new LogRecorder('recorder');
     static messageCache = new MessageCache();
+
+    /** 同一件事 10 分钟内只弹一次（去重缓存返回同一结果、补扫重发时不重复打扰）。 */
+    static shownNotices = new Map<string, number>();
+
+    static showOnce(key: string, show: () => void): void {
+        const now = Date.now();
+        for (const [k, at] of BossOption.shownNotices) {
+            if (now - at > 10 * 60 * 1000) BossOption.shownNotices.delete(k);
+        }
+        if (BossOption.shownNotices.has(key)) return;
+        BossOption.shownNotices.set(key, now);
+        show();
+    }
+
+    static showHandoffNotice(jobKey: string, hrText: string, data: any,
+                             outcome: 'paused-with-hold' | 'paused-silent' | 'declined' | 'decline-failed'): void {
+        const label = String(data?.handoffLabel || '').trim() || '需要你确认的事项';
+        const event = String(data?.handoffEvent || 'CONFIRM').trim();
+        const message = {
+            'paused-with-hold': `${label}。AI 先回了一句「我确认一下，尽快回复您」，这个会话已暂停自动回复，请打开会话亲自回复。`,
+            'paused-silent': `${label}。这个会话已暂停自动回复，AI 没有回这条，请打开会话亲自处理。`,
+            'declined': label,
+            'decline-failed': `${label}。这句没发出去，请打开会话看一下。`,
+        }[outcome];
+        BossOption.showOnce(`handoff:${jobKey}:${event}:${hrText}`, () => ElNotification({
+            type: 'warning',
+            title: outcome === 'declined' ? 'AI 已先婉拒/问清一次' : '这条消息需要你处理',
+            message,
+            duration: 0,
+            showClose: true,
+        }));
+    }
     private static readonly messageMergeQueue = new MessageMergeQueue<BossMessageMergeItem>(3500);
     private static unreadScanStarted = false;
     private static unreadScanRunning = false;
+    private static unreadScanStartedAt = 0;
+    private static readonly unreadRetryBackoff = new UnreadRetryBackoff();
+    private static readonly UNREAD_SCAN_STUCK_MS = 3 * 60_000;
     private static unreadScanCache: Map<string, number> = new Map();
     // Keep the in-flight guard short so transient failures can be retried, but
     // keep a successful result long enough for the periodic unread scan to see it.
@@ -440,6 +477,12 @@ export class BossOption {
             // 停止交互
             if (answerTypeList.includes(JobSeekerClonedAnswerTypeEnum.STOP)) {
                 const stopReason = String(data?.stopReason || '').trim().toUpperCase();
+                if (stopReason === 'IN_PROGRESS') {
+                    // 上一次请求超时但服务器仍在生成；不提示错误，留给补扫稍后取同一结果。
+                    BossOption.logRecorder.info("这条消息服务器还在生成回复，稍后补扫取结果");
+                    this.removeBatchMessages(batch);
+                    return false;
+                }
                 if (stopReason === 'AI_PROCESSING_ERROR' || data?.retryable === true) {
                     ElNotification({
                         type: 'error',
@@ -468,13 +511,7 @@ export class BossOption {
                     return true;
                 }
                 if (stopReason === 'USER_CONFIRMATION_REQUIRED') {
-                    ElNotification({
-                        type: 'warning',
-                        title: '这条消息需要你确认',
-                        message: '当前会话已暂停自动回复，请查看具体面试或承诺事项。',
-                        duration: 0,
-                        showClose: true,
-                    });
+                    BossOption.showHandoffNotice(jobKey, mergedText, data, 'paused-silent');
                     this.markBatchMessagesAsCompleted(batch);
                     return true;
                 }
@@ -502,6 +539,29 @@ export class BossOption {
                 return false;
             }
 
+            // 「停下来叫我」：服务端已暂停这个会话，并可能附一句不做承诺的过渡话。
+            // 过渡话是服务端暂停后才产生的，所以发送前不能再用「服务端已暂停」拦它，
+            // 改为核对：生成期间本页没有手动暂停/关总开关，且服务端总开关仍开着。
+            const handoffEvent = String(data?.handoffEvent || '').trim();
+            const handoffPaused = Boolean(handoffEvent)
+                && String(data?.stopReason || '').trim().toUpperCase() === 'USER_CONFIRMATION_REQUIRED';
+            const holdReplyAllowed = handoffPaused && canDeliverLocally();
+            const canDeliverHoldReplyNow = () => holdReplyAllowed
+                && Boolean(userStore?.user?.aiSeatStatus)
+                && getAiSeatStatusRevision() === turnSeatRevision;
+            const canDeliverHoldReply = async () => {
+                if (!canDeliverHoldReplyNow()) {
+                    return false;
+                }
+                const latestStatus = await this.loadAiSeatRuntimeStatus(jobKey);
+                return Boolean(latestStatus?.globalEnabled)
+                    && latestStatus?.globalRevision === initialStatus.globalRevision;
+            };
+            if (handoffPaused && !ConversationPauseRegistry.isPaused(jobKey)) {
+                ConversationPauseRegistry.pause(jobKey);
+            }
+            let handoffReplySent = false;
+
             // 文本回复
             if (answerTypeList.includes(JobSeekerClonedAnswerTypeEnum.MSG_TEXT)) {
                 const replyAlreadySent = batch.items.some(item =>
@@ -515,7 +575,7 @@ export class BossOption {
                         data.answerContent,
                         AiPower.getCachedFilterDecision(bossUserInfo),
                     )
-                    if (!canDeliverTurn()) {
+                    if (!(handoffPaused ? canDeliverHoldReplyNow() : canDeliverTurn())) {
                         // 用户在生成期间暂停或恢复了会话：这条回复已过期，
                         // 或关闭/重新开启了总开关；标记完成以免断线补扫重复发送。
                         BossOption.logRecorder.info("【自动回复已取消】生成期间总开关或会话状态发生变化，bossId:", bossUserInfo.bossId);
@@ -527,13 +587,32 @@ export class BossOption {
                         data.answerContent + Tools.getEndChar(),
                         undefined,
                         html,
-                        canDeliverImmediatelyBeforeSend,
+                        handoffPaused ? canDeliverHoldReply : canDeliverImmediatelyBeforeSend,
                     )
                     if (!sent) {
+                        if (handoffEvent) {
+                            BossOption.showHandoffNotice(jobKey, mergedText, data, handoffPaused ? 'paused-silent' : 'decline-failed');
+                        }
                         return markBlockedTurn();
                     }
+                    handoffReplySent = true;
                     this.markBatchRepliesAsSent(batch);
                 }
+            }
+            // 发送结果确定之后再提醒，文案才不会说错。
+            if (handoffEvent) {
+                BossOption.showHandoffNotice(jobKey, mergedText, data, handoffReplySent
+                    ? (handoffPaused ? 'paused-with-hold' : 'declined')
+                    : (handoffPaused ? 'paused-silent' : 'decline-failed'));
+            }
+            if (data?.highInterestNotice === true) {
+                BossOption.showOnce(`high:${jobKey}`, () => ElNotification({
+                    type: 'success',
+                    title: '高意向岗位提醒',
+                    message: `${bossUserInfo.jobTitle || '这个岗位'}：HR 在推进，AI 会继续聊，建议你亲自看一眼。`,
+                    duration: 0,
+                    showClose: true,
+                }));
             }
             // boss操作
             if (answerTypeList.includes(JobSeekerClonedAnswerTypeEnum.BOSS_OPERATION)) {
@@ -725,17 +804,38 @@ export class BossOption {
         };
         setTimeout(scan, 5000);
         window.setInterval(scan, 15000);
+        // 后台标签页的定时器会被浏览器节流/冻结；切回前台时立刻补扫一次。
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                scan();
+            }
+        });
     }
 
     private static async scanUnreadConversationOnce(): Promise<void> {
         if (BossOption.unreadScanRunning) {
-            return;
+            // 看门狗：某次扫描卡在没有返回的请求上时，3 分钟后强制放行，避免补扫永久停住。
+            if (Date.now() - BossOption.unreadScanStartedAt < BossOption.UNREAD_SCAN_STUCK_MS) {
+                return;
+            }
+            BossOption.logRecorder.warn("【未读补扫】上一轮超过3分钟未结束，强制复位");
         }
         if (!userStore) {
             userStore = UserStore();
         }
         BossOption.unreadScanRunning = true;
+        const scanStartedAt = Date.now();
+        BossOption.unreadScanStartedAt = scanStartedAt;
         try {
+            if (!isApplicationSessionReady()) {
+                // 服务器重启或会话过期：先自动重登（自带退避），成功后本轮照常扫描。
+                const recovered = await recoverSession();
+                if (!recovered) {
+                    BossOption.logRecorder.info("【未读补扫】登录已失效，自动重登未成功，稍后再试");
+                    return;
+                }
+                BossOption.logRecorder.info("【未读补扫】已自动重新登录，继续补扫");
+            }
             const authoritativeSeatEnabled = await AiPower.getGlobalAiSeatStatus();
             if (!canScanUnreadConversations(authoritativeSeatEnabled)) {
                 if (authoritativeSeatEnabled === false && userStore.user?.aiSeatStatus) {
@@ -790,6 +890,11 @@ export class BossOption {
                     skippedRecent += 1;
                     continue;
                 }
+                if (!BossOption.unreadRetryBackoff.isDue(bossId, text)) {
+                    // 这条之前失败过，还没到下次重试时间；先处理别的联系人。
+                    skippedRecent += 1;
+                    continue;
+                }
                 pendingCount += 1;
                 BossOption.logRecorder.info(
                     pending.source === 'read-pending' ? "【已读待回复补扫】触发AI坐席" : "【未读补扫】触发AI坐席",
@@ -810,13 +915,23 @@ export class BossOption {
                     continue;
                 }
                 const msgObj = BossOption.buildSyntheticTextMessage(bossId, source, text);
-                const handled = await bossOption.handlerBossMessage(msgObj, bossId, text);
+                let handled = false;
+                try {
+                    handled = await bossOption.handlerBossMessage(msgObj, bossId, text);
+                } catch (e: any) {
+                    BossOption.logRecorder.warn("【未读补扫】处理异常 bossId:", bossId, e?.message || e);
+                }
                 if (handled) {
+                    BossOption.unreadRetryBackoff.clear(bossId, text);
                     BossOption.markUnreadScanCompleted(bossId, text);
                     handledOne = true;
                     break;
                 }
-                BossOption.logRecorder.warn("【未读补扫】本轮未完成，保留下一轮重试 bossId:", bossId);
+                const waitMs = BossOption.unreadRetryBackoff.recordFailure(bossId, text);
+                BossOption.logRecorder.warn("【未读补扫】本轮未完成，稍后重试 bossId:", bossId,
+                    "等待秒数:", Math.round(waitMs / 1000));
+                // 一轮只给一个联系人发 AI 请求，保持低频。
+                break;
             }
             BossOption.logRecorder.info(
                 "【未读补扫】本轮统计",
@@ -828,7 +943,10 @@ export class BossOption {
                 "handled:", handledOne,
             );
         } finally {
-            BossOption.unreadScanRunning = false;
+            // 被看门狗复位后，旧的那一轮结束时不能把新一轮的占用标记清掉。
+            if (BossOption.unreadScanStartedAt === scanStartedAt) {
+                BossOption.unreadScanRunning = false;
+            }
         }
     }
 

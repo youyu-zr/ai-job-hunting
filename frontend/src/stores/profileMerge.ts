@@ -35,6 +35,21 @@ export function mergeRemoteUserConfig(
     }
     if (JSON.stringify(currentUser?.preference ?? {}) !== baseline.preference) {
         merged.preference = currentUser.preference;
+        // 本地有没保存的改动时保留本地偏好；但导入简历时服务端补上的微信号不能因此丢掉。
+        // 只在本人没动过微信号这一栏时才补：本人刚清空的不能被服务端旧值填回去。
+        const remoteWechat = incomingUser?.preference?.wechatId;
+        const localWechat = currentUser.preference?.wechatId;
+        if (remoteWechat && !localWechat && localWechat === baselineWechat(baseline)) {
+            merged.preference = {...currentUser.preference, wechatId: remoteWechat};
+        }
     }
     return merged;
+}
+
+function baselineWechat(baseline: UserConfigSnapshot): unknown {
+    try {
+        return JSON.parse(baseline.preference)?.wechatId;
+    } catch {
+        return undefined;
+    }
 }

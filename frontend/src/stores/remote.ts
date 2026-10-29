@@ -1,6 +1,5 @@
 import {LoginStore, UserStore} from "./index";
 import {PreferenceConfig} from "./types";
-import {ProductStore} from "./index";
 import {ServerStore} from "./server";
 import {TampermonkeyApi, Tools} from "../platform/utils";
 import logging from "../logging";
@@ -20,21 +19,75 @@ import {createScopedReadiness} from "./scopedReadiness";
 import {scopedAuthorization, userSessionScope} from "../utils/sessionContext";
 import {BossIdentity, waitForBossIdentity} from "../utils/bossIdentity";
 import {captureUserConfigSnapshot, mergeRemoteUserConfig, UserConfigSnapshot} from "./profileMerge";
+import {registerSessionRecovery} from "../utils/sessionRecovery";
 
 const logRecorder = new LogRecorder();
 const DEFAULT_RISK_PACK_VERSION = "risk-pack-20260829-v2";
 const userConfigReadiness = createScopedReadiness();
 let identityRetryTimer: ReturnType<typeof setTimeout> | undefined;
 let identityRetryCount = 0;
+let loginRetryTimer: ReturnType<typeof setTimeout> | undefined;
+let loginRetryCount = 0;
+
+const LOGIN_RETRY_MAX = 3;
+const LOGIN_RETRY_BASE_MS = 3000;
+const LOGIN_RETRY_MAX_DELAY_MS = 30000;
+
+/**
+ * Retries a failed login with backoff.
+ *
+ * Losing the login is the exact failure a retry exists for, yet there was no retry here at all:
+ * the panel simply stayed disconnected until the user reloaded the page. A rate limit is asked to
+ * wait for the delay the server named instead of hammering the same limit again.
+ */
+function scheduleLoginRetry(scope: string, serverUrl: string, error?: any): void {
+    if (loginRetryTimer || loginRetryCount >= LOGIN_RETRY_MAX) {
+        return;
+    }
+    if (currentSessionScope() !== scope || ServerStore().baseUrl !== serverUrl) {
+        return;
+    }
+    const status = Number(error?.response?.status);
+    const retryAfter = Number(
+        typeof error?.response?.headers?.get === "function"
+            ? error.response.headers.get("Retry-After")
+            : undefined
+    );
+    const delay = status === 429 && Number.isFinite(retryAfter) && retryAfter > 0
+        ? Math.min(retryAfter * 1000, LOGIN_RETRY_MAX_DELAY_MS)
+        : Math.min(LOGIN_RETRY_BASE_MS * Math.pow(2, loginRetryCount), LOGIN_RETRY_MAX_DELAY_MS);
+    loginRetryCount += 1;
+    loginRetryTimer = setTimeout(() => {
+        loginRetryTimer = undefined;
+        void userRemoteLoad();
+    }, delay);
+}
+
+function currentBossToken(): string {
+    return String(Tools.getCookieValue("bst") ?? "").trim();
+}
 
 export function isUserConfigReady(): boolean {
     const scope = currentSessionScope();
     const loginStore = LoginStore();
+    // The BOSS cookie is deliberately not part of this test. It rotates on its own schedule, so
+    // comparing it here turned a routine cookie refresh into "configuration never loaded", with
+    // no way back to ready short of reloading the page.
     return Boolean(scope
         && userConfigReadiness.isReady(scope)
         && loginStore.login
         && loginStore.accountScope === scope
         && !loginStore.loginFailStatus);
+}
+
+export function isApplicationSessionReady(): boolean {
+    const scope = currentSessionScope();
+    const loginStore = LoginStore();
+    return Boolean(scope
+        && loginStore.login
+        && loginStore.accountScope === scope
+        && !loginStore.loginFailStatus
+        && scopedAuthorization(scope));
 }
 
 export function waitForUserConfigReady(timeoutMs = 12000): Promise<boolean> {
@@ -93,10 +146,24 @@ function applyPreferenceDefaults(preference: PreferenceConfig): void {
     preference.locationMismatchThreshold = preference.locationMismatchThreshold || 2;
     preference.communicationStyle = preference.communicationStyle || 'NATURAL';
     preference.marketingReplyE = preference.marketingReplyE ?? false;
+    preference.contactShareE = preference.contactShareE ?? false;
     preference.afE = preference.afE ?? true;
     preference.jceE = preference.jceE ?? false;
     preference.jce = Array.isArray(preference.jce) ? preference.jce : [];
     preference.drpV = preference.drpV || DEFAULT_RISK_PACK_VERSION;
+    // 偏好页 v3：服务端返回的旧配置没有这些字段时补默认值，和服务端 StopEventPolicy 的默认一致，
+    // 否则「停下来叫我」的单选框会一个都没选中，界面和实际行为对不上。
+    for (const key of ['wantTags', 'avoidTags', 'dealbreakers', 'blockedCompanies'] as const) {
+        preference[key] = Array.isArray(preference[key]) ? preference[key] : [];
+    }
+    preference.arrivalTime = preference.arrivalTime || '';
+    preference.stopInterview = preference.stopInterview || 'PAUSE';
+    preference.stopOffer = preference.stopOffer || 'PAUSE';
+    preference.stopSalary = preference.stopSalary || 'PAUSE';
+    preference.stopContact = preference.stopContact || (preference.contactShareE ? 'ALLOW' : 'PAUSE');
+    preference.stopPersonal = preference.stopPersonal || 'PAUSE';
+    preference.stopResume = preference.stopResume || 'ALLOW';
+    preference.holdReplyE = preference.holdReplyE ?? true;
     applyPersonalPreferenceDefaults(preference);
 }
 
@@ -168,7 +235,14 @@ export async function userRemoteLoad(options: UserRemoteLoadOptions = {}): Promi
     const requestedServerUrl = serverStore.baseUrl;
     let identity: BossIdentity;
     try {
-        identity = await waitForBossIdentity(() => Tools.window?._PAGE);
+        identity = await waitForBossIdentity(
+            () => Tools.window?._PAGE,
+            "",
+            undefined,
+            undefined,
+            currentBossToken,
+            () => Tools.window?._PAGE
+        );
         identityRetryCount = 0;
         if (identityRetryTimer) {
             clearTimeout(identityRetryTimer);
@@ -225,6 +299,10 @@ export async function userRemoteLoad(options: UserRemoteLoadOptions = {}): Promi
         if (!contextIsCurrent()) {
             return;
         }
+        if (loginOutcome === "identity-refused") {
+            // 登录被拒（已提示原因），不要再去拉用户配置。
+            return;
+        }
         if (loginOutcome === "legacy-registration-required") {
             if (!userStore.user.preference) {
                 userStore.user.preference = {} as PreferenceConfig;
@@ -241,18 +319,8 @@ export async function userRemoteLoad(options: UserRemoteLoadOptions = {}): Promi
         }
         profileLoaded = applyUserConfig(resp?.data?.data, requestStartedAt, requestContext, options);
 
-        const betaResp = await axios.get("/api/beta/access").catch(error => {
-            logRecorder.warn("beta access load failed", error?.message || error);
-            return null;
-        });
-        if (!contextIsCurrent()) {
-            return;
-        }
-        const betaAccess = betaResp?.data?.data;
-        if (betaAccess?.activationEnabled && !betaAccess?.accessActive && !betaAccess?.betaActivated) {
-            ProductStore().setShowProduct(true);
-        }
         logRecorder.info("loaded server config");
+        loginRetryCount = 0;
     } catch (error: any) {
         logRecorder.warn("server config load failed; try local mirror", error?.message || error);
 
@@ -270,6 +338,7 @@ export async function userRemoteLoad(options: UserRemoteLoadOptions = {}): Promi
                 loginStore.loginFail();
             }
             logRecorder.error("load config failed: no server data and no local mirror");
+            scheduleLoginRetry(requestedScope, requestedServerUrl, error);
         }
     } finally {
         if (contextIsCurrent()) {
@@ -288,3 +357,5 @@ export async function userRemoteLoad(options: UserRemoteLoadOptions = {}): Promi
     }
 }
 
+// 会话失效时由 axios / 未读补扫调用：重走一次静默登录 + 拉配置，不弹窗打扰。
+registerSessionRecovery(() => userRemoteLoad(), isApplicationSessionReady);

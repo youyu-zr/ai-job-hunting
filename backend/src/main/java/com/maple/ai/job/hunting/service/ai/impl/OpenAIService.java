@@ -127,6 +127,35 @@ public class OpenAIService extends AbstractAIService {
         return new ChatSessionResult(sessionId, result);
     }
 
+    @Override
+    public void replaceLastSessionAnswer(String sessionId, String replacement) {
+        List<Message> messageList = getMsgSessionMap().get(sessionId);
+        if (messageList == null || messageList.isEmpty()) {
+            return;
+        }
+        int last = messageList.size() - 1;
+        if (messageList.get(last).getMessageType() != MessageType.ASSISTANT) {
+            return;
+        }
+        if (replacement == null || replacement.isBlank()) {
+            messageList.remove(last);
+        } else {
+            messageList.set(last, new OpenaiMessage(MessageType.ASSISTANT, replacement));
+        }
+        persistentMessage(sessionId, messageList);
+    }
+
+    @Override
+    public void appendSessionExchange(String sessionId, String hrMessage, String reply) {
+        List<Message> messageList = getMsgSessionMap().computeIfAbsent(sessionId, k -> new CopyOnWriteArrayList<>());
+        if (messageList.isEmpty()) {
+            messageList.add(new OpenaiMessage(MessageType.SYSTEM, buildSystemFirstPrompt()));
+        }
+        messageList.add(new OpenaiMessage(MessageType.USER, hrMessage));
+        messageList.add(new OpenaiMessage(MessageType.ASSISTANT, reply));
+        persistentMessage(sessionId, messageList);
+    }
+
     protected void persistentMessage(String sessionId, List<Message> messageList) {
         // 数据入库，现在每次存储，调用量大之后，定时存储
         msgSessionMapper.updateMsgContextAndAiType(sessionId, JSONUtil.toJsonStr(messageList), AITypeEnum.OPENAI);
@@ -149,9 +178,14 @@ public class OpenAIService extends AbstractAIService {
 
     @Override
     public String askAndAnswer(String systemPrompt, String userPrompt) {
+        return askAndAnswer(systemPrompt, userPrompt, 0.0f);
+    }
+
+    @Override
+    public String askAndAnswer(String systemPrompt, String userPrompt, float temperature) {
         OpenAiChatClient client = getClient();
         try {
-            ChatResponse response = client.call(createRoleSeparatedPrompt(systemPrompt, userPrompt));
+            ChatResponse response = client.call(createRoleSeparatedPrompt(systemPrompt, userPrompt, temperature));
             Generation generation = response == null ? null : response.getResult();
             return generation == null || generation.getOutput() == null
                     ? ""
@@ -165,10 +199,14 @@ public class OpenAIService extends AbstractAIService {
     }
 
     static Prompt createRoleSeparatedPrompt(String systemPrompt, String userPrompt) {
+        return createRoleSeparatedPrompt(systemPrompt, userPrompt, 0.0f);
+    }
+
+    static Prompt createRoleSeparatedPrompt(String systemPrompt, String userPrompt, float temperature) {
         return new Prompt(List.of(
                 new SystemMessage(systemPrompt),
                 new UserMessage(userPrompt)),
-                OpenAiChatOptions.builder().withTemperature(0.0f).build());
+                OpenAiChatOptions.builder().withTemperature(temperature).build());
     }
 
     @Override

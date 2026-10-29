@@ -50,6 +50,16 @@ class JobFilterServicePromptBoundaryTest {
     }
 
     @Test
+    void structuredPreferenceReachesScreeningAndIgnoresTypeHints() {
+        String raw = "{\"@type\":\"java.net.URL\",\"cIE\":true,\"salaryMinK\":15,\"salaryMaxK\":25,"
+                + "\"dealbreakers\":[\"单休\"],\"unknownField\":1}";
+        String view = (String) ReflectionTestUtils.invokeMethod(new JobFilterService(), "buildScreeningPreference", raw);
+        assertNotNull(view);
+        assertTrue(view.contains("structuredPreference"), view);
+        assertTrue(view.contains("单休"), view);
+    }
+
+    @Test
     void marksFilterPromptAsScreeningOnly() {
         String question = new JobFilterService().buildQuestion(new AIFilterParam(
                 "不考虑销售和引流岗位，但正常的AI工具、资料整理和基础办公岗位可以尝试",
@@ -221,20 +231,33 @@ class JobFilterServicePromptBoundaryTest {
     }
 
     @Test
-    void oversizedJobDescriptionFailsClosedInsteadOfDroppingTailRisk() {
+    void oversizedJobDescriptionIsShortenedButKeepsTailRisk() {
         JobFilterService service = new JobFilterService();
         RecordingAiServiceFacade ai = new RecordingAiServiceFacade();
         ReflectionTestUtils.setField(service, "aiServiceFacade", ai);
         AIFilterParam param = filterParam("普通岗位职责".repeat(2_000) + "必须先交培训费才能入职");
 
-        ApplicationException error = assertThrows(ApplicationException.class, () -> service.filter(param));
+        service.filter(param);
 
-        assertEquals("岗位分析暂时不可用，请稍后重试", error.getMessage());
-        assertEquals(0, ai.calls.get());
+        assertEquals(1, ai.calls.get());
+        assertTrue(ai.lastPrompt.contains("必须先交培训费才能入职"));
     }
 
     @Test
-    void oversizedHardPreferenceFailsClosedBeforeAiScreening() {
+    void longResumeIsShortenedInsteadOfFailingScreening() {
+        JobFilterService service = new JobFilterService();
+        RecordingAiServiceFacade ai = new RecordingAiServiceFacade();
+        ReflectionTestUtils.setField(service, "aiServiceFacade", ai);
+        AIFilterParam param = filterParam("普通岗位职责");
+        param.setResumeContent("项目经历".repeat(5_000));
+
+        service.filter(param);
+
+        assertEquals(1, ai.calls.get());
+    }
+
+    @Test
+    void oversizedHardPreferenceIsShortenedAndStillScreened() {
         JobFilterService service = new JobFilterService();
         RecordingAiServiceFacade ai = new RecordingAiServiceFacade();
         ReflectionTestUtils.setField(service, "aiServiceFacade", ai);
@@ -242,10 +265,10 @@ class JobFilterServicePromptBoundaryTest {
         param.setPreference(JSON.toJSONString(java.util.Map.of(
                 "unacceptableConditions", "不接受先收费入职" + "x".repeat(9_000))));
 
-        ApplicationException error = assertThrows(ApplicationException.class, () -> service.filter(param));
+        service.filter(param);
 
-        assertEquals("岗位分析暂时不可用，请稍后重试", error.getMessage());
-        assertEquals(0, ai.calls.get());
+        assertEquals(1, ai.calls.get());
+        assertTrue(ai.lastPrompt.contains("不接受先收费入职"));
     }
 
     @Test
@@ -405,9 +428,13 @@ class JobFilterServicePromptBoundaryTest {
     }
 
     @Test
-    void fencedModelDecisionsAreRetryableUnderThePureJsonContract() {
-        assertRetryableFailure("```json\n" + DELIVER_DECISION + "```");
-        assertRetryableFailure("```\n" + DELIVER_DECISION + "```");
+    void aSingleWholeCodeFenceIsUnwrappedButProseAroundItIsStillRetryable() {
+        assertEquals(DELIVER_DECISION.trim(),
+                JobFilterService.stripWholeCodeFence("```json\n" + DELIVER_DECISION.trim() + "\n```").trim());
+        assertEquals(DELIVER_DECISION.trim(),
+                JobFilterService.stripWholeCodeFence("```\n" + DELIVER_DECISION.trim() + "\n```").trim());
+        assertRetryableFailure("Here you go:\n```json\n" + DELIVER_DECISION + "\n```");
+        assertRetryableFailure("```json\n" + DELIVER_DECISION + "\n```\nHope this helps");
     }
 
     @Test

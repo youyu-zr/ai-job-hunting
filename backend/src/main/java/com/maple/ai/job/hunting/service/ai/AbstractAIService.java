@@ -1,6 +1,7 @@
 package com.maple.ai.job.hunting.service.ai;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.maple.ai.job.hunting.utils.StructuredPreferenceText;
 import com.maple.ai.job.hunting.common.HeaderContext;
 import com.maple.ai.job.hunting.consts.AIPromptStrConstant;
 import com.maple.ai.job.hunting.consts.CommunicationStylePrompt;
@@ -71,6 +72,10 @@ public abstract class AbstractAIService implements AIService {
         appendRequirement(result, "明确不能接受", preference.getUnacceptableConditions());
         appendRequirement(result, "需要先了解", preference.getClarifyConditions());
         appendRequirement(result, "沟通与面试偏好", preference.getCommunicationPreferences());
+        String structured = StructuredPreferenceText.forReply(preference);
+        if (StringUtils.isNotBlank(structured)) {
+            result.append("- 具体条件：\n").append(structured);
+        }
         if (result.length() == "【求职要求】\n".length()) {
             return "";
         }

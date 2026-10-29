@@ -3,8 +3,11 @@ package com.maple.ai.job.hunting.frame.filter;
 import cn.hutool.json.JSONUtil;
 import com.google.common.cache.Cache;
 import com.google.common.util.concurrent.RateLimiter;
+import com.maple.ai.job.hunting.common.Header;
+import com.maple.ai.job.hunting.common.HeaderContext;
 import com.maple.ai.job.hunting.emums.BizCodeEnum;
 import com.maple.ai.job.hunting.frame.exp.ApplicationException;
+import com.maple.ai.job.hunting.model.vo.UserInfoVO;
 import jakarta.servlet.ServletException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -25,15 +28,37 @@ class RequestRateLimitFilterTest {
 
     @Test
     void expensiveRoutesHavePerIdentityRateLimits() {
-        assertEquals(0.2, RequestRateLimitFilter.permitsPerSecond("/api/user/silently/login"));
-        assertEquals(0.1, RequestRateLimitFilter.permitsPerSecond("/api/user/import/resume"));
-        assertEquals(0.1, RequestRateLimitFilter.permitsPerSecond("/api/user/ai/config/test"));
-        assertEquals(2.0, RequestRateLimitFilter.permitsPerSecond("/api/job/filter/one"));
-        assertEquals(2.0, RequestRateLimitFilter.permitsPerSecond("/api/job/ai/assistant/generate/greeting"));
-        assertEquals(3.0, RequestRateLimitFilter.permitsPerSecond("/api/job/seeker/cloned/ask"));
+        assertEquals(10.0, RequestRateLimitFilter.permitsPerSecond("/api/user/silently/login"));
+        assertEquals(1.0, RequestRateLimitFilter.permitsPerSecond("/api/user/import/resume"));
+        assertEquals(1.0, RequestRateLimitFilter.permitsPerSecond("/api/user/ai/config/test"));
+        assertEquals(20.0, RequestRateLimitFilter.permitsPerSecond("/api/job/filter/one"));
+        assertEquals(10.0, RequestRateLimitFilter.permitsPerSecond("/api/job/ai/assistant/generate/greeting"));
+        assertEquals(30.0, RequestRateLimitFilter.permitsPerSecond("/api/job/seeker/cloned/ask"));
         assertEquals(0, RequestRateLimitFilter.permitsPerSecond("/api/user/userinfo"));
-        assertEquals(10.0, RequestRateLimitFilter.globalPermitsPerSecond("/api/user/silently/login"));
-        assertEquals(2.0, RequestRateLimitFilter.globalPermitsPerSecond("/api/user/import/resume"));
+        assertEquals(100.0, RequestRateLimitFilter.globalPermitsPerSecond("/api/user/silently/login"));
+        assertEquals(10.0, RequestRateLimitFilter.globalPermitsPerSecond("/api/user/import/resume"));
+    }
+
+    @Test
+    void sustainedVolumeIsCappedPerMinuteButAFullBurstStillPasses() {
+        assertEquals(120, RequestRateLimitFilter.permitsPerMinute("/api/job/seeker/cloned/ask"));
+        assertEquals(120, RequestRateLimitFilter.permitsPerMinute("/api/job/filter/one"));
+        assertEquals(60, RequestRateLimitFilter.permitsPerMinute("/api/job/ai/assistant/generate/greeting"));
+        RequestRateLimitFilter.MinuteBucket bucket = new RequestRateLimitFilter.MinuteBucket(120);
+        long t = 1_000_000_000L;
+        for (int i = 0; i < 120; i++) {
+            assertTrue(bucket.tryTake(t), "burst request " + i);
+        }
+        assertFalse(bucket.tryTake(t));
+        // Half a second refills one token (120 per 60s).
+        assertTrue(bucket.tryTake(t + 500_000_000L));
+        assertFalse(bucket.tryTake(t + 500_000_000L));
+        // After a full idle minute the bucket is full again, but never above capacity.
+        long later = t + 120_000_000_000L;
+        for (int i = 0; i < 120; i++) {
+            assertTrue(bucket.tryTake(later));
+        }
+        assertFalse(bucket.tryTake(later));
     }
 
     @Test
@@ -54,10 +79,7 @@ class RequestRateLimitFilterTest {
     }
 
     @ParameterizedTest
-    @CsvSource({
-            "/api/user/silently/login,5",
-            "/api/user/import/resume,10"
-    })
+    @CsvSource({"/api/user/silently/login,1"})
     void canonicalAndLegacyNamesShareTheSameIdentityQuota(String uri, String retrySeconds) throws Exception {
         RequestRateLimitFilter filter = new RequestRateLimitFilter();
         keepGlobalQuotaAvailable(filter, uri);
@@ -75,7 +97,7 @@ class RequestRateLimitFilterTest {
         keepGlobalQuotaAvailable(filter, uri);
         assertEquals(200, send(filter, request(uri, null, "same-proof")).getStatus());
 
-        assertRateRejection(send(filter, request(uri, " \t", "same-proof")), "5");
+        assertRateRejection(send(filter, request(uri, " \t", "same-proof")), "1");
     }
 
     @Test
@@ -85,7 +107,7 @@ class RequestRateLimitFilterTest {
         keepGlobalQuotaAvailable(filter, uri);
         assertEquals(200, send(filter, request(uri, "same-proof", "same-proof")).getStatus());
 
-        assertRateRejection(send(filter, request(uri, "same-proof", null)), "5");
+        assertRateRejection(send(filter, request(uri, "same-proof", null)), "1");
     }
 
     @Test
@@ -105,9 +127,9 @@ class RequestRateLimitFilterTest {
 
     @ParameterizedTest
     @CsvSource({
-            "/api/user/silently/login,5",
-            "/api/user/import/resume,10",
-            "/api/user/ai/config/test,10"
+            "/api/user/silently/login,1",
+            "/api/user/import/resume,1",
+            "/api/user/ai/config/test,1"
     })
     void repeatedIdentityRequestAdvertisesItsConfiguredInterval(String uri, String retrySeconds) throws Exception {
         RequestRateLimitFilter filter = new RequestRateLimitFilter();
@@ -118,25 +140,86 @@ class RequestRateLimitFilterTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"/api/user/silently/login", "/api/user/import/resume"})
-    void globalQuotaRejectionAdvertisesAtLeastOneSecond(String uri) throws Exception {
+    @CsvSource({
+            "/api/user/silently/login,1",
+            "/api/user/import/resume,1"
+    })
+    void globalQuotaRejectionAdvertisesAtLeastOneSecond(String uri, String retrySeconds) throws Exception {
         RequestRateLimitFilter filter = new RequestRateLimitFilter();
         exhaustGlobalQuota(filter, uri);
 
-        assertRateRejection(send(filter, request(uri, "synthetic-proof", null)), "1");
+        if ("/api/user/import/resume".equals(uri)) {
+            setAuthenticatedUser(77L);
+        }
+        try {
+            assertRateRejection(send(filter, request(uri, "synthetic-proof", null)), retrySeconds);
+        } finally {
+            HeaderContext.clear();
+        }
+    }
+
+    @Test
+    void authenticatedResumeImportSharesQuotaByApplicationUserNotIpOrBossProof() throws Exception {
+        RequestRateLimitFilter filter = new RequestRateLimitFilter();
+        UserInfoVO user = new UserInfoVO();
+        user.setId(77L);
+        Header header = new Header();
+        header.setUserInfoVO(user);
+        HeaderContext.setHeader(header);
+        try {
+            keepGlobalQuotaAvailable(filter, "/api/user/import/resume");
+            assertEquals(200, send(filter, request("/api/user/import/resume", null, null)).getStatus());
+
+            MockHttpServletRequest second = request("/api/user/import/resume", null, "untrusted-extra-proof");
+            second.setRemoteAddr("192.0.2.99");
+            assertRateRejection(send(filter, second), "1");
+        } finally {
+            HeaderContext.clear();
+        }
     }
 
     @ParameterizedTest
     @CsvSource({
-            "/api/user/silently/login,5",
-            "/api/user/import/resume,10",
-            "/api/job/filter/one,1"
+            "/api/job/filter/one,1",
+            "/api/job/seeker/cloned/ask,1"
     })
-    void concurrencyRejectionIncludesAlreadyConsumedIdentityInterval(String uri, String retrySeconds) throws Exception {
+    void concurrencyRejectionDoesNotBurnTheUsersOwnQuota(String uri, String retrySeconds) throws Exception {
+        RequestRateLimitFilter filter = new RequestRateLimitFilter();
+        setAuthenticatedUser(91L);
+        try {
+            ReflectionTestUtils.setField(filter, "activeModelRequests", new Semaphore(0));
+            assertRateRejection(send(filter, request(uri, "synthetic-proof", null)), retrySeconds);
+
+            Semaphore slots = new Semaphore(1);
+            ReflectionTestUtils.setField(filter, "activeModelRequests", slots);
+            assertEquals(200, send(filter, request(uri, "synthetic-proof", null)).getStatus());
+            assertEquals(1, slots.availablePermits());
+        } finally {
+            HeaderContext.clear();
+        }
+    }
+
+    /**
+     * Login is not a model request. Letting it compete for a model slot means a busy AI queue locks
+     * users out of the product, which is worse than the concurrency it was meant to protect.
+     *
+     * <p>Resume import is deliberately NOT in this list: when local text extraction finds nothing
+     * usable it calls the model, so it must keep competing for the slot.
+     */
+    @Test
+    void exhaustedModelConcurrencyDoesNotBlockLogin() throws Exception {
         RequestRateLimitFilter filter = new RequestRateLimitFilter();
         ReflectionTestUtils.setField(filter, "activeModelRequests", new Semaphore(0));
 
-        assertRateRejection(send(filter, request(uri, "synthetic-proof", null)), retrySeconds);
+        assertEquals(200, send(filter, request("/api/user/silently/login", "synthetic-proof", null)).getStatus());
+    }
+
+    @Test
+    void resumeImportStillCompetesForAModelSlotBecauseItCanCallTheModel() throws Exception {
+        RequestRateLimitFilter filter = new RequestRateLimitFilter();
+        ReflectionTestUtils.setField(filter, "activeModelRequests", new Semaphore(0));
+
+        assertEquals(429, send(filter, request("/api/user/import/resume", "synthetic-proof", null)).getStatus());
     }
 
     @Test
@@ -165,6 +248,14 @@ class RequestRateLimitFilterTest {
             request.addHeader("Zp_token", legacy);
         }
         return request;
+    }
+
+    private static void setAuthenticatedUser(Long userId) {
+        UserInfoVO user = new UserInfoVO();
+        user.setId(userId);
+        Header header = new Header();
+        header.setUserInfoVO(user);
+        HeaderContext.setHeader(header);
     }
 
     private MockHttpServletResponse send(RequestRateLimitFilter filter, MockHttpServletRequest request) throws Exception {

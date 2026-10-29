@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import {UnreadRetryBackoff} from '../src/platform/unreadRetryBackoff.ts';
 import {setTimeout as delay} from 'node:timers/promises';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
@@ -354,13 +355,17 @@ function ingressHarness() {
     const calls: Array<{question: string; bodyType?: number}> = [];
     const actions: string[] = [];
     let failNext = false;
+    let nextAnswer: any = null;
+    const notices: Array<{title: string; message: string}> = [];
+    const userStore = {user: {aiSeatStatus: true}};
     const log = {info() {}, warn() {}, error() {}, debug() {}, trace() {}};
     const BossOption = loadProductionClass('../src/platform/bossPlatform.ts', 'BossOption', {
         ...packetMessage,
         MessageCache, MessageMergeQueue, batchPlatformBodyTypeOf, normalizedMessageBatch,
         ConversationPauseRegistry, canDeliverAiSeatTurn, parseAiSeatRuntimeStatus,
         shouldDelegateConversationTextToAi,
-        userStore: {user: {aiSeatStatus: true}},
+        UnreadRetryBackoff,
+        userStore,
         remotelyPausedJobs: new Set<string>(),
         Tools: {window: {_PAGE: {uid: 9}}, getEndChar: () => ''},
         getAiSeatStatusRevision: () => 0,
@@ -368,18 +373,31 @@ function ingressHarness() {
         LogRecorder: class {info = log.info; warn = log.warn; error = log.error;},
         JobSeekerClonedAnswerTypeEnum: {MSG_TEXT: 1, BOSS_OPERATION: 2, STOP: 3, AI_SERVICE_EXCEPTION: 4},
         BossOperationTypeEnum: {SEND_RESUME: 1},
-        ElNotification() {},
+        ElNotification(options: {title: string; message: string}) { notices.push(options); },
         document: {querySelectorAll: () => []},
         setTimeout() {},
         MessageRead: class {send() {}},
         AiPower: {
             SEMANTIC_SCREENING_PROMPT: 'test',
+            getCachedFilterDecision: () => undefined,
             getSessionStatus: async () => ({data: {data: {...status}}}),
             ask: async (question: string, _job: string, _boss: unknown, _prompt: string, bodyType?: number) => {
                 calls.push({question, bodyType});
                 if (failNext) {
                     failNext = false;
                     throw new Error('remote request failed');
+                }
+                if (nextAnswer) {
+                    const answer = nextAnswer;
+                    nextAnswer = null;
+                    if (answer.disableSeatDuringGeneration) {
+                        status.globalEnabled = false;
+                    }
+                    if (answer.stopReason === 'USER_CONFIRMATION_REQUIRED') {
+                        status.manuallyPaused = true;
+                        status.sessionRevision++;
+                    }
+                    return {data: {data: answer}};
                 }
                 if (bodyType === 14) {
                     status.manuallyPaused = true;
@@ -395,6 +413,13 @@ function ingressHarness() {
     boss.getBossUserInfoByBossId = async () => ({
         bossId: 42, encryptJobId: 'job-42', jobTitle: 'Test job',
     });
+    boss.sendMsg = async (_bossId: number, msg: string, _image: unknown, _html: unknown,
+                          canSend: () => Promise<boolean>) => {
+        if (!(await canSend())) return false;
+        actions.push(`MSG:${msg}`);
+        return true;
+    };
+    boss.buildNoticeHtml = () => '';
     boss.sendResumeFile = async (_bossId: number, canSend: () => Promise<boolean>) => {
         if (!(await canSend())) return false;
         actions.push('SEND_RESUME');
@@ -412,8 +437,47 @@ function ingressHarness() {
         cache: BossOption.messageCache,
         entries: () => Object.values(JSON.parse(storage.get('messageCache') || '{}')) as any[],
         failNext: () => { failNext = true; },
+        answer: (value: any) => { nextAnswer = value; },
+        notices, userStore,
     };
 }
+
+const HOLD = '收到，我确认一下，尽快回复您。';
+const pausedWithHold = {
+    answerTypeList: [1], answerContent: HOLD, operationTypeList: [],
+    stopReason: 'USER_CONFIRMATION_REQUIRED', handoffEvent: 'SALARY_DECISION', handoffLabel: 'HR 报了薪资要你表态',
+};
+
+test('a server-paused stop event still sends its hold reply once and tells the user why', async () => {
+    const harness = ingressHarness();
+    harness.answer(pausedWithHold);
+    await harness.receive(1, '薪资给到8K，可以接受吗');
+    assert.deepEqual(harness.actions, [`MSG:${HOLD}`]);
+    assert.equal(harness.notices.length, 1);
+    assert.match(harness.notices[0].message, /HR 报了薪资要你表态/);
+    assert.match(harness.notices[0].message, /我确认一下/);
+    assert.equal(ConversationPauseRegistry.isPaused('job-42:9'), true);
+});
+
+test('the hold reply is not sent once the user switched the AI seat off during generation', async () => {
+    const harness = ingressHarness();
+    harness.answer({...pausedWithHold, disableSeatDuringGeneration: true});
+    await harness.receive(1, '薪资给到8K，可以接受吗');
+    assert.deepEqual(harness.actions, []);
+    assert.equal(harness.notices.length, 1);
+    assert.match(harness.notices[0].message, /AI 没有回这条/);
+});
+
+test('a pause without a hold reply (suspected scam) shows the event, not a generic message', async () => {
+    const harness = ingressHarness();
+    harness.answer({
+        answerTypeList: [3], stopReason: 'USER_CONFIRMATION_REQUIRED',
+        handoffEvent: 'SCAM_OR_OFF_PLATFORM', handoffLabel: '疑似收费/要证件/拉你离开平台',
+    });
+    await harness.receive(1, '入职前需要先交500元培训费');
+    assert.deepEqual(harness.actions, []);
+    assert.match(harness.notices[0].message, /疑似收费/);
+});
 
 for (const types of [[1, 14], [14, 1]]) {
     test(`ingress retains identical-preview interview confirmation for ${types.join(' then ')}`, async () => {

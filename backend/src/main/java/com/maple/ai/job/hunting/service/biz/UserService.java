@@ -89,16 +89,20 @@ public class UserService {
     private BetaAccessService betaAccessService;
 
     @Resource
-    private BossIdentityVerifier bossIdentityVerifier;
-    @Resource
     private TransactionTemplate transactionTemplate;
 
     private static final ThreadPoolExecutor THREAD_POOL_EXECUTOR = new ThreadPoolExecutor(2, 2,
             60L, TimeUnit.MINUTES, new java.util.concurrent.LinkedBlockingQueue<>(500));
 
-    public UserInfoVO importResume(InputStream resumeFileStream, String uniqueId, String resumeId, String bossToken) throws Exception {
-        String normalizedUniqueId = StringUtils.trimToEmpty(uniqueId);
-        bossIdentityVerifier.requireOwnership(normalizedUniqueId, bossToken);
+    public UserInfoVO importResume(InputStream resumeFileStream, String resumeId) throws Exception {
+        Long userId = HeaderContext.getHeader().getUserId();
+        if (userId == null || userId <= 0) {
+            throw new ApplicationException(BizCodeEnum.NOT_LOGIN);
+        }
+        UserInfoDO authenticatedUser = userInfoMapper.selectById(userId);
+        if (authenticatedUser == null || StringUtils.isBlank(authenticatedUser.getUniqueId())) {
+            throw new ApplicationException(BizCodeEnum.NOT_LOGIN);
+        }
         byte[] bytes = resumeFileStream.readAllBytes();
         InputStream inputStream1 = new ByteArrayInputStream(bytes);
         InputStream inputStream2 = new ByteArrayInputStream(bytes);
@@ -126,50 +130,116 @@ public class UserService {
 
         // 3. 保存用户信息
         watch.start("保存用户信息");
-        String ossFileName = "简历-" + normalizedUniqueId + "-" + DateUtil.formatDate(new Date()) + "." + FileTypeDetector.detectFileType(bytes);
+        String ossFileName = "简历-" + userId + "-" + DateUtil.formatDate(new Date()) + "." + FileTypeDetector.detectFileType(bytes);
         String resumeSummary = summarize;
         transactionTemplate.execute(status -> {
-            Long userId = saveUserInfo(normalizedUniqueId, resumeId, result, resumeSummary, ossFileName);
+            saveUserInfo(userId, resumeId, result, resumeSummary, ossFileName);
             betaAccessService.ensureAutoGrant(userId);
             return userId;
         });
         watch.stop();
-        return new UserInfoVO(result.getPhone(), result.getEmail());
+        UserInfoVO response = new UserInfoVO(result.getPhone(), result.getEmail());
+        response.setWechatId(result.getWechatId());
+        return response;
     }
 
-    private Long saveUserInfo(String uniqueId, String resumeId, UserInfoVO result, String summarize, String ossFileName) {
-        UserInfoDO dbUserInfo = userInfoMapper.selectByUniqueId(uniqueId);
+    private void saveUserInfo(Long userId, String resumeId, UserInfoVO result, String summarize, String ossFileName) {
+        // 加行锁：这里可能顺带写偏好（补微信号），不能和同时进行的「保存偏好」互相覆盖。
+        UserInfoDO dbUserInfo = userInfoMapper.selectByIdForUpdate(userId);
         if (dbUserInfo == null) {
-            UserInfoDO userInfoDO = new UserInfoDO(result.getPhone(), result.getEmail(), uniqueId);
-            if (userInfoMapper.insert(userInfoDO) <= 0) {
-                throw new ApplicationException("用户信息保存失败，请重试");
-            }
-            if (userResumeMapper.saveLatestResume(new UserResumeDO(
-                    userInfoDO.getId(), summarize, ossFileName, resumeId)) <= 0) {
-                throw new ApplicationException("简历保存失败，请重试");
-            }
-            return userInfoDO.getId();
-        } else {
-            // A duplicate-key upsert may return 0 when the stored values are unchanged.
-            userResumeMapper.saveLatestResume(new UserResumeDO(
-                    dbUserInfo.getId(), summarize, ossFileName, resumeId));
-            LambdaUpdateWrapper<UserInfoDO> updateWrapper = new LambdaUpdateWrapper<UserInfoDO>()
-                    .eq(UserInfoDO::getId, dbUserInfo.getId())
-                    .set(UserInfoDO::getUniqueId, uniqueId);
-            if (StringUtils.isNotBlank(result.getEmail())) {
-                updateWrapper.set(UserInfoDO::getEmail, result.getEmail());
-            }
-            if (StringUtils.isNotBlank(result.getPhone())) {
-                updateWrapper.set(UserInfoDO::getPhone, result.getPhone());
-            }
+            throw new ApplicationException("用户信息不存在，请重新登录");
+        }
+        // The authenticated application session owns the row. Client supplied BOSS IDs and
+        // proof headers are deliberately not accepted as a second ownership source.
+        userResumeMapper.saveLatestResume(new UserResumeDO(
+                dbUserInfo.getId(), summarize, ossFileName, resumeId));
+        LambdaUpdateWrapper<UserInfoDO> updateWrapper = new LambdaUpdateWrapper<UserInfoDO>()
+                .eq(UserInfoDO::getId, dbUserInfo.getId());
+        if (StringUtils.isNotBlank(result.getEmail())) {
+            updateWrapper.set(UserInfoDO::getEmail, result.getEmail());
+        }
+        if (StringUtils.isNotBlank(result.getPhone())) {
+            updateWrapper.set(UserInfoDO::getPhone, result.getPhone());
+        }
+        String wechat = parseWechat(summarize, result.getPhone());
+        String preferenceWithWechat = fillWechatIfBlank(dbUserInfo.getPreference(), wechat);
+        if (preferenceWithWechat != null) {
+            updateWrapper.set(UserInfoDO::getPreference, preferenceWithWechat);
+            // 告诉前端识别到了什么，让用户核对；识别错了用户能马上发现。
+            result.setWechatId(wechat);
+        }
+        if (StringUtils.isNotBlank(result.getEmail()) || StringUtils.isNotBlank(result.getPhone())
+                || preferenceWithWechat != null) {
             userInfoMapper.update(new UserInfoDO(), updateWrapper);
-            return dbUserInfo.getId();
         }
     }
 
+    static String parseWechat(String resume) {
+        return parseWechat(resume, "");
+    }
+
+    /** 简历里的微信号；写的是「微信同手机」之类时返回手机号；认不出返回空串。 */
+    static String parseWechat(String resume, String phone) {
+        if (StringUtils.isBlank(resume)) {
+            return "";
+        }
+        Matcher matcher = RePatternConstant.WECHAT_PATTERN.matcher(resume);
+        while (matcher.find()) {
+            if (RePatternConstant.isLikelyWechatAccount(matcher.group(1), matcher.group(2))) {
+                return matcher.group(2);
+            }
+        }
+        Matcher samePhone = RePatternConstant.WECHAT_SAME_AS_PHONE_PATTERN.matcher(resume);
+        if (samePhone.find()) {
+            Matcher digits = RePatternConstant.PHONE_PATTERN.matcher(samePhone.group());
+            if (digits.find()) {
+                return digits.group(1);
+            }
+            if (StringUtils.isNotBlank(phone)) {
+                return phone;
+            }
+        }
+        return "";
+    }
+
+    /**
+     * 简历里识别到微信号、而用户偏好里从没有过这一项时，返回写好微信号的偏好 JSON；否则返回 null（不改）。
+     * 用户自己填过（哪怕和简历不同）不覆盖；用户主动清空过（存的是空串）也不再填回去。
+     * 不动「允许 AI 发联系方式」开关，它保持用户原来的选择（默认关）。
+     */
+    String fillWechatIfBlank(Object rawPreference, String wechat) {
+        if (StringUtils.isBlank(wechat)) {
+            return null;
+        }
+        PreferenceEntity preference;
+        try {
+            String json = rawPreference == null ? "" : rawPreference.toString();
+            // 解析不了时宁可不填，也不能用默认值覆盖用户已有的偏好。
+            preference = StringUtils.isBlank(json)
+                    ? PreferenceDefaults.applyDefaults(new PreferenceEntity())
+                    : PreferenceDefaults.applyDefaults(JSONUtil.toBean(json, PreferenceEntity.class));
+        } catch (Exception e) {
+            return null;
+        }
+        // null = 从没设置过；"" = 用户清空过。只有前者才自动填。
+        if (preference.getWechatId() != null) {
+            return null;
+        }
+        preference.setWechatId(wechat);
+        return JSONUtil.toJsonStr(preference);
+    }
+
+
+    /**
+     * 按 BOSS uid 登录；没有这个账号就自动创建。与上游原版一致，不回查 BOSS。
+     * bossToken 仅为兼容旧客户端保留，不参与判断。
+     */
     public String loginSilently(String uniqueId, String bossToken) {
         String normalizedUniqueId = StringUtils.trimToEmpty(uniqueId);
-        bossIdentityVerifier.requireOwnership(normalizedUniqueId, bossToken);
+        if (normalizedUniqueId.isEmpty()) {
+            throw new ApplicationException("未读取到 BOSS 账号，请先登录 BOSS 后刷新页面",
+                    BizCodeEnum.IDENTITY_VERIFY_FAILED.getCode());
+        }
         UserInfoDO userInfoDO;
         try {
             userInfoDO = transactionTemplate.execute(status -> {
@@ -202,7 +272,9 @@ public class UserService {
         byte[] tokenBytes = new byte[32];
         SESSION_TOKEN_RANDOM.nextBytes(tokenBytes);
         String loginKey = Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes);
-        sysSessionCache.set(loginKey, BeanUtil.copyProperties(userInfoDO, UserInfoVO.class));
+        UserInfoVO sessionUser = BeanUtil.copyProperties(userInfoDO, UserInfoVO.class);
+        sysSessionCache.set(loginKey, sessionUser);
+        log.info("silent login issued: userId={}", userInfoDO.getId());
         return loginKey;
     }
 

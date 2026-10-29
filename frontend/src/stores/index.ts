@@ -69,11 +69,17 @@ export const LoginStore = defineStore('LoginStore', () => {
     const loginFailStatus = ref<false | true>()
     const accountId = ref<string | null>(null)
     const accountScope = ref<string | null>(null)
+    const bossToken = ref<string | null>(null)
 
-    function loginSuccess(currentAccountId: string, currentScope = userSessionScope(currentAccountId, ServerStore().baseUrl)) {
+    function loginSuccess(
+        currentAccountId: string,
+        currentScope = userSessionScope(currentAccountId, ServerStore().baseUrl),
+        verifiedBossToken: string | null = null
+    ) {
         login.value = true
         accountId.value = currentAccountId
         accountScope.value = currentScope
+        bossToken.value = verifiedBossToken
         loginFailStatus.value = false
     }
 
@@ -81,6 +87,7 @@ export const LoginStore = defineStore('LoginStore', () => {
         login.value = false
         accountId.value = null
         accountScope.value = null
+        bossToken.value = null
         loginFailStatus.value = true
     }
 
@@ -94,11 +101,20 @@ export const LoginStore = defineStore('LoginStore', () => {
         login.value = undefined
         accountId.value = null
         accountScope.value = null
+        bossToken.value = null
         loginFailStatus.value = false
     }
 
     return {
-        login, loginSuccess, loginFailStatus, loginFail, loginFailForScope, accountId, accountScope, reset
+        login,
+        loginSuccess,
+        loginFailStatus,
+        loginFail,
+        loginFailForScope,
+        accountId,
+        accountScope,
+        bossToken,
+        reset
     };
 })
 

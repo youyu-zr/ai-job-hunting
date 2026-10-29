@@ -126,8 +126,37 @@ export type PreferenceConfig = {
     hiaE: boolean,
     /** 营销推广类消息自动回复，默认关闭。 */
     marketingReplyE?: boolean,
+    /** AI 回复里允许带出手机号/微信号/邮箱，默认关闭。 */
+    /** 旧开关，已不在页面显示；只用来给老用户算「要微信/电话」的默认档位。 */
+    contactShareE?: boolean,
+    /** 我的微信号：导入简历时自动识别，只在「要微信/电话」设成「让 AI 处理」时交给聊天 AI。 */
+    wechatId?: string,
     /** Editable guidance for promotion types the user does not want answered. */
     promotionReplyPolicy?: string,
+    /** 偏好页 v3 结构化条件（null/空 = 没填，不替用户假设）。 */
+    homeCity?: string,
+    homeArea?: string,
+    commuteMaxMinutes?: number | null,
+    remoteOk?: boolean | null,
+    relocateOk?: boolean | null,
+    salaryMinK?: number | null,
+    salaryMaxK?: number | null,
+    /** 底线只用于筛岗位，不会发给 HR，也不会交给聊天 AI。 */
+    salaryFloorK?: number | null,
+    wantTags?: string[],
+    avoidTags?: string[],
+    dealbreakers?: string[],
+    blockedCompanies?: string[],
+    arrivalTime?: string,
+    /** 停下来叫我：PAUSE 停下叫我 / DECLINE 先婉拒或问清 / ALLOW 让 AI 处理；空 = 默认。 */
+    stopInterview?: string,
+    stopOffer?: string,
+    stopSalary?: string,
+    stopContact?: string,
+    stopResume?: string,
+    stopPersonal?: string,
+    /** 停下时先替我回一句「收到，我确认一下」，默认开。 */
+    holdReplyE?: boolean | null,
     /**
      * 投递间隔时间（秒）
      */

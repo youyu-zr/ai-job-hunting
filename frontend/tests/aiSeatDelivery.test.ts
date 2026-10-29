@@ -190,6 +190,7 @@ test('runtime status requires authoritative booleans and monotonic revisions', (
     }), null);
 });
 
+
 test('unread recovery only scans contacts after authoritative account status confirms the seat is open', async () => {
     assert.equal(canScanUnreadConversations(true), true);
     assert.equal(canScanUnreadConversations(false), false);

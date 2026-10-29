@@ -4,9 +4,9 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 
-// The backend now refuses to issue a session for a claimed BOSS uid unless the caller also
-// presents the BOSS token for that uid. These assertions keep that proof attached to every
-// identity-bearing request, so a future refactor cannot silently reopen the forgery hole.
+// Only silent login proves the BOSS identity. Resume import runs after that application
+// session exists, so it must use the server session rather than accepting a second client
+// supplied BOSS uid/token pair.
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const readSource = (relativePath: string): string =>
@@ -36,7 +36,7 @@ test('every silently/login call sends the BOSS token', () => {
     }
 });
 
-test('every import/resume call sends the BOSS token', () => {
+test('resume import uses the application session instead of client BOSS identity fields', () => {
     for (const {file, label} of [resumeImportEndpoint]) {
         const source = readSource(file);
         const calls = source.split('/api/user/import/resume').slice(1);
@@ -44,11 +44,12 @@ test('every import/resume call sends the BOSS token', () => {
 
         for (const call of calls) {
             const invocation = call.slice(0, 300);
-            assert.match(
+            assert.doesNotMatch(
                 invocation,
-                /Zp_token/,
-                `import/resume in ${label} must send Zp_token`,
+                /Zp_token|formData\.append\(['"]uniqueId['"]/,
+                `import/resume in ${label} must not accept client BOSS ownership fields`,
             );
+            assert.match(invocation, /bossIdentityContext/);
         }
     }
 });
@@ -58,10 +59,11 @@ test('resume import is not hidden in the silent-login helper', () => {
     assert.doesNotMatch(source, /\/api\/user\/import\/resume/);
 });
 
-test('the BOSS token always comes from the live page, never from persisted state', () => {
+test('the BOSS token comes from the current cookie, never from a stale page snapshot or storage', () => {
     for (const {file, label} of identityEndpoints) {
         const source = readSource(file);
-        assert.match(source, /_PAGE\?\.token/, `${label} should read the token from _PAGE`);
+        assert.match(source, /getCookieValue\(["']bst["']\)/, `${label} should read the live bst cookie`);
+        assert.doesNotMatch(source, /_PAGE\?\.token/, `${label} must not fall back to a page token snapshot`);
         assert.doesNotMatch(
             source,
             /localStorage\.getItem\(\s*['"]Zp_token['"]/,
@@ -70,9 +72,7 @@ test('the BOSS token always comes from the live page, never from persisted state
     }
 });
 test('a missing uid is rejected with the identity error, not a server error', () => {
-    // Guards the contract behind a malformed request (for example a JSON body instead of a form
-    // post): the caller must get 2003 identity rejection rather than a 500, so a probing client
-    // cannot use the response shape to tell a missing uid from a rejected one.
+    // Silent login still requires a claimed BOSS uid to be checked against the live token.
     const controller = readSource(
         '../backend/src/main/java/com/maple/ai/job/hunting/controller/UserController.java',
     );

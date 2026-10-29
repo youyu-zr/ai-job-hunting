@@ -33,6 +33,19 @@ public interface AIService {
         throw new ApplicationException("当前 AI 服务不支持分离系统规则与用户内容");
     }
 
+    /** 带温度的分离角色调用；不支持温度的实现按默认温度处理。 */
+    default String askAndAnswer(String systemPrompt, String userPrompt, float temperature) {
+        return askAndAnswer(systemPrompt, userPrompt);
+    }
+
+    /** 把会话里最后一条 AI 回复换成实际发出的内容；replacement 为空则删掉。默认不支持会话的实现什么也不做。 */
+    default void replaceLastSessionAnswer(String sessionId, String replacement) {
+    }
+
+    /** 追加一条 HR 消息和一条实际发出的回复（没调 AI 直接回复时用）。 */
+    default void appendSessionExchange(String sessionId, String hrMessage, String reply) {
+    }
+
     /**
      * 读文件
      *

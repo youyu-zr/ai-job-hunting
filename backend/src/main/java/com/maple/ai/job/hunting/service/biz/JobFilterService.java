@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
+import com.maple.ai.job.hunting.utils.StructuredPreferenceText;
 import com.maple.ai.job.hunting.common.HeaderContext;
 import com.maple.ai.job.hunting.consts.AIPromptStrConstant;
 import com.maple.ai.job.hunting.emums.BizCodeEnum;
@@ -37,9 +38,13 @@ public class JobFilterService {
 
     private static final Logger log = LoggerFactory.getLogger(JobFilterService.class);
     private static final ObjectMapper SAFE_JSON = new ObjectMapper();
+    private static final ObjectReader PREFERENCE_JSON = SAFE_JSON.reader()
+            .without(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     private static final ObjectReader DECISION_JSON = SAFE_JSON.reader()
             .with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
             .with(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY);
+    private static final java.util.regex.Pattern WHOLE_CODE_FENCE = java.util.regex.Pattern.compile(
+            "^\\s*```(?:json|JSON)?\\s*\\n([\\s\\S]*?)\\n?\\s*```\\s*$");
     private static final String TEMPORARY_FAILURE_MESSAGE = "岗位分析暂时不可用，请稍后重试";
     @Resource
     private AIServiceFacade aiServiceFacade;
@@ -79,7 +84,7 @@ public class JobFilterService {
         }
 
         try {
-            JsonNode rawResult = DECISION_JSON.readTree(answer);
+            JsonNode rawResult = DECISION_JSON.readTree(stripWholeCodeFence(answer));
             if (!hasCompleteDecisionFields(rawResult)) {
                 throw temporaryFailure();
             }
@@ -288,6 +293,19 @@ public class JobFilterService {
                 copyValue(source, view, "targetCities");
                 copyValue(source, view, "locationMismatchThreshold");
             }
+            // 偏好页 v3 的结构化条件（住址通勤、薪资区间与底线、想做/不做、其他底线、屏蔽公司）。
+            // 某个字段类型不对时只跳过这块，不让整次筛选失败。
+            String structured;
+            try {
+                // 用 Jackson 读成普通 Bean（不认 @type，不会按请求内容实例化任意类）；未知字段忽略。
+                structured = StructuredPreferenceText.forScreening(PREFERENCE_JSON.readValue(rawPreference,
+                        com.maple.ai.job.hunting.model.entity.PreferenceEntity.class));
+            } catch (Exception e) {
+                structured = "";
+            }
+            if (StringUtils.isNotBlank(structured)) {
+                view.put("structuredPreference", structured);
+            }
             return SAFE_JSON.writeValueAsString(view);
         } catch (ApplicationException e) {
             throw e;
@@ -330,10 +348,7 @@ public class JobFilterService {
             return "未提供额外筛选条件；按系统宽放行规则结合完整职位信息判断。";
         }
         String normalized = prompt.replaceAll("[\\p{Cntrl}&&[^\\r\\n\\t]]+", " ").trim();
-        if (normalized.length() > 5000) {
-            throw temporaryFailure();
-        }
-        return normalized;
+        return keepHeadAndTail(normalized, 5000);
     }
 
     private String limitData(String value, int maxLength) {
@@ -341,9 +356,29 @@ public class JobFilterService {
             return "未提供";
         }
         String normalized = value.replaceAll("[\\p{Cntrl}&&[^\\r\\n\\t]]+", " ").trim();
-        if (normalized.length() > maxLength) {
-            throw temporaryFailure();
+        return keepHeadAndTail(normalized, maxLength);
+    }
+
+    /**
+     * 超长时保留开头和结尾、省略中间，而不是报错：否则长简历/长岗位描述的用户每次筛选都失败。
+     * 保留结尾是因为岗位风险条款（如收费入职）常写在描述末尾。
+     */
+    static String keepHeadAndTail(String value, int maxLength) {
+        if (value.length() <= maxLength) {
+            return value;
         }
-        return normalized;
+        String marker = "\n……（中间内容过长已省略）……\n";
+        int head = (maxLength - marker.length()) * 2 / 3;
+        int tail = maxLength - marker.length() - head;
+        return value.substring(0, head) + marker + value.substring(value.length() - tail);
+    }
+
+    /**
+     * Models often wrap an otherwise valid JSON answer in a single ```json fence. Unwrap only that
+     * exact shape; any other prose or extra objects still fail the strict parse and get retried.
+     */
+    static String stripWholeCodeFence(String answer) {
+        java.util.regex.Matcher matcher = WHOLE_CODE_FENCE.matcher(answer);
+        return matcher.matches() ? matcher.group(1) : answer;
     }
 }

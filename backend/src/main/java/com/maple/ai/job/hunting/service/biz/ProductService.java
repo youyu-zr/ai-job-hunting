@@ -84,10 +84,12 @@ public class ProductService {
         return productTypes;
     }
 
+    /**
+     * 当前免费阶段：任何已登录用户都拥有全部功能，不随内测日期到期。
+     * 产品/试用体系计划在后续清理中整体删除。
+     */
     public boolean isPermanentUser(Long userId) {
-        return userId != null
-                && appBizConfig.getAdminUserIdList() != null
-                && appBizConfig.getAdminUserIdList().contains(userId);
+        return userId != null;
     }
 
     public boolean hasAnyValidProduct(Long userId) {

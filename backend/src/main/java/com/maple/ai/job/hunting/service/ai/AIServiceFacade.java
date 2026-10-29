@@ -95,6 +95,30 @@ public class AIServiceFacade {
     }
 
 
+    public void replaceLastSessionAnswer(String sessionId, String replacement) {
+        if (sessionId == null) {
+            return;
+        }
+        try {
+            aiServiceMap.get(appBizConfig.getSceneUseAiMap().getOrDefault("session", "openai-pool"))
+                    .replaceLastSessionAnswer(sessionId, replacement);
+        } catch (RuntimeException e) {
+            log.warn("会话历史替换失败 sessionId:{} errorType:{}", sessionId, e.getClass().getSimpleName());
+        }
+    }
+
+    public void appendSessionExchange(String sessionId, String hrMessage, String reply) {
+        if (sessionId == null) {
+            return;
+        }
+        try {
+            aiServiceMap.get(appBizConfig.getSceneUseAiMap().getOrDefault("session", "openai-pool"))
+                    .appendSessionExchange(sessionId, hrMessage, reply);
+        } catch (RuntimeException e) {
+            log.warn("会话历史追加失败 sessionId:{} errorType:{}", sessionId, e.getClass().getSimpleName());
+        }
+    }
+
     @Nonnull
     public ChatSessionResult debugSessionChat(String sessionId, String ask) {
         AIService aiService = aiServiceMap.get(appBizConfig.getSceneUseAiMap().getOrDefault("session", "openai-pool"));
@@ -140,12 +164,22 @@ public class AIServiceFacade {
     }
 
     public String askAndAnswer(String systemPrompt, String userPrompt) {
+        return askAndAnswer(systemPrompt, userPrompt, null);
+    }
+
+    /**
+     * temperature 为 null 时用实现的默认值（分离角色的调用默认 0，给筛选这类要稳定结果的场景）；
+     * 招呼语这类需要变化的文字传 0.7 左右，否则重试拿到的是同一段话。
+     */
+    public String askAndAnswer(String systemPrompt, String userPrompt, Float temperature) {
         AIService aiService = aiServiceMap.get(appBizConfig.getSceneUseAiMap().get("ask"));
         String result = null;
         try {
             if (productService.hasProductAbilityAll(HeaderContext.getHeader().getUserId(),
                     ProductTypeEnum.AI_SEAT, ProductTypeEnum.AI_FILTER)) {
-                result = aiService.askAndAnswer(systemPrompt, userPrompt);
+                result = temperature == null
+                        ? aiService.askAndAnswer(systemPrompt, userPrompt)
+                        : aiService.askAndAnswer(systemPrompt, userPrompt, temperature);
             } else {
                 throw new ApplicationException("AI产品能力已过期");
             }

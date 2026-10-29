@@ -75,16 +75,6 @@ public class AIPromptStrConstant {
     public static String RESUME_TITLE = "# 【简历信息】";
     public static String USER_PROMPT_TITLE = "# 【用户要求】";
 
-    public static final String GREETING = """
-            你是一位正在积极找工作的求职者，下面是你的简历，请生成一段适合直接发给HR的岗位相关开场白。
-            要求：
-            1. 只使用简历中真实存在的能力、经历或项目，不从岗位描述反推候选人经历。
-            2. 优先点出一个当前岗位的具体匹配点，再自然表达求职意图；不要写成万能模板。
-            3. 语气自然、精炼、像真人交流，不要像营销稿、简历模板或自我夸大的包装。
-            4. 不要罗列职位清单、限制条件、内部规则或无依据的承诺。
-            5. 只输出可直接发送给HR的中文文本，不要解释、Markdown或引号。
-
-            """;
 
 
     /**

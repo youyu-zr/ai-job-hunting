@@ -3,10 +3,9 @@ package com.maple.ai.job.hunting.controller;
 import com.maple.ai.job.hunting.emums.BizCodeEnum;
 import com.maple.ai.job.hunting.frame.GlobalExceptionHandler;
 import com.maple.ai.job.hunting.model.vo.UserInfoVO;
-import com.maple.ai.job.hunting.service.biz.BossIdentityVerifier;
 import com.maple.ai.job.hunting.service.biz.UserService;
-import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -57,12 +56,6 @@ class UserControllerIdentityHeadersTest {
                 Arguments.of("synthetic-proof ", "synthetic-proof"));
     }
 
-    static Stream<Arguments> missingProofs() {
-        return Stream.of(
-                Arguments.of(null, null),
-                Arguments.of(" \t", ""));
-    }
-
     @ParameterizedTest
     @MethodSource("compatibleProofs")
     void loginBindsCompatibleProofHeaders(String canonical, String legacy) throws Exception {
@@ -77,18 +70,29 @@ class UserControllerIdentityHeadersTest {
         assertEquals("synthetic-proof", service.proof);
     }
 
-    @ParameterizedTest
-    @MethodSource("compatibleProofs")
-    void multipartImportBindsCompatibleProofHeaders(String canonical, String legacy) throws Exception {
-        mvc.perform(headers(resumeRequest(), canonical, legacy))
+    @Test
+    void multipartImportIgnoresClientUidAndBossProof() throws Exception {
+        mvc.perform(headers(resumeRequest().param("uniqueId", "forged-client-uid"),
+                        "synthetic-proof", "conflicting-untrusted-proof"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
         assertEquals(1, service.calls);
-        assertEquals("synthetic-uid", service.uid);
-        assertEquals("synthetic-proof", service.proof);
+        assertEquals(null, service.uid);
+        assertEquals(null, service.proof);
         assertEquals("synthetic-resume", service.resumeId);
         assertEquals("SYNTHETIC RESUME", service.resumeText);
+    }
+
+    @Test
+    void multipartImportDoesNotRequireBossIdentityHeaders() throws Exception {
+        mvc.perform(resumeRequest())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        assertEquals(1, service.calls);
+        assertEquals(null, service.uid);
+        assertEquals(null, service.proof);
     }
 
     @ParameterizedTest
@@ -101,39 +105,10 @@ class UserControllerIdentityHeadersTest {
         assertEquals(0, service.calls);
     }
 
-    @ParameterizedTest
-    @MethodSource("conflictingProofs")
-    void multipartImportRejectsConflictingProofBeforeCallingService(String canonical, String legacy) throws Exception {
-        mvc.perform(headers(resumeRequest(), canonical, legacy))
-                .andExpect(jsonPath("$.code").value(BizCodeEnum.IDENTITY_VERIFY_FAILED.getCode()));
-
-        assertEquals(0, service.calls);
-    }
-
-    @ParameterizedTest
-    @MethodSource("missingProofs")
-    void missingLoginProofStillFailsExistingIdentityVerification(String canonical, String legacy) throws Exception {
-        mvc.perform(headers(post("/api/user/silently/login").param("uniqueId", "synthetic-uid"),
-                        canonical, legacy))
-                .andExpect(jsonPath("$.code").value(BizCodeEnum.IDENTITY_VERIFY_FAILED.getCode()));
-
-        assertEquals(1, service.calls);
-    }
-
-    @ParameterizedTest
-    @MethodSource("missingProofs")
-    void missingImportProofStillFailsExistingIdentityVerification(String canonical, String legacy) throws Exception {
-        mvc.perform(headers(resumeRequest(), canonical, legacy))
-                .andExpect(jsonPath("$.code").value(BizCodeEnum.IDENTITY_VERIFY_FAILED.getCode()));
-
-        assertEquals(1, service.calls);
-    }
-
     private MockHttpServletRequestBuilder resumeRequest() {
         return multipart("/api/user/import/resume")
                 .file(new MockMultipartFile("file", "resume.txt", "text/plain",
                         "SYNTHETIC RESUME".getBytes(StandardCharsets.UTF_8)))
-                .param("uniqueId", "synthetic-uid")
                 .param("resumeId", "synthetic-resume");
     }
 
@@ -159,10 +134,6 @@ class UserControllerIdentityHeadersTest {
             calls++;
             uid = uniqueId;
             proof = bossToken;
-            // Missing proof exercises the real verifier's local, network-free rejection.
-            if (StringUtils.isBlank(bossToken)) {
-                new BossIdentityVerifier().requireOwnership(uniqueId, bossToken);
-            }
         }
 
         @Override
@@ -172,9 +143,8 @@ class UserControllerIdentityHeadersTest {
         }
 
         @Override
-        public UserInfoVO importResume(InputStream stream, String uniqueId, String resumeId,
-                                       String bossToken) throws Exception {
-            recordProof(uniqueId, bossToken);
+        public UserInfoVO importResume(InputStream stream, String resumeId) throws Exception {
+            calls++;
             this.resumeId = resumeId;
             resumeText = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
             return new UserInfoVO();

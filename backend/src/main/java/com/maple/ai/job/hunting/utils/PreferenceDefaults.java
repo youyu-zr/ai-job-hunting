@@ -19,7 +19,9 @@ public final class PreferenceDefaults {
             "请结合完整职位信息和候选人求职方向判断岗位是否适合投递；信息不足但无明显风险时优先允许先沟通确认，不要仅因职位标题或单个关键词过滤。";
 
     public static final String DEFAULT_RISK_PACK_VERSION = "risk-pack-20260829-v2";
-    public static final String PERSONAL_PREFERENCE_DEFAULTS_VERSION = "personal-preferences-20261015-v2";
+    public static final String PERSONAL_PREFERENCE_DEFAULTS_VERSION = "personal-preferences-20261029-v3";
+    /** v2 → v3：高意向从「暂停 AI」改成「只提醒」，无副作用，默认打开。 */
+    private static final String V2_PERSONAL_PREFERENCE_DEFAULTS_VERSION = "personal-preferences-20261015-v2";
     private static final String LEGACY_PERSONAL_PREFERENCE_DEFAULTS_VERSION = "personal-preferences-20261011-v1";
     public static final String DEFAULT_AI_FILTER_PROMPT =
             "请结合完整职位信息、候选人简历和求职要求筛选岗位；通用风险由系统底层规则识别，信息不足但没有明确风险时先进入聊天确认。";
@@ -74,6 +76,11 @@ public final class PreferenceDefaults {
         if (PERSONAL_PREFERENCE_DEFAULTS_VERSION.equals(version)) {
             return result;
         }
+        if (V2_PERSONAL_PREFERENCE_DEFAULTS_VERSION.equals(version)) {
+            result.setHiaE(true);
+            result.setPdpV(PERSONAL_PREFERENCE_DEFAULTS_VERSION);
+            return result;
+        }
         if (!version.isEmpty() && !LEGACY_PERSONAL_PREFERENCE_DEFAULTS_VERSION.equals(version)) {
             return result;
         }
@@ -90,6 +97,7 @@ public final class PreferenceDefaults {
                 || (!initialized && StringUtils.isBlank(result.getPromotionReplyPolicy()))) {
             result.setPromotionReplyPolicy(DEFAULT_PROMOTION_REPLY_POLICY);
         }
+        result.setHiaE(true);
         result.setPdpV(PERSONAL_PREFERENCE_DEFAULTS_VERSION);
         return result;
     }

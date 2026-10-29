@@ -45,26 +45,139 @@ test("overlapping clicks share no additional lookup, download or upload", async 
     assert.equal(app.requests.length, 0);
 });
 
+test("does not read or upload a resume before the application session is ready", async () => {
+    const app = importHarness();
+    app.login.login = false;
+    app.login.loginFailStatus = true;
+
+    await app.run();
+
+    assert.equal(app.lookups.length, 0);
+    assert.equal(app.downloads.length, 0);
+    assert.equal(app.requests.length, 0);
+    assert.equal(app.notices.length, 1);
+    assert.match(app.notices[0].message, /账号|连接/);
+});
+
+test("first-use import establishes the application session before reading and saving the resume", async () => {
+    const app = importHarness();
+    app.login.login = false;
+    app.login.loginFailStatus = false;
+    app.login.accountScope = null;
+    app.login.bossToken = null;
+
+    await app.run();
+
+    assert.equal(app.lookups.length, 1);
+    assert.equal(app.downloads.length, 1);
+    assert.equal(app.requests.length, 1);
+    assert.equal(app.requests[0].headers.get("Authorization"), "synthetic-session");
+    assert.equal(app.requests[0].headers.has("X-Boss-Token"), false);
+    assert.equal(app.login.bossToken, app.page.cookieToken);
+    assert.equal(app.status.value, "成功导入简历");
+});
+
+test("a BOSS identity change while the application session is loading stops before resume lookup", async () => {
+    const app = importHarness();
+    const wait = deferred<void>();
+    app.login.login = false;
+    app.refreshWith(async () => {
+        await wait.promise;
+        app.page.uid = "other-account";
+        app.page.cookieToken = "other-account-proof";
+        app.login.login = true;
+        app.login.accountScope = userSessionScope(app.page.uid, app.server.baseUrl);
+        app.memoryStorage.setItem("AuthorizationScope", app.login.accountScope!);
+        app.memoryStorage.setItem("Authorization", "other-account-session");
+    });
+
+    const pending = app.run();
+    await new Promise(resolve => setImmediate(resolve));
+    wait.resolve();
+    await pending;
+
+    assert.equal(app.page.uid, "other-account");
+    assert.equal(app.login.login, true);
+    assert.equal(app.login.loginFailStatus, false);
+    assert.equal(app.login.accountScope, userSessionScope(app.page.uid, app.server.baseUrl));
+    assert.equal(app.lookups.length, 0);
+    assert.equal(app.downloads.length, 0);
+    assert.equal(app.requests.length, 0);
+    assert.equal(app.notices.length, 1);
+    assert.match(app.notices[0].message, /已切换.*导入已取消/);
+});
+
+test("a BOSS cookie rotation alone does not block a resume import for the same account", async () => {
+    // BOSS rotates its own cookie on its own schedule. That is not an account switch and must not
+    // be treated as one: the import is authorized by the application session, not by the cookie.
+    const app = importHarness();
+    app.page.cookieToken = "rotated-proof-for-same-account";
+
+    await app.run();
+
+    assert.equal(app.lookups.length, 1);
+    assert.equal(app.downloads.length, 1);
+    assert.equal(app.requests.length, 1);
+    assert.equal(app.requests[0].headers.get("Authorization"), "synthetic-session");
+    assert.equal(app.status.value, "成功导入简历");
+    // Any notice raised must be about reconnecting, never about the account being wrong.
+    assert.ok(app.notices.every(notice => !/账号|身份|切换/.test(String(notice.message))));
+});
+
+test("a different BOSS account cannot import a resume without its own application session", async () => {
+    const app = importHarness();
+    app.page.uid = "different-account";
+    app.page.cookieToken = "different-account-proof";
+    app.refreshWith(async () => {
+        throw new Error("synthetic identity mismatch");
+    });
+
+    await app.run();
+
+    assert.equal(app.lookups.length, 0);
+    assert.equal(app.downloads.length, 0);
+    assert.equal(app.requests.length, 0);
+    assert.equal(app.notices.length, 1);
+    assert.match(app.notices[0].message, /身份|登录|BOSS/);
+});
+
+test("missing bst cookie does not reuse a stale page token for resume import", async () => {
+    const app = importHarness();
+    app.page.cookieToken = "";
+    app.page.token = "previously-verified-page-token";
+
+    await app.run();
+
+    assert.equal(app.lookups.length, 0);
+    assert.equal(app.downloads.length, 0);
+    assert.equal(app.requests.length, 0);
+    assert.equal(app.notices.length, 1);
+    assert.match(app.notices[0].message, /身份|登录|BOSS/);
+});
+
 test("import waits for a ready live identity before lookup or changing the saved-status badge", async () => {
     const app = importHarness();
     const wait = deferred<{accountId: string; token: string}>();
     app.page.token = "";
+    app.page.cookieToken = "";
     app.identityWith(() => wait.promise);
     const pending = app.run();
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(app.lookups.length, 0);
     assert.equal(app.status.value, "成功导入简历");
     app.page.token = "ready-proof";
+    app.page.cookieToken = "ready-proof";
     wait.resolve({accountId: app.page.uid, token: app.page.token});
     await pending;
     assert.equal(app.lookups.length, 1);
     assert.equal(app.lookups[0][1].headers.Zp_token, "ready-proof");
     assert.equal(app.downloads[0][1].headers.Zp_token, "ready-proof");
-    assert.equal(app.requests[0].headers.get("X-Boss-Token"), "ready-proof");
+    assert.equal(app.requests[0].headers.get("Authorization"), "synthetic-session");
+    assert.equal(app.requests[0].headers.has("X-Boss-Token"), false);
 });
 
-for (const change of ["account", "server", "token"] as const) {
-    test(`a ${change} change during download prevents upload and stale notices`, async () => {
+for (const change of ["account", "server"] as const) {
+    test(`a ${change} change during download prevents upload and says the import was cancelled`, async () => {
         const app = importHarness();
         const wait = deferred<any>();
         app.downloadWith(() => wait.promise);
@@ -72,14 +185,28 @@ for (const change of ["account", "server", "token"] as const) {
         await new Promise(resolve => setImmediate(resolve));
         if (change === "account") app.page.uid = "other-account";
         if (change === "server") app.server.baseUrl = "https://other.invalid/";
-        if (change === "token") app.page.token = "other-proof";
         wait.resolve({status: 200, response: new Uint8Array([1, 2]).buffer});
         await pending;
         assert.equal(app.requests.length, 0);
-        assert.equal(app.notices.length, 0);
+        assert.equal(app.notices.length, 1);
+        assert.match(app.notices[0].message, /已切换.*导入已取消/);
         assert.equal(app.loading.value, false);
     });
 }
+
+test("a BOSS cookie rotation during download does not cancel the import", async () => {
+    const app = importHarness();
+    const wait = deferred<any>();
+    app.downloadWith(() => wait.promise);
+    const pending = app.run();
+    await new Promise(resolve => setImmediate(resolve));
+    app.page.token = "other-proof";
+    app.page.cookieToken = "other-proof";
+    wait.resolve({status: 200, response: new Uint8Array([1, 2]).buffer});
+    await pending;
+    assert.equal(app.requests.length, 1);
+    assert.equal(app.status.value, "成功导入简历");
+});
 
 test("a stale rejected download cannot overwrite the new account badge", async () => {
     const app = importHarness();
@@ -92,7 +219,8 @@ test("a stale rejected download cannot overwrite the new account badge", async (
     wait.reject(new Error("synthetic old-account error"));
     await pending;
     assert.equal(app.status.value, "成功导入简历");
-    assert.equal(app.notices.length, 0);
+    assert.equal(app.notices.length, 1);
+    assert.match(app.notices[0].message, /已切换.*导入已取消/);
 });
 
 for (const response of [
@@ -148,7 +276,7 @@ test("import logs exclude proof, response bodies and untrusted exception message
     assert.doesNotMatch(JSON.stringify(app.logs), /synthetic-secret|synthetic-proof|synthetic-session/);
 });
 
-test("a stale upload rejection does not display an application toast for a new identity", async () => {
+test("a stale upload rejection for a switched account only reports the cancellation", async () => {
     const app = importHarness();
     const wait = deferred<any>();
     app.respondWith(config => wait.promise.then(() => {
@@ -156,10 +284,11 @@ test("a stale upload rejection does not display an application toast for a new i
     }));
     const pending = app.run();
     await new Promise(resolve => setImmediate(resolve));
-    app.page.token = "other-proof";
+    app.page.uid = "other-account";
     wait.resolve(undefined);
     await pending;
-    assert.equal(app.notices.length, 0);
+    assert.equal(app.notices.length, 1);
+    assert.match(app.notices[0].message, /已切换.*导入已取消/);
 });
 
 test("valid binary downloads from another userscript realm are accepted without changing bytes", async () => {
@@ -204,6 +333,7 @@ test("scope validation waits for an initially missing live account before allowi
     const wait = deferred<{accountId: string; token: string}>();
     app.page.uid = "";
     app.page.token = "";
+    app.page.cookieToken = "";
     app.identityWith(() => wait.promise);
     const pending = app.run();
     await new Promise(resolve => setImmediate(resolve));
@@ -212,13 +342,29 @@ test("scope validation waits for an initially missing live account before allowi
     assert.equal(app.status.value, "成功导入简历");
     app.page.uid = "ready-account";
     app.page.token = "ready-proof";
+    app.page.cookieToken = "ready-proof";
     wait.resolve({accountId: app.page.uid, token: app.page.token});
     await pending;
     assert.equal(app.lookups.length, 1);
     assert.equal(app.downloads.length, 1);
     assert.equal(app.requests.length, 1);
-    assert.equal(app.requests[0].headers.get("X-Boss-Token"), "ready-proof");
+    assert.equal(app.requests[0].headers.has("X-Boss-Token"), false);
     assert.equal(app.status.value, "成功导入简历");
+});
+
+test("BOSS requests use the current bst cookie instead of a stale page token", async () => {
+    const app = importHarness();
+    app.page.token = "stale-page-proof";
+    app.page.cookieToken = "rotated-live-cookie";
+
+    await app.run();
+
+    assert.equal(app.lookups[0][1].headers.Zp_token, "rotated-live-cookie");
+    assert.equal(app.downloads[0][1].headers.Zp_token, "rotated-live-cookie");
+    assert.equal(app.requests[0].headers.get("Authorization"), "synthetic-session");
+    assert.equal(app.requests[0].headers.has("X-Boss-Token"), false);
+    assert.equal(app.requests[0].headers.has("Zp_token"), false);
+    assert.equal(app.requests[0].data.has("uniqueId"), false);
 });
 
 for (const malformed of ["https:application.invalid/", "https:/application.invalid/"]) {
@@ -250,8 +396,8 @@ for (const [serverUrl, destination] of [
         const sent = app.xhrCalls[0];
         assert.equal(sent.rawUrl, destination);
         assert.equal(sent.url, destination);
-        assert.equal(sent.headers.get("x-boss-token"), "synthetic-proof");
         assert.equal(sent.headers.get("authorization"), "synthetic-session");
+        assert.equal(sent.headers.has("x-boss-token"), false);
         assert.equal(sent.headers.has("zp_token"), false);
         assert.equal(sent.data.get("file").size > 0, true);
         assert.equal(app.status.value, "成功导入简历");

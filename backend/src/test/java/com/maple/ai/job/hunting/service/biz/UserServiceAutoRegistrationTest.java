@@ -100,21 +100,39 @@ class UserServiceAutoRegistrationTest {
     }
 
     @Test
-    void failedBossIdentityVerificationDoesNotCreateAnAccountOrGrantAccess() {
+    void unknownUidWithAnyTokenCreatesAccountAndSession() {
         Fixture fixture = new Fixture(false);
-        ReflectionTestUtils.setField(fixture.userService, "bossIdentityVerifier", new BossIdentityVerifier() {
-            @Override
-            public void requireOwnership(String claimedUid, String bossToken) {
-                throw new IllegalStateException("identity verification failed");
-            }
-        });
+        UserInfoDO seed = new UserInfoDO(null, null, "existing-tester");
+        seed.setId(1L);
+        fixture.users.put("existing-tester", seed);
 
-        assertThrows(IllegalStateException.class,
-                () -> fixture.userService.loginSilently("boss-user", "invalid-token"));
+        String token = fixture.userService.loginSilently("never-registered-uid", "whatever-token");
+
+        assertNotNull(fixture.users.get("never-registered-uid"));
+        assertEquals(1, fixture.userInsertCount.get());
+        assertEquals(1, fixture.betaProducts.size());
+        assertNotNull(fixture.sessions.get(token));
+    }
+
+    @Test
+    void loginWithoutTokenStillWorks() {
+        Fixture fixture = new Fixture(false);
+
+        String token = fixture.userService.loginSilently("boss-user", null);
+
+        assertNotNull(fixture.users.get("boss-user"));
+        assertNotNull(fixture.sessions.get(token));
+    }
+
+    @Test
+    void blankUidIsRefusedAndCreatesNothing() {
+        Fixture fixture = new Fixture(false);
+
+        assertThrows(com.maple.ai.job.hunting.frame.exp.ApplicationException.class,
+                () -> fixture.userService.loginSilently("  ", "boss-token"));
 
         assertTrue(fixture.users.isEmpty());
         assertEquals(0, fixture.userInsertCount.get());
-        assertTrue(fixture.betaProducts.isEmpty());
     }
 
     private static final class Fixture {
@@ -180,13 +198,6 @@ class UserServiceAutoRegistrationTest {
                     new BetaAccessConfig("2026-12-30T23:59:59.999+08:00"));
 
             ReflectionTestUtils.setField(userService, "userInfoMapper", userInfoMapper);
-            ReflectionTestUtils.setField(userService, "bossIdentityVerifier", new BossIdentityVerifier() {
-                @Override
-                public void requireOwnership(String claimedUid, String bossToken) {
-                    assertEquals("boss-user", claimedUid);
-                    assertEquals("boss-token", bossToken);
-                }
-            });
             ReflectionTestUtils.setField(userService, "betaAccessService", betaAccessService);
             ReflectionTestUtils.setField(userService, "sysSessionCache", sessions);
             ReflectionTestUtils.setField(userService, "transactionTemplate",

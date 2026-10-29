@@ -48,6 +48,9 @@ export function resumeImportErrorNotice(error: any, stage: ResumeImportStage): s
     if (error?.code === "RESUME_SCOPE_INVALID") {
         return "当前账号或服务器地址无效，请填写完整的 HTTP(S) 服务地址，并确认 BOSS 登录状态后重试。";
     }
+    if (error?.code === "APP_SESSION_NOT_READY") {
+        return "AI 工作猎手账号还没有连接成功，简历尚未读取；请刷新 BOSS 页面并等待连接完成后再试。";
+    }
     if (stage === "identity") {
         return "未能读取完整的 BOSS 登录身份，请确认已登录本人账号后重试。";
     }

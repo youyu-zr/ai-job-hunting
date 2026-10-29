@@ -73,10 +73,22 @@ class UserServiceAiSeatRevisionTest {
         assertEquals("new", json.getString("jobGoal"));
         assertTrue(updateWrapper.getParamNameValuePairs().values().contains(0));
     }
-
+    private static String capturedPreference(UserInfoMapper mapper) {
+        org.mockito.ArgumentCaptor<Wrapper<UserInfoDO>> wrapper =
+                org.mockito.ArgumentCaptor.forClass(Wrapper.class);
+        verify(mapper).update(any(UserInfoDO.class), wrapper.capture());
+        LambdaUpdateWrapper<UserInfoDO> updateWrapper =
+                (LambdaUpdateWrapper<UserInfoDO>) wrapper.getValue();
+        return updateWrapper.getParamNameValuePairs().values().stream()
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .filter(value -> value.contains("\"jobGoal\""))
+                .findFirst().orElseThrow();
+    }
     private static Header header(Long userId) {
         UserInfoVO user = new UserInfoVO();
         user.setId(userId);
+
         return new Header(user, "request", "/api/user/save/preference",
                 null, false, null, null);
     }
