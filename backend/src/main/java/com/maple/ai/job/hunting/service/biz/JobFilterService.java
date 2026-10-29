@@ -38,6 +38,8 @@ public class JobFilterService {
 
     private static final Logger log = LoggerFactory.getLogger(JobFilterService.class);
     private static final ObjectMapper SAFE_JSON = new ObjectMapper();
+    private static final ObjectReader PREFERENCE_JSON = SAFE_JSON.reader()
+            .without(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     private static final ObjectReader DECISION_JSON = SAFE_JSON.reader()
             .with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
             .with(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY);
@@ -295,10 +297,10 @@ public class JobFilterService {
             // 某个字段类型不对时只跳过这块，不让整次筛选失败。
             String structured;
             try {
-                structured = StructuredPreferenceText.forScreening(
-                        com.alibaba.fastjson.JSON.parseObject(rawPreference,
-                                com.maple.ai.job.hunting.model.entity.PreferenceEntity.class));
-            } catch (RuntimeException e) {
+                // 用 Jackson 读成普通 Bean（不认 @type，不会按请求内容实例化任意类）；未知字段忽略。
+                structured = StructuredPreferenceText.forScreening(PREFERENCE_JSON.readValue(rawPreference,
+                        com.maple.ai.job.hunting.model.entity.PreferenceEntity.class));
+            } catch (Exception e) {
                 structured = "";
             }
             if (StringUtils.isNotBlank(structured)) {

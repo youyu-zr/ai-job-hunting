@@ -46,7 +46,8 @@ public final class StopEventPolicy {
     /** 词前 6 个字内出现否定（如「不收任何培训费」「无需押金」）就不算。单个「无」不算（无锡）。 */
     private static final Pattern NEGATED = Pattern.compile("(不|无需|无须|无任何|免|没有|没)");
     /** 「18k」「8千」「1.5万」这类薪资数字，HR 不写「薪资」二字也算。 */
-    private static final Pattern MONEY = Pattern.compile("\\d+(\\.\\d+)?(k|千|万|w)|\\d{4,6}(元|块)");
+    // 前面不能是数字：一长串数字时不会从每一位重新试（CodeQL 多项式回溯告警）。
+    private static final Pattern MONEY = Pattern.compile("(?<![\\d.])\\d++(\\.\\d++)?(k|千|万|w)|(?<!\\d)\\d{4,6}(元|块)");
 
     private StopEventPolicy() {
     }

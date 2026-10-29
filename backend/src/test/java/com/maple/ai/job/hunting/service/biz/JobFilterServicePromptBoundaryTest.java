@@ -50,6 +50,16 @@ class JobFilterServicePromptBoundaryTest {
     }
 
     @Test
+    void structuredPreferenceReachesScreeningAndIgnoresTypeHints() {
+        String raw = "{\"@type\":\"java.net.URL\",\"cIE\":true,\"salaryMinK\":15,\"salaryMaxK\":25,"
+                + "\"dealbreakers\":[\"单休\"],\"unknownField\":1}";
+        String view = (String) ReflectionTestUtils.invokeMethod(new JobFilterService(), "buildScreeningPreference", raw);
+        assertNotNull(view);
+        assertTrue(view.contains("structuredPreference"), view);
+        assertTrue(view.contains("单休"), view);
+    }
+
+    @Test
     void marksFilterPromptAsScreeningOnly() {
         String question = new JobFilterService().buildQuestion(new AIFilterParam(
                 "不考虑销售和引流岗位，但正常的AI工具、资料整理和基础办公岗位可以尝试",

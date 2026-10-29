@@ -44,13 +44,16 @@ public class RePatternConstant {
      * 只有空格或什么都没有时（「微信 Android 端」「vx zhangsan88」），账号里得有数字或下划线才算——
      * 真实微信号几乎都带，技术名词基本不带。技术名词表里的词一律不算。
      */
+    private static final Pattern STRONG_WECHAT_SEPARATOR = Pattern.compile("[:：是为(（]|号|id");
+    private static final Pattern ACCOUNT_DIGIT_OR_UNDERSCORE = Pattern.compile("[0-9_]");
+
     public static boolean isLikelyWechatAccount(String separator, String account) {
         if (account == null || WECHAT_TECH_WORDS.contains(account.toLowerCase())) {
             return false;
         }
         String sep = separator == null ? "" : separator.toLowerCase();
-        boolean strong = sep.matches(".*(?:[:：是为(（]|号|id).*");
-        return strong || account.matches(".*[0-9_].*");
+        boolean strong = STRONG_WECHAT_SEPARATOR.matcher(sep).find();
+        return strong || ACCOUNT_DIGIT_OR_UNDERSCORE.matcher(account).find();
     }
 
     /** 「微信同手机」「微信同号」「手机/微信」「微信：138…」：微信号就是手机号（微信可以用手机号搜到人）。 */
