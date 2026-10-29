@@ -137,6 +137,17 @@ class JobSeekerClonedServiceMessageDecisionTest {
         assertEquals("CONTACT", inventedResult.getHandoffEvent());
         assertFalse(inventedResult.getAnswerContent().contains("139"));
 
+        Fixture direct = new Fixture();
+        direct.preference(share);
+        direct.accountPhone("13800138000");
+        direct.triageResult(Category.NORMAL_JOB, Action.REPLY);
+        direct.ai.nextAnswer = "可以的，我的电话是 138 0013 8000。";
+
+        // 允许时 AI 直接写了本人号码（没用占位符）也照常发，不打断对话。
+        JobSeekerClonedResultVO directResult = direct.ask("后续怎么联系您比较方便？", "job-phone-direct", 1);
+        assertEquals("可以的，我的电话是 138 0013 8000。", directResult.getAnswerContent());
+        assertTrue(direct.sessions.pausedJobs.isEmpty());
+
         Fixture notAllowed = new Fixture();
         notAllowed.preference(new PreferenceEntity());
         notAllowed.resume("张三 电话 13800138000");

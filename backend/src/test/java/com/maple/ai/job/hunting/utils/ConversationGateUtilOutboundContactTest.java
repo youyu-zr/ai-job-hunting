@@ -59,8 +59,36 @@ class ConversationGateUtilOutboundContactTest {
         assertTrue(hit("+8613800138000"));
         assertTrue(hit("8613800138000"));
         assertTrue(hit("+86 138 0013 8000"));
-        assertTrue(hit("138  0013  8000"));
         assertTrue(hit("电话１３８００１３８０００"));
+    }
+
+    @Test
+    void onlyRealElevenDigitMobilesCount() {
+        assertFalse(hit("1380013800"));          // 10 位
+        assertFalse(hit("138001380001"));        // 12 位
+        assertFalse(hit("12800138000"));         // 12 开头不是手机号段
+        assertFalse(hit("薪资 15000-20000，年包 180000"));
+        assertFalse(hit("订单号 13800138000123"));
+        assertFalse(hit("座机 021-12345678"));
+    }
+
+    @Test
+    void normalSentencesInBracketsAreNotPlaceholders() {
+        assertFalse(ConversationGateUtil.containsOwnContactPlaceholder("（我的理解）这个岗位偏后端"));
+        assertFalse(ConversationGateUtil.containsOwnContactPlaceholder("【我的优势】三年 Java 经验"));
+        assertTrue(ConversationGateUtil.containsOwnContactPlaceholder("加我【我的微信】"));
+    }
+
+    @Test
+    void ownNumbersAreRemovedSoOnlyOtherNumbersRemain() {
+        String rest = ConversationGateUtil.removeOwnNumbers(
+                "我的电话 138-0013-8000，微信：zhangsan88", "zhangsan88", "13800138000");
+        assertFalse(hit(rest));
+        String other = ConversationGateUtil.removeOwnNumbers(
+                "我的电话 13800138000，备用 13900001111", "zhangsan88", "13800138000");
+        assertTrue(hit(other));
+        // 只去整词，别人的 zhangsan888 不会被去掉一半
+        assertTrue(hit(ConversationGateUtil.removeOwnNumbers("微信：zhangsan888", "zhangsan88", "")));
     }
 
     @Test
@@ -79,15 +107,6 @@ class ConversationGateUtilOutboundContactTest {
     }
 
     @Test
-    void ownWechatWrittenWithoutALabelIsCaught() {
-        assertFalse(hit("加我 zhangsan88 吧"));
-        assertTrue(ConversationGateUtil.containsOutboundContact("加我 zhangsan88 吧", "zhangsan88"));
-        assertTrue(ConversationGateUtil.containsOutboundContact("vx ZhangSan88", "zhangsan88"));
-        // 只在整词出现时才算
-        assertFalse(ConversationGateUtil.containsOutboundContact("xzhangsan88x", "zhangsan88"));
-    }
-
-    @Test
     void placeholdersAreFilledOnlyWithTheOwnersNumbers() {
         assertEquals("微信 zhangsan88，电话 19912345678",
                 ConversationGateUtil.fillOwnContact("微信 【我的微信】，电话 【我的手机】", "zhangsan88", "19912345678"));
@@ -96,17 +115,6 @@ class ConversationGateUtilOutboundContactTest {
         assertNull(ConversationGateUtil.fillOwnContact("加我【我的微信】", "", "19912345678"));
         assertNull(ConversationGateUtil.fillOwnContact("电话【我的手机】", "zhangsan88", ""));
         assertFalse(hit("微信 【我的微信】"));
-    }
-
-    @Test
-    void ownNumbersWrittenApartAreCaught() {
-        String wx = "zhangsan88";
-        String phone = "13800138000";
-        assertTrue(ConversationGateUtil.containsOutboundContact("手机 一三八零零一三八零零零", wx, phone));
-        assertTrue(ConversationGateUtil.containsOutboundContact("手机 138.0013.8000", wx, phone));
-        assertTrue(ConversationGateUtil.containsOutboundContact("手机 138   0013   8000", wx, phone));
-        assertTrue(ConversationGateUtil.containsOutboundContact("微信是 z h a n g s a n 8 8", wx, phone));
-        assertFalse(ConversationGateUtil.containsOutboundContact("2024 年做过 3 个项目，涨了 15%", wx, phone));
     }
 
     @Test

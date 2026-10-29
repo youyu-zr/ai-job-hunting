@@ -959,24 +959,23 @@ public class JobSeekerClonedService {
      * </ul>
      */
     static String fillOwnContactOrNull(String answer, PreferenceEntity preference, String accountPhone, String resumeContent) {
-        String confirmedWechat = preference == null ? null : StringUtils.trimToNull(preference.getWechatId());
-        String resumeWechat = UserService.parseWechat(resumeContent, "");
-        Matcher resumePhone = RePatternConstant.PHONE_PATTERN.matcher(StringUtils.defaultString(resumeContent));
-        String resumePhoneText = resumePhone.find() ? resumePhone.group(1) : "";
-        for (String wechat : new String[]{confirmedWechat, resumeWechat}) {
-            for (String phone : new String[]{accountPhone, resumePhoneText}) {
-                if (ConversationGateUtil.containsOutboundContact(answer, wechat, phone)) {
-                    return null;
-                }
-            }
-        }
-        if (!ConversationGateUtil.containsOwnContactPlaceholder(answer)) {
-            return answer;
-        }
+        boolean placeholder = ConversationGateUtil.containsOwnContactPlaceholder(answer);
         if (!StopEventPolicy.contactNumbersAllowed(preference)) {
+            // 没允许：回复里有任何号码或占位符都停下叫本人。
+            return placeholder || ConversationGateUtil.containsOutboundContact(answer) ? null : answer;
+        }
+        // 已允许：本人号码（偏好里的微信号、账号手机号；账号没手机号时用简历上的）直接放行，
+        // 只有出现「不是本人的」号码才停。
+        String wechat = preference == null ? null : StringUtils.trimToNull(preference.getWechatId());
+        String phone = StringUtils.trimToNull(accountPhone);
+        if (phone == null) {
+            Matcher resumePhone = RePatternConstant.PHONE_PATTERN.matcher(StringUtils.defaultString(resumeContent));
+            phone = resumePhone.find() ? resumePhone.group(1) : null;
+        }
+        if (ConversationGateUtil.containsOutboundContact(ConversationGateUtil.removeOwnNumbers(answer, wechat, phone))) {
             return null;
         }
-        return ConversationGateUtil.fillOwnContact(answer, confirmedWechat, accountPhone);
+        return placeholder ? ConversationGateUtil.fillOwnContact(answer, wechat, phone) : answer;
     }
 
     static String guardResumeActionClaim(String question, String answer) {

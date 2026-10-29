@@ -175,7 +175,7 @@ public class AIAssistantService {
             return "";
         }
         // 第一句话不该带任何号码（不管用户在「停下来叫我」里怎么选）；带了就丢掉，前端会重新生成一次（温度 0.7，下一次多半不带），两次都不行就跳过这个岗位。
-        if (ConversationGateUtil.containsOutboundContact(result, ownWechat)) {
+        if (ConversationGateUtil.containsOutboundContact(result)) {
             return "";
         }
         return trimToSentence(result, MAX_GREETING_LENGTH);
