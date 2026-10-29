@@ -17,14 +17,22 @@
             </div>
             <el-text class="mx-1 top-title" type="warning">账号信息</el-text>
             <div style="display: flex;margin-top: 10px">
-                <el-form-item label="手机号（可选）" prop="phone" style="margin-left: -6px;">
-                    <el-input v-model="userStore.user.phone"/>
+                <el-form-item label="手机号" prop="phone" style="margin-left: -6px;">
+                    <el-input v-model="userStore.user.phone" placeholder="导入简历时自动识别"/>
                 </el-form-item>
 
-                <el-form-item label="通知邮箱（可选，不填不发邮件）" prop="email">
-                    <el-input v-model="userStore.user.email"/>
+                <el-form-item label="微信号">
+                    <el-input v-model="userStore.user.preference.wechatId" placeholder="微信号，或能搜到你的手机号" style="width: 200px"/>
+                </el-form-item>
+
+                <el-form-item label="通知邮箱（不填不发邮件）" prop="email">
+                    <el-input v-model="userStore.user.email" placeholder="导入简历时自动识别"/>
                 </el-form-item>
             </div>
+            <el-text type="info" size="small" class="section-hint">
+                导入简历时自动识别，识别错了直接改（导入后会提示识别到了什么）。默认 AI 不会把任何号码发给 HR：回复里出现号码就不发，并停下叫你。
+                想让 AI 在 HR 要联系方式时直接给，把下面「停下来叫我 → 要微信/电话/通话」改成「让 AI 处理」；这时 AI 可以发这里的微信号和简历上的手机号，别的号码仍然不发。
+            </el-text>
 
             <el-text class="mx-1 top-title" type="warning">求职要求</el-text>
             <el-text type="info" size="small" class="section-hint">
@@ -80,7 +88,7 @@
                 <el-input-number v-model="userStore.user.preference.salaryMaxK" :min="0" :max="200" controls-position="right" style="width: 110px;" />
                 <el-text style="margin: 0 6px 0 16px;">底线</el-text>
                 <el-input-number v-model="userStore.user.preference.salaryFloorK" :min="0" :max="200" controls-position="right" style="width: 110px;" />
-                <el-tooltip effect="dark" placement="top" content="HR 问期望时，AI 只说期望区间；底线只用来筛掉上限低于底线的岗位，不会说出口。HR 报出具体数字时，AI 不答应也不拒绝。">
+                <el-tooltip effect="dark" placement="top" content="HR 问期望时，AI 报期望区间的上半段（比如填 12-18，报 15-18K；岗位标价更低时说「按岗位范围靠上，可以再谈」）。底线只用来筛掉上限低于底线的岗位，不会说出口。HR 报出具体数字时，AI 会试着往上谈、问清构成，但不答应也不拒绝。">
                     <el-text type="primary" style="cursor: help; margin-left: 6px;">?</el-text>
                 </el-tooltip>
             </el-form-item>
@@ -129,6 +137,12 @@
                 </div>
                 <el-text type="info" size="small">只按当前个人配置校验搜索城市和职位地点，不自动修改简历城市；第一次异地提醒，达到次数暂停本轮投递。</el-text>
             </el-form-item>
+            <!-- 旧版关键词筛选：上面「我的具体条件」已覆盖大部分用途，收起来；已有的设置照常生效。 -->
+            <el-collapse v-model="advancedFilterOpen" style="margin: 6px 0 10px;">
+                <el-collapse-item name="advanced">
+                    <template #title>
+                        <el-text :type="advancedFilterInUse ? 'warning' : 'info'">高级筛选（关键词、薪资范围、公司规模；一般不用改）{{ advancedFilterInUse ? '　· 有设置在生效，岗位可能因此被过滤' : '' }}</el-text>
+                    </template>
             <div style="display: flex;margin-top: 10px">
                 <el-form-item prop="companyInclude" style="margin-left: -40px;">
                     <template #label>
@@ -283,6 +297,8 @@
                               style="width: 242px"/>
                 </el-form-item>
             </div>
+                </el-collapse-item>
+            </el-collapse>
 
             <el-form-item label="AI过滤(语义匹配)" prop="aiFilter">
                 <template #label>
@@ -359,7 +375,7 @@
                 HR 说到下面这些事时 AI 怎么做。「停下叫我」：这个会话暂停自动回复并提醒你；「先婉拒/问清」：AI 先回一句不做承诺的话，同一个会话第二次再出现就停下叫你。
             </el-text>
             <el-form-item v-for="row in STOP_EVENT_ROWS" :key="row.key" :label="row.label">
-                <el-radio-group v-model="(userStore.user.preference as any)[row.key]">
+                <el-radio-group v-model="(userStore.user.preference as any)[row.key]" @change="onStopEventChange(row.key, $event)">
                     <el-radio-button value="PAUSE">停下叫我</el-radio-button>
                     <el-radio-button value="DECLINE">先婉拒/问清</el-radio-button>
                     <el-radio-button value="ALLOW">让 AI 处理</el-radio-button>
@@ -367,6 +383,12 @@
                 <el-tooltip effect="dark" placement="top" :content="row.tip">
                     <el-text type="primary" style="cursor: help; margin-left: 6px;">?</el-text>
                 </el-tooltip>
+                <div v-if="row.key === 'stopContact' && legacyContactNeedsConfirm" style="width: 100%; margin-top: 4px;">
+                    <el-text type="warning" size="small">
+                        你以前选的是「AI 可以回应，但不写出号码」。新版把这两项合成了一档，现在 AI 仍然不会发号码。
+                    </el-text>
+                    <el-button size="small" link type="primary" @click="confirmLegacyContactShare">允许 AI 发我的微信号和手机号</el-button>
+                </div>
             </el-form-item>
             <el-form-item label="一律停下">
                 <el-text type="info" size="small">疑似收费/要证件/拉你去别的软件、语音图片笔试链接等 AI 处理不了的内容、碰到你写的底线。</el-text>
@@ -402,24 +424,6 @@
             <el-text type="info" size="small" class="section-hint">
                 默认不回复营销引流消息；正常岗位职责里出现“推广”“市场”“销售”等词，不会单独触发静默。
             </el-text>
-            <el-form-item>
-                <el-checkbox
-                    style="padding-top: 6px"
-                    v-model="userStore.user.preference.contactShareE"
-                    label=""
-                    size="large"
-                >允许AI在回复里写出我的手机号/微信号</el-checkbox>
-                <el-tooltip
-                    effect="dark"
-                    placement="top"
-                    content="默认关闭。关闭时，AI 写好的回复里只要出现具体的手机号、微信号、邮箱或 QQ 号，这条就不发，并暂停这个岗位的会话，等你自己回复。只说“可以加微信沟通”这类话不受影响。"
-                >
-                    <el-text type="primary" style="cursor: help;">查看规则</el-text>
-                </el-tooltip>
-            </el-form-item>
-            <el-text type="info" size="small" class="section-hint">
-                不确定就保持关闭：防止 AI 把简历里的手机号直接发给陌生 HR。想让 AI 主动留联系方式再打开。
-            </el-text>
 
             <el-form-item>
                 <el-button type="primary" @click="submitForm(ruleFormRef)">保存偏好设置</el-button>
@@ -430,7 +434,7 @@
 </template>
 
 <script lang="ts" setup>
-import {inject, reactive, ref} from 'vue'
+import {computed, inject, reactive, ref} from 'vue'
 import {FormInstance, FormRules, ElNotification} from 'element-plus';
 import {ElMessage} from "../../utils/tools";
 import {UserStore} from '../../stores'
@@ -534,6 +538,9 @@ const submitForm = async (formEl: FormInstance | undefined) => {
     })
 
     if (!valid) {
+        // 出错的项可能在收起的「高级筛选」里，展开它，免得点保存没反应。
+        advancedFilterOpen.value = ['advanced'];
+        ElMessage({message: '有填写格式不对的项，已标红，请改好后再保存', type: 'warning', duration: 3000});
         return;
     }
 
@@ -639,11 +646,41 @@ const handleUploadError = () => {
 
 const DEALBREAKER_OPTIONS = ['大小周', '单休', '夜班', '经常出差', '驻场外派', '试用期超过6个月', '不交社保', '入职要交钱'];
 const ARRIVAL_OPTIONS = ['随时', '一周内', '两周内', '一个月内'];
+// 高级筛选收起后，用户看不见里面勾了什么；有项真的在起作用就在标题上提示，免得「岗位怎么被过滤了」找不到原因。
+// 「生效」= 开关打开且填了内容。开着 AI 过滤时：公司名排除仍按字面执行（platform.ts matchJob），
+// 薪资范围、公司规模交给服务端 AI 参考（JobFilterService.buildScreeningPreference），其余关键词不用。
+const advancedFilterInUse = computed(() => {
+    const p: any = userStore.user.preference || {};
+    const on = (flag: string, value: string) => {
+        const v = p[value];
+        return Boolean(p[flag]) && (Array.isArray(v) ? v.some((x: unknown) => String(x ?? '').trim()) : String(v ?? '').trim() !== '');
+    };
+    if (on('cneE', 'cne') || on('srE', 'sr') || on('csrE', 'csr')) {
+        return true;
+    }
+    return !p.afE && (on('cniE', 'cni') || on('jniE', 'jni') || on('jneE', 'jne') || on('jciE', 'jci') || on('jceE', 'jce'));
+});
+const advancedFilterOpen = ref<string[]>([]);
+
+// 「让 AI 处理」联系方式 = 允许 AI 发本人号码；选别的档就收回。和服务端 StopEventPolicy.contactNumbersAllowed 对应。
+const onStopEventChange = (key: string, value: unknown) => {
+    if (key === 'stopContact') {
+        userStore.user.preference.contactShareE = value === 'ALLOW';
+    }
+};
+// 旧版用户：联系方式选了「让 AI 处理」但没勾「允许写出号码」。服务端仍按「不发号码」处理，这里请本人确认一次。
+const legacyContactNeedsConfirm = computed(() =>
+    userStore.user.preference.stopContact === 'ALLOW' && !userStore.user.preference.contactShareE);
+const confirmLegacyContactShare = () => {
+    userStore.user.preference.contactShareE = true;
+    ElMessage({message: '已允许，点下方「保存偏好设置」后生效', type: 'success', duration: 3000});
+};
+
 const STOP_EVENT_ROWS = [
     {key: 'stopInterview', label: '约具体面试/到岗时间', tip: 'HR 给了具体日期或时间让你确认。先婉拒/问清：AI 回「这个时间我先确认下自己的安排」。'},
     {key: 'stopOffer', label: 'Offer / 签合同', tip: 'HR 要你接受 Offer、确认录用或签合同/协议。'},
     {key: 'stopSalary', label: 'HR 报薪资要你表态', tip: '即使在你的期望区间内也算。先婉拒/问清：AI 问底薪、绩效、年终和社保基数怎么构成。'},
-    {key: 'stopContact', label: '要微信/电话/通话', tip: '交换微信、留电话、打电话或视频。让 AI 处理时，AI 回复里写出号码还要看下面「允许AI写出我的手机号/微信号」。'},
+    {key: 'stopContact', label: '要微信/电话/通话', tip: '交换微信、留电话、打电话或视频。默认停下叫你。选「让 AI 处理」时，HR 要联系方式，系统会把你填的微信号或简历上的手机号发给 HR（AI 本身拿不到号码，只能填「我的微信/手机」，由系统替换），AI 也可能答应通话；AI 自己写出的任何号码、邮箱、QQ 仍然不发。其他两档下，AI 回复里出现任何号码都不会发出去。'},
     {key: 'stopResume', label: '要简历', tip: '附件简历里有你的手机号。岗位带风险信号时一律停下，不自动发。'},
     {key: 'stopPersonal', label: '问婚育/年龄/目前薪资', tip: '简历和偏好里没有的个人信息，AI 不会编。先婉拒/问清：AI 回「这个方便的话我们面谈时再细聊」。'},
 ] as const;

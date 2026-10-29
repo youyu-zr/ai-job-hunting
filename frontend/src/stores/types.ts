@@ -127,7 +127,10 @@ export type PreferenceConfig = {
     /** 营销推广类消息自动回复，默认关闭。 */
     marketingReplyE?: boolean,
     /** AI 回复里允许带出手机号/微信号/邮箱，默认关闭。 */
+    /** 旧开关，已不在页面显示；只用来给老用户算「要微信/电话」的默认档位。 */
     contactShareE?: boolean,
+    /** 我的微信号：导入简历时自动识别，只在「要微信/电话」设成「让 AI 处理」时交给聊天 AI。 */
+    wechatId?: string,
     /** Editable guidance for promotion types the user does not want answered. */
     promotionReplyPolicy?: string,
     /** 偏好页 v3 结构化条件（null/空 = 没填，不替用户假设）。 */

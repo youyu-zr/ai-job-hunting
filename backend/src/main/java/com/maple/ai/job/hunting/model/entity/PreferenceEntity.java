@@ -186,6 +186,9 @@ public class PreferenceEntity {
     /** AI 回复里是否允许带出手机号/微信号/邮箱，默认关闭：命中就不发，交给本人确认。 */
     private boolean contactShareE;
 
+    /** 我的微信号：导入简历时识别到且本栏为空才自动填，用户可改；只在用户允许 AI 处理联系方式时交给聊天 AI。 */
+    private String wechatId;
+
     /** Editable guidance for promotion types the user does not want answered. */
     private String promotionReplyPolicy;
 

@@ -69,6 +69,74 @@ class StructuredPreferenceTextTest {
     }
 
     @Test
+    void replyAsksForTheUpperHalfOfTheRangeButNeverAgreesToANumber() {
+        String text = StructuredPreferenceText.forReply(filled());
+        assertTrue(text.contains("报 15-18K"), text);
+        assertTrue(text.contains("岗位标的薪资上限比这个低时"), text);
+        assertTrue(text.contains("不答应也不拒绝"));
+        assertTrue(text.contains("希望能再往上谈"));
+        assertFalse(text.contains("10K"));
+    }
+
+    @Test
+    void upperHalfHandlesOneSidedRanges() {
+        PreferenceEntity onlyMin = new PreferenceEntity();
+        onlyMin.setSalaryMinK(12);
+        assertEquals("12K 以上", StructuredPreferenceText.upperHalf(onlyMin));
+        PreferenceEntity onlyMax = new PreferenceEntity();
+        onlyMax.setSalaryMaxK(20);
+        assertEquals("20K 左右", StructuredPreferenceText.upperHalf(onlyMax));
+        PreferenceEntity odd = new PreferenceEntity();
+        odd.setSalaryMinK(11);
+        odd.setSalaryMaxK(16);
+        assertEquals("14-16K", StructuredPreferenceText.upperHalf(odd));
+        PreferenceEntity narrow = new PreferenceEntity();
+        narrow.setSalaryMinK(8);
+        narrow.setSalaryMaxK(9);
+        assertEquals("9K", StructuredPreferenceText.upperHalf(narrow));
+        PreferenceEntity reversed = new PreferenceEntity();
+        reversed.setSalaryMinK(18);
+        reversed.setSalaryMaxK(12);
+        assertEquals("15-18K", StructuredPreferenceText.upperHalf(reversed));
+        PreferenceEntity highFloor = new PreferenceEntity();
+        highFloor.setSalaryMinK(8);
+        highFloor.setSalaryMaxK(20);
+        highFloor.setSalaryFloorK(18);
+        assertEquals("18-20K", StructuredPreferenceText.upperHalf(highFloor));
+        assertTrue(StructuredPreferenceText.forReply(reversed).contains("12-18K"),
+                StructuredPreferenceText.forReply(reversed));
+    }
+
+    @Test
+    void onlyMaxSalaryIsNeverWrittenAsAnInvitationToGoLower() {
+        PreferenceEntity onlyMax = new PreferenceEntity();
+        onlyMax.setSalaryMaxK(18);
+        String text = StructuredPreferenceText.forReply(onlyMax);
+        assertFalse(text.contains("以下"), text);
+        assertTrue(text.contains("18K 左右"), text);
+    }
+
+    @Test
+    void chatModelGetsContactPlaceholdersOnlyWhenTheUserAllowsIt() {
+        PreferenceEntity p = filled();
+        p.setWechatId("zr_2026abc");
+        assertFalse(StructuredPreferenceText.forReply(p).contains("【我的微信】"), "default is PAUSE");
+        p.setStopContact("DECLINE");
+        assertFalse(StructuredPreferenceText.forReply(p).contains("【我的微信】"));
+        p.setStopContact("ALLOW");
+        // 旧版「让 AI 处理、但不写号码」的用户：还没确认，不给。
+        assertFalse(StructuredPreferenceText.forReply(p).contains("【我的微信】"));
+        p.setContactShareE(true);
+        String reply = StructuredPreferenceText.forReply(p);
+        assertTrue(reply.contains("【我的微信】"), reply);
+        assertTrue(reply.contains("【我的手机】"), reply);
+        // 真实号码从不交给模型
+        assertFalse(reply.contains("zr_2026abc"));
+        assertFalse(StructuredPreferenceText.forReply(p, false).contains("【我的微信】"), "triage/review never get it");
+        assertFalse(StructuredPreferenceText.forScreening(p).contains("zr_2026abc"));
+    }
+
+    @Test
     void emptyPreferencesAddNothing() {
         assertEquals("", StructuredPreferenceText.forScreening(new PreferenceEntity()));
         assertEquals("", StructuredPreferenceText.forScreening(null));

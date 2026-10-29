@@ -82,7 +82,7 @@ public class HighInterestAIReviewService {
         view.put("clarifyConditions", preference.getClarifyConditions());
         view.put("salaryRange", preference.getSr());
         view.put("targetCities", preference.getTargetCities());
-        view.put("structuredPreference", com.maple.ai.job.hunting.utils.StructuredPreferenceText.forReply(preference));
+        view.put("structuredPreference", com.maple.ai.job.hunting.utils.StructuredPreferenceText.forReply(preference, false));
         return view.toJSONString();
     }
 

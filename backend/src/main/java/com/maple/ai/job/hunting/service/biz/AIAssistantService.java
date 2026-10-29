@@ -9,6 +9,7 @@ import com.maple.ai.job.hunting.mapper.UserInfoMapper;
 import com.maple.ai.job.hunting.model.bo.UserResumeDO;
 import com.maple.ai.job.hunting.model.entity.PreferenceEntity;
 import com.maple.ai.job.hunting.service.ai.AIServiceFacade;
+import com.maple.ai.job.hunting.utils.ConversationGateUtil;
 import com.maple.ai.job.hunting.utils.PromptDataSanitizer;
 import jakarta.annotation.Nonnull;
 import org.apache.commons.lang3.StringUtils;
@@ -61,7 +62,8 @@ public class AIAssistantService {
             }
             greeting = aiServiceFacade.askAndAnswer(buildGreetingSystemPrompt(jobInfo) + "\n" + userPrompt);
         }
-        return sanitizeGreeting(greeting, resumeContent, jobInfo);
+        return sanitizeGreeting(greeting, resumeContent, jobInfo,
+                preference == null ? null : preference.getWechatId());
     }
 
     /**
@@ -153,6 +155,10 @@ public class AIAssistantService {
     }
 
     static String sanitizeGreeting(String greeting, String resumeContent, JSONObject jobInfo) {
+        return sanitizeGreeting(greeting, resumeContent, jobInfo, null);
+    }
+
+    static String sanitizeGreeting(String greeting, String resumeContent, JSONObject jobInfo, String ownWechat) {
         if (greeting == null || greeting.isBlank()) {
             return "";
         }
@@ -166,6 +172,10 @@ public class AIAssistantService {
                 .replaceAll("\\s+", " ")
                 .trim();
         if (containsUnsupportedCandidateClaim(result, resumeContent)) {
+            return "";
+        }
+        // 第一句话不该带任何号码（不管用户在「停下来叫我」里怎么选）；带了就丢掉，前端会重新生成一次（温度 0.7，下一次多半不带），两次都不行就跳过这个岗位。
+        if (ConversationGateUtil.containsOutboundContact(result, ownWechat)) {
             return "";
         }
         return trimToSentence(result, MAX_GREETING_LENGTH);

@@ -115,13 +115,38 @@ class JobSeekerClonedServiceMessageDecisionTest {
         PreferenceEntity share = new PreferenceEntity();
         share.setContactShareE(true);
         allowed.preference(share);
+        allowed.resume("张三 电话 13800138000");
+        allowed.accountPhone("13800138000");
         allowed.triageResult(Category.NORMAL_JOB, Action.REPLY);
-        allowed.ai.nextAnswer = "可以的，我的电话是 13800138000。";
+        allowed.ai.nextAnswer = "可以的，我的电话是【我的手机】。";
 
         JobSeekerClonedResultVO sent = allowed.ask("后续怎么联系您比较方便？", "job-phone-allowed", 1);
 
-        assertEquals("可以的，我的电话是 13800138000。", sent.getAnswerContent());
+        // 允许时，AI 写占位符，发出去前换成简历上的本人号码。
+        assertEquals("可以的，我的电话是13800138000。", sent.getAnswerContent());
         assertTrue(allowed.sessions.pausedJobs.isEmpty());
+
+        Fixture invented = new Fixture();
+        invented.preference(share);
+        invented.resume("张三 电话 13800138000");
+        invented.triageResult(Category.NORMAL_JOB, Action.REPLY);
+        invented.ai.nextAnswer = "可以的，我的电话是【我的手机】，备用 13900001111。";
+
+        // 允许时 AI 自己写出的任何真实号码（哪怕夹在占位符旁边）照样拦下。
+        JobSeekerClonedResultVO inventedResult = invented.ask("后续怎么联系您比较方便？", "job-phone-invented", 1);
+        assertEquals("CONTACT", inventedResult.getHandoffEvent());
+        assertFalse(inventedResult.getAnswerContent().contains("139"));
+
+        Fixture notAllowed = new Fixture();
+        notAllowed.preference(new PreferenceEntity());
+        notAllowed.resume("张三 电话 13800138000");
+        notAllowed.triageResult(Category.NORMAL_JOB, Action.REPLY);
+        notAllowed.ai.nextAnswer = "可以的，我的电话是【我的手机】。";
+
+        // 没允许时，就算 AI 写了占位符也不替换、不发。
+        JobSeekerClonedResultVO notAllowedResult = notAllowed.ask("后续怎么联系您比较方便？", "job-phone-slot", 1);
+        assertEquals("CONTACT", notAllowedResult.getHandoffEvent());
+        assertFalse(notAllowedResult.getAnswerContent().contains("138"));
     }
 
     @Test
@@ -670,6 +695,13 @@ class JobSeekerClonedServiceMessageDecisionTest {
         private void preference(PreferenceEntity preference) {
             when(userInfoMapper.selectPreferenceOptByUserId(42L))
                     .thenReturn(Optional.ofNullable(preference));
+        }
+
+        private void accountPhone(String phone) {
+            com.maple.ai.job.hunting.model.bo.UserInfoDO user = new com.maple.ai.job.hunting.model.bo.UserInfoDO();
+            user.setId(42L);
+            user.setPhone(phone);
+            when(userInfoMapper.selectById(42L)).thenReturn(user);
         }
 
         private void resume(String content) {

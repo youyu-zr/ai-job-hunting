@@ -67,6 +67,82 @@ class UserServicePrivacyTest {
         });
     }
     @Test
+    void phonePatternAcceptsNewerPrefixes() {
+        assertTrue(RePatternConstant.PHONE_PATTERN.matcher("电话 19912345678").find());
+        assertTrue(RePatternConstant.PHONE_PATTERN.matcher("电话 16612345678").find());
+        assertFalse(RePatternConstant.PHONE_PATTERN.matcher("电话 12345678901").find());
+    }
+
+    @Test
+    void wechatIsOnlyReadWhenLabelled() {
+        assertEquals("zr_2026abc", UserService.parseWechat("微信：zr_2026abc  电话 13800138000"));
+        assertEquals("zr-wx2026", UserService.parseWechat("WeChat ID: zr-wx2026"));
+        assertEquals("abc12345", UserService.parseWechat("微信号 abc12345\n邮箱 a@b.cn"));
+        // 「微信同手机」、纯数字、没有标签的英文串都不当成微信号
+        assertEquals("zhang_san88", UserService.parseWechat("VX: zhang_san88"));
+        assertEquals("zhang_san88", UserService.parseWechat("wx：zhang_san88"));
+        assertEquals("zhang_san88", UserService.parseWechat("微 信：zhang_san88"));
+        assertEquals("", UserService.parseWechat("GitHub: zr_2026abc"));
+        assertEquals("", UserService.parseWechat(null));
+    }
+
+    @Test
+    void wechatSameAsPhoneUsesThePhone() {
+        assertEquals("13800138000", UserService.parseWechat("微信同手机 13800138000", "13800138000"));
+        assertEquals("13800138000", UserService.parseWechat("电话 13800138000（微信同号）", "13800138000"));
+        assertEquals("13800138000", UserService.parseWechat("手机/微信：13800138000", "13800138000"));
+        assertEquals("13800138000", UserService.parseWechat("微信：13800138000", ""));
+    }
+
+    @Test
+    void techWordsAndEmailsAreNotMistakenForWechat() {
+        assertEquals("", UserService.parseWechat("负责微信 MiniProgram 开发"));
+        assertEquals("", UserService.parseWechat("熟悉 WeChat Official Account"));
+        assertEquals("", UserService.parseWechat("熟悉 vxe-table 组件"));
+        assertEquals("", UserService.parseWechat("邮箱/微信：zhangsan88@163.com"));
+        assertEquals("", UserService.parseWechat("GitHub devxlabs01"));
+        // 技术词之后真正的微信号仍能找到
+        assertEquals("real_wx01", UserService.parseWechat("微信 MiniProgram 开发\n微信：real_wx01"));
+    }
+
+    @Test
+    void moreTechWordsAndLooseWritings() {
+        assertEquals("", UserService.parseWechat("负责微信 Native 支付"));
+        assertEquals("", UserService.parseWechat("微信Android客户端"));
+        assertEquals("", UserService.parseWechat("微信 OAuth2 登录"));
+        assertEquals("", UserService.parseWechat("微信 uni-app 开发"));
+        assertEquals("zhangsan88", UserService.parseWechat("微信：zhangsan88."));
+        assertEquals("abc_123", UserService.parseWechat("微 信 号：abc_123"));
+        assertEquals("zhangsan88", UserService.parseWechat("vx zhangsan88"));
+        assertEquals("13800138000", UserService.parseWechat("微信：同手机", "13800138000"));
+        assertEquals("13800138000", UserService.parseWechat("微信（同手机）", "13800138000"));
+        assertEquals("13800138000", UserService.parseWechat("微信号：同手机号", "13800138000"));
+    }
+
+    @Test
+    void longWhitespaceAfterLabelDoesNotHang() {
+        String hostile = "微信" + " ".repeat(50_000) + "x";
+        assertTimeoutPreemptively(Duration.ofSeconds(1), () -> UserService.parseWechat(hostile));
+    }
+
+    @Test
+    void wechatFillNeverOverwritesUserValueOrBrokenPreference() {
+        UserService userService = new UserService();
+        assertEquals(null, userService.fillWechatIfBlank("{\"wechatId\":\"mine_123\"}", "resume_456"));
+        assertEquals(null, userService.fillWechatIfBlank("{not json", "resume_456"));
+        assertEquals(null, userService.fillWechatIfBlank("{}", ""));
+        // 本人清空过（存的是空串）就不再填回去
+        assertEquals(null, userService.fillWechatIfBlank("{\"wechatId\":\"\"}", "resume_456"));
+
+        String filled = userService.fillWechatIfBlank("{\"salaryFloorK\":15}", "resume_456");
+        JSONObject json = JSONUtil.parseObj(filled);
+        assertEquals("resume_456", json.getStr("wechatId"));
+        assertEquals(15, json.getInt("salaryFloorK"));
+        // 自动填微信号不能顺带打开「允许 AI 发联系方式」
+        assertFalse(Boolean.TRUE.equals(json.getBool("contactShareE")));
+    }
+
+    @Test
     void successfulResumeImportGrantsBetaOnlyAfterUserAndResumeAreSaved() throws Exception {
         AtomicInteger persistenceStage = new AtomicInteger();
         RecordingTransactionManager transactionManager = new RecordingTransactionManager();
@@ -78,7 +154,7 @@ class UserServicePrivacyTest {
                 getClass().getClassLoader(),
                 new Class[]{UserInfoMapper.class},
                 (proxy, method, args) -> switch (method.getName()) {
-                    case "selectById" -> authenticatedUser;
+                    case "selectById", "selectByIdForUpdate" -> authenticatedUser;
                     case "update" -> {
                         assertEquals(1, persistenceStage.get());
                         persistenceStage.set(2);
@@ -164,7 +240,7 @@ class UserServicePrivacyTest {
                 getClass().getClassLoader(),
                 new Class[]{UserInfoMapper.class},
                 (proxy, method, args) -> switch (method.getName()) {
-                    case "selectById" -> authenticatedUser;
+                    case "selectById", "selectByIdForUpdate" -> authenticatedUser;
                     case "toString" -> "RecordingUserInfoMapper";
                     default -> throw new UnsupportedOperationException(method.getName());
                 });
@@ -245,7 +321,7 @@ class UserServicePrivacyTest {
                 getClass().getClassLoader(),
                 new Class[]{UserInfoMapper.class},
                 (proxy, method, args) -> switch (method.getName()) {
-                    case "selectById" -> existingUser;
+                    case "selectById", "selectByIdForUpdate" -> existingUser;
                     case "update" -> 1;
                     case "toString" -> "ExistingUserInfoMapper";
                     default -> throw new UnsupportedOperationException(method.getName());

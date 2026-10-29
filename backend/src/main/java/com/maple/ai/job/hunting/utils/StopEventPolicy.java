@@ -120,6 +120,19 @@ public final class StopEventPolicy {
         };
     }
 
+    /**
+     * AI 能不能把「我自己的」微信号/手机号写给 HR。
+     * 要求两件事同时成立：联系方式这一档是「让 AI 处理」，并且 contactShareE 为 true。
+     * 新版偏好页选「让 AI 处理」时会同时把 contactShareE 设为 true；
+     * 旧版里「选了让 AI 处理、但没勾允许写出号码」的用户，contactShareE 仍是 false，
+     * 他们当初的选择是「AI 可以回应，但不写号码」，这里继续照这个办，等本人在页面上确认后才放开。
+     */
+    public static boolean contactNumbersAllowed(PreferenceEntity preference) {
+        return preference != null
+                && preference.isContactShareE()
+                && policyFor(Event.CONTACT, preference) == Policy.ALLOW;
+    }
+
     /** DECLINE 档要发的那一句。只问清或婉拒，不做任何承诺。 */
     public static String declineText(Event event) {
         return switch (event) {

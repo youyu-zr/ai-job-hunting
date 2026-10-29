@@ -1,8 +1,10 @@
 package com.maple.ai.job.hunting.utils;
 
+import com.maple.ai.job.hunting.consts.RePatternConstant;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -100,24 +102,143 @@ public final class ConversationGateUtil {
         return false;
     }
 
-    private static final Pattern OUTBOUND_MOBILE = Pattern.compile("(?<!\\d)1[3-9]\\d(?:[\\s-]?\\d){8}(?!\\d)");
-    private static final Pattern OUTBOUND_EMAIL = Pattern.compile("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}");
+    // 先做全角转半角；+86/86 前缀、数字间的空格/横杠都认（「+86 138 0013 8000」「138-0013-8000」）。
+    // 不认点号分隔：「192.168.10.100」这种 IP 拼起来也是 11 位。
+    private static final Pattern OUTBOUND_MOBILE = Pattern.compile(
+            "(?<![0-9.])(?:\\+?86[\\s-]*)?1[3-9](?:[\\s-]{0,2}[0-9]){9}(?![0-9])");
+    // 前面加断言，长串字母数字里不会从每个位置重新试一遍（否则 1 万字符要秒级）。
+    private static final Pattern OUTBOUND_EMAIL = Pattern.compile(
+            "(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}");
+    private static final Pattern OUTBOUND_QQ = Pattern.compile(
+            "(?i)(?<![A-Za-z])qq\\s*(?:号码?)?\\s*(?:[:：是为]\\s*)?[1-9]\\d{4,11}(?!\\d)");
+    /**
+     * 带明确标签的微信号：标签后必须有冒号或「号/ID」（「微信：x」「微信号 x」「WeChat ID: x」），
+     * 允许 Markdown 加粗、引号、括号包着账号。只有空格的「微信 Android13 适配」「微信 access_token」不算，
+     * 技术岗回复里这种写法太多，误拦会让对话频繁暂停。
+     * 英文标签前后都不能紧挨字母（排除 wxPython4、vxe_table、wechatpay）。
+     */
+    // 「wx:for-item」「wx:if」这类小程序模板写法不是微信号。
     private static final Pattern OUTBOUND_WECHAT = Pattern.compile(
-            "(?i)(?:微信号?|vx|wx|v信|weixin|wechat)\\s*[:：是为]?\\s*[A-Za-z][-_A-Za-z0-9]{5,19}");
-    private static final Pattern OUTBOUND_QQ = Pattern.compile("(?i)qq\\s*[:：号是为]?\\s*[1-9]\\d{4,11}");
+            "(?i)(?:微\\s?信|v信|(?<![A-Za-z0-9])(?:wechat|weixin|vx|wx)(?![A-Za-z])(?!:(?:for|if|elif|else|key)\\b))"
+                    + "\\s{0,3}(?:(?:号码?|id)\\s{0,3}[:：是为]?|[是为]?\\s{0,2}[:：])"
+                    + "[\\s:：*`\"'“”‘’「」『』\\[\\]()（）]{0,6}"
+                    + "([A-Za-z][-_A-Za-z0-9]{5,19})(?![-_A-Za-z0-9])");
+    private static final String CN_DIGITS = "零〇一二三四五六七八九幺";
+    private static final String AR_DIGITS = "001234567891";
 
     /**
      * AI 准备发出去的回复里是否带了具体联系方式（手机号、邮箱、微信号、QQ）。
      * 只看具体号码/账号；「可以加微信沟通」这类说法不算。
      */
     public static boolean containsOutboundContact(String answer) {
+        return containsOutboundContact(answer, null, null);
+    }
+
+    public static boolean containsOutboundContact(String answer, String ownWechat) {
+        return containsOutboundContact(answer, ownWechat, null);
+    }
+
+    /**
+     * 同上，另外认得本人的微信号和手机号被拆开写的样子：
+     * HR 常让人「用汉字或符号隔开发号码」，AI 照做时会写成「一三八零零…」「138.0013.8000」「z h a n g s a n 8 8」。
+     * 不管用户允不允许发号码，AI 的原文都不该带真实号码：允许时 AI 只写占位符
+     * （{@link #OWN_WECHAT_PLACEHOLDER}），检查通过后由服务端换成真号，见 {@link #fillOwnContact}。
+     */
+    public static boolean containsOutboundContact(String answer, String ownWechat, String ownPhone) {
         if (StringUtils.isBlank(answer)) {
             return false;
         }
-        return OUTBOUND_MOBILE.matcher(answer).find()
-                || OUTBOUND_EMAIL.matcher(answer).find()
-                || OUTBOUND_WECHAT.matcher(answer).find()
-                || OUTBOUND_QQ.matcher(answer).find();
+        String text = java.text.Normalizer.normalize(answer, java.text.Normalizer.Form.NFKC);
+        if (OUTBOUND_MOBILE.matcher(text).find()
+                || OUTBOUND_EMAIL.matcher(text).find()
+                || OUTBOUND_QQ.matcher(text).find()) {
+            return true;
+        }
+        Matcher labelled = OUTBOUND_WECHAT.matcher(text);
+        while (labelled.find()) {
+            if (!RePatternConstant.WECHAT_TECH_WORDS.contains(labelled.group(1).toLowerCase())) {
+                return true;
+            }
+        }
+        String wechat = StringUtils.trimToEmpty(ownWechat);
+        if (wechat.length() >= 6) {
+            // 本人微信号：字符之间允许夹最多 3 个空格/符号（「z h a n g s a n 8 8」「zhang-san-88」）。
+            StringBuilder spread = new StringBuilder("(?i)(?<![A-Za-z0-9@.])");
+            for (int i = 0; i < wechat.length(); i++) {
+                if (i > 0) {
+                    spread.append("[\\s.·,，、/|*_-]{0,3}");
+                }
+                spread.append(Pattern.quote(String.valueOf(wechat.charAt(i))));
+            }
+            spread.append("(?![A-Za-z0-9@])");
+            if (Pattern.compile(spread.toString()).matcher(text).find()) {
+                return true;
+            }
+        }
+        String phoneDigits = StringUtils.trimToEmpty(ownPhone).replaceAll("\\D", "");
+        String wechatDigits = wechat.replaceAll("\\D", "");
+        if (phoneDigits.length() >= 11 || wechatDigits.matches("1[3-9]\\d{9}")) {
+            String digits = collapseDigits(text);
+            return (phoneDigits.length() >= 11 && digits.contains(phoneDigits.substring(phoneDigits.length() - 11)))
+                    || (wechatDigits.matches("1[3-9]\\d{9}") && digits.contains(wechatDigits));
+        }
+        return false;
+    }
+
+    /** 中文数字换成阿拉伯数字，并去掉夹在数字之间的空格、点、横杠等（「一三八.零零一三」→「1380013」）。 */
+    private static String collapseDigits(String text) {
+        StringBuilder sb = new StringBuilder(text.length());
+        for (char c : text.toCharArray()) {
+            int idx = CN_DIGITS.indexOf(c);
+            sb.append(idx >= 0 ? AR_DIGITS.charAt(idx) : c);
+        }
+        return sb.toString().replaceAll("(?<=\\d)[\\s.·,，、/|*_-]{1,4}(?=\\d)", "");
+    }
+
+    public static final String OWN_WECHAT_PLACEHOLDER = "【我的微信】";
+    public static final String OWN_PHONE_PLACEHOLDER = "【我的手机】";
+    private static final Pattern WECHAT_SLOT = Pattern.compile("【\\s*我的\\s*微信号?\\s*】");
+    private static final Pattern PHONE_SLOT = Pattern.compile("【\\s*我的\\s*(?:手机号?|电话)\\s*】");
+    /** 任何像占位符的写法（【我的微信号码】[我的VX]〔我的电话〕…）：没被正确替换就不能发。 */
+    private static final Pattern ANY_SLOT_LIKE = Pattern.compile("[【\\[〔［(（]\\s*我的[^】\\]〕］)）]{0,10}[】\\]〕］)）]");
+    /** 占位符紧挨字母数字时，替换后会和旁边的字拼成另一个号码（「li【我的微信】_hr」→ 别人的账号）。 */
+    private static final Pattern GLUED_SLOT = Pattern.compile(
+            "[A-Za-z0-9_-]【\\s*我的[^】]{0,8}】|【\\s*我的[^】]{0,8}】[A-Za-z0-9_-]");
+
+    public static boolean containsOwnContactPlaceholder(String answer) {
+        return answer != null && ANY_SLOT_LIKE.matcher(answer).find();
+    }
+
+    /**
+     * 把占位符换成本人真实号码。号码只从这里进入回复，所以 AI 没法借本人号码夹带别的号码。
+     * 返回 null（调用方停下叫本人）的情况：某个占位符对应的号码没有；占位符紧挨字母数字；
+     * 替换后还剩认不出的占位符写法（不能把「【我的VX】」原样发给 HR）。
+     */
+    public static String fillOwnContact(String answer, String ownWechat, String ownPhone) {
+        if (answer == null) {
+            return null;
+        }
+        String normalized = java.text.Normalizer.normalize(answer, java.text.Normalizer.Form.NFKC);
+        if (GLUED_SLOT.matcher(normalized).find()) {
+            return null;
+        }
+        String result = answer;
+        if (WECHAT_SLOT.matcher(result).find()) {
+            if (StringUtils.isBlank(ownWechat)) {
+                return null;
+            }
+            result = WECHAT_SLOT.matcher(result).replaceAll(Matcher.quoteReplacement(ownWechat.trim()));
+        }
+        if (PHONE_SLOT.matcher(result).find()) {
+            if (StringUtils.isBlank(ownPhone)) {
+                return null;
+            }
+            result = PHONE_SLOT.matcher(result).replaceAll(Matcher.quoteReplacement(ownPhone.trim()));
+        }
+        if (ANY_SLOT_LIKE.matcher(result).find()) {
+            return null;
+        }
+        return result;
     }
 
     public static boolean isContactExchangeQuestion(String question) {

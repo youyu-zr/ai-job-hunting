@@ -31,6 +31,8 @@ import com.maple.ai.job.hunting.model.vo.MessageTriageResultVO;
 import com.maple.ai.job.hunting.model.vo.MessageTriageResultVO.Action;
 import com.maple.ai.job.hunting.model.vo.MessageTriageResultVO.Category;
 import com.maple.ai.job.hunting.service.ai.AIServiceFacade;
+import com.maple.ai.job.hunting.consts.RePatternConstant;
+import com.maple.ai.job.hunting.model.bo.UserInfoDO;
 import com.maple.ai.job.hunting.utils.ConversationGateUtil;
 import com.maple.ai.job.hunting.utils.HighInterestReview;
 import com.maple.ai.job.hunting.utils.OutboundCommitmentGuard;
@@ -43,6 +45,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
+import java.util.regex.Matcher;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -293,15 +296,19 @@ public class JobSeekerClonedService {
                     safeLogValue(jobKey), userId, textLength(sessionChat.getAnswer()));
             return new JobSeekerClonedResultVO(JobSeekerClonedAnswerTypeEnum.STOP, "", "NO_REPLY_CONTENT");
         }
-        if (answerTypeList.contains(JobSeekerClonedAnswerTypeEnum.MSG_TEXT.getCode())
-                && StopEventPolicy.policyFor(StopEventPolicy.Event.CONTACT, preferenceEntityOpt.orElse(null))
-                != StopEventPolicy.Policy.ALLOW
-                && ConversationGateUtil.containsOutboundContact(answer)) {
-            // 用户没允许发联系方式：AI 回复里出现具体号码/账号就不发，暂停本岗位等本人处理。
-            log.info("AI回复包含具体联系方式且用户未允许，暂停等待本人确认 jobKey:{} userId:{} answerLength:{}",
-                    safeLogValue(jobKey), userId, textLength(answer));
-            return pauseAfterAiAnswer(jobSeekerClonedParam, preferenceEntityOpt, jobKey, sessionId,
-                    StopEventPolicy.Event.CONTACT);
+        if (answerTypeList.contains(JobSeekerClonedAnswerTypeEnum.MSG_TEXT.getCode())) {
+            // AI 原文里一律不该有真实号码（允许时它只写占位符）；有就不发，停下叫本人。
+            // 检查通过后再把占位符换成本人号码：号码只从这里进入回复，AI 没法借本人号码夹带别的号码。
+            String accountPhone = Optional.ofNullable(userInfoMapper.selectById(userId))
+                    .map(UserInfoDO::getPhone).orElse("");
+            String filled = fillOwnContactOrNull(answer, preferenceEntityOpt.orElse(null), accountPhone, resumeContent);
+            if (filled == null) {
+                log.info("AI回复包含具体联系方式且用户未允许，暂停等待本人确认 jobKey:{} userId:{} answerLength:{}",
+                        safeLogValue(jobKey), userId, textLength(answer));
+                return pauseAfterAiAnswer(jobSeekerClonedParam, preferenceEntityOpt, jobKey, sessionId,
+                        StopEventPolicy.Event.CONTACT);
+            }
+            answer = filled;
         }
         if (answerTypeList.contains(JobSeekerClonedAnswerTypeEnum.MSG_TEXT.getCode())) {
             // 输出兜底：AI 自己答应了具体时间 / 薪资数字 / 底线里不接受的条件，而用户没选「让 AI 处理」→ 不发。
@@ -940,6 +947,36 @@ public class JobSeekerClonedService {
             }
         }
         return compact.toString();
+    }
+
+    /**
+     * 返回可以发出去的回复；不能发（带了真实号码、没允许却用了占位符、占位符对应的号码没有）时返回 null。
+     * <ul>
+     *   <li>替换用的号码只用本人在偏好页确认过的：微信号一栏、账号手机号一栏。不从简历里猜，
+     *   简历里可能还有证明人、前同事的号码。</li>
+     *   <li>检查「有没有写出本人号码」时更宽：偏好里的号码之外，简历里识别到的微信号、手机号也算本人的，
+     *   免得用户清空了微信号一栏，AI 却照着简历写出来。</li>
+     * </ul>
+     */
+    static String fillOwnContactOrNull(String answer, PreferenceEntity preference, String accountPhone, String resumeContent) {
+        String confirmedWechat = preference == null ? null : StringUtils.trimToNull(preference.getWechatId());
+        String resumeWechat = UserService.parseWechat(resumeContent, "");
+        Matcher resumePhone = RePatternConstant.PHONE_PATTERN.matcher(StringUtils.defaultString(resumeContent));
+        String resumePhoneText = resumePhone.find() ? resumePhone.group(1) : "";
+        for (String wechat : new String[]{confirmedWechat, resumeWechat}) {
+            for (String phone : new String[]{accountPhone, resumePhoneText}) {
+                if (ConversationGateUtil.containsOutboundContact(answer, wechat, phone)) {
+                    return null;
+                }
+            }
+        }
+        if (!ConversationGateUtil.containsOwnContactPlaceholder(answer)) {
+            return answer;
+        }
+        if (!StopEventPolicy.contactNumbersAllowed(preference)) {
+            return null;
+        }
+        return ConversationGateUtil.fillOwnContact(answer, confirmedWechat, accountPhone);
     }
 
     static String guardResumeActionClaim(String question, String answer) {

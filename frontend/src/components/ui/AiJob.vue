@@ -404,10 +404,18 @@ const handlerImport = async () => {
         if (!importResp.data?.data?.email) {
             resumeImportStatus.value = '成功导入简历';
         }
+        // 自动识别的微信号要让本人核对一眼：识别错了，以后 AI 发给 HR 的就是错号。
+        const recognizedWechat = String(importResp.data?.data?.wechatId ?? '').trim();
+        const aiMayShareContact = userStore.user.preference?.stopContact === 'ALLOW'
+            && Boolean(userStore.user.preference?.contactShareE);
+        const wechatNotice = recognizedWechat
+            ? `；识别到微信号 ${recognizedWechat}，已填进偏好设置，不对请改`
+                + (aiMayShareContact ? '（你已允许 AI 在 HR 要微信时发这个号，请务必核对）' : '（默认不发给 HR）')
+            : '';
         ElMessage({
-            message: `简历保存成功${refreshWarning}${emailWarning}`,
+            message: `简历保存成功${refreshWarning}${emailWarning}${wechatNotice}`,
             type: loginSessionReady && importResp.data?.data?.email ? 'success' : 'warning',
-            duration: 3000
+            duration: recognizedWechat ? 6000 : 3000
         });
     } catch (error: any) {
         if (error?.code === CONTEXT_SWITCHED || !contextIsCurrent()) {

@@ -26,6 +26,9 @@ public class UserInfoVO extends BaseVO {
 
     private String resumeId;
 
+    /** 只在导入简历的返回里有值：这次从简历里识别并自动填进偏好的微信号，给用户核对。 */
+    private String wechatId;
+
     /**
      * 用户偏好设置
      */

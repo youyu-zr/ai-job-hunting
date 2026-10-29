@@ -452,12 +452,12 @@ class BossPlatform extends AbsPlatform {
         // 「公司名排除」「工作名排除」是用户亲手勾选的黑名单，语义模式下也执行（以前只在关闭 AI 过滤时生效，勾了却没用）。
         // 改为单向匹配：页面名字包含词条才算；页面名字为空、词条只有一个字时不算。
         if (userStore.user.preference.cneE && matchesExcludeList(userStore.user.preference.cne, jobDetail.brandName)) {
-            throw new NotMatchException(jobTitle, jobDetail.brandName, '满足排除公司名')
+            throw new NotMatchException(jobTitle, jobDetail.brandName, '满足排除公司名（偏好设置 → 高级筛选）')
         }
         // 工作名排除和「坚决不做」一样：开着 AI 时字面匹配会误杀「售前技术支持(非销售)」这类岗位，只在关闭 AI 时执行。
         if (!semanticScreeningEnabled && userStore.user.preference.jneE
             && matchesExcludeList(userStore.user.preference.jne, jobDetail.jobName)) {
-            throw new NotMatchException(jobTitle, jobDetail.jobName, '满足排除工作名')
+            throw new NotMatchException(jobTitle, jobDetail.jobName, '满足排除工作名（偏好设置 → 高级筛选）')
         }
 
         // In semantic mode the complete job, company, salary and requirements are
@@ -466,27 +466,27 @@ class BossPlatform extends AbsPlatform {
         if (!semanticScreeningEnabled) {
             const companyNameInclude: string[] = userStore.user.preference.cni;
             if (userStore.user.preference.cniE && !Tools.fuzzyMatch(companyNameInclude, jobDetail.brandName, true)) {
-                throw new NotMatchException(jobTitle, jobDetail.brandName, '不满足配置公司名')
+                throw new NotMatchException(jobTitle, jobDetail.brandName, '不满足配置公司名（偏好设置 → 高级筛选）')
             }
 
             const jobNameInclude: string[] = userStore.user.preference.jni;
             if (userStore.user.preference.jniE && !Tools.fuzzyMatch(jobNameInclude, jobDetail.jobName, true)) {
-                throw new NotMatchException(jobTitle, jobDetail.jobName, '不满足配置工作名')
+                throw new NotMatchException(jobTitle, jobDetail.jobName, '不满足配置工作名（偏好设置 → 高级筛选）')
             }
 
             const pageSalaryRange = jobDetail.salaryDesc;
             if (userStore.user.preference.srE) {
                 if (!Tools.isSalaryRangeInputValid(userStore.user.preference.sr)) {
-                    throw new NotMatchException(jobTitle, userStore.user.preference.sr, '薪资范围格式错误，请使用如8-12、12以上或20以下')
+                    throw new NotMatchException(jobTitle, userStore.user.preference.sr, '高级筛选里的薪资范围格式错误，请使用如8-12、12以上或20以下')
                 }
                 if (!Tools.isRangeOverlap(userStore.user.preference.sr, pageSalaryRange)) {
-                    throw new NotMatchException(jobTitle, pageSalaryRange, '不满足薪资范围')
+                    throw new NotMatchException(jobTitle, pageSalaryRange, '不满足薪资范围（偏好设置 → 高级筛选）')
                 }
             }
 
             const pageCompanyScaleRange = userStore.user.preference.csr;
             if (userStore.user.preference.csrE && !Tools.isRangeOverlap(pageCompanyScaleRange, jobDetail.brandScaleName)) {
-                throw new NotMatchException(jobTitle, jobDetail.brandScaleName, '不满足公司规模范围')
+                throw new NotMatchException(jobTitle, jobDetail.brandScaleName, '不满足公司规模范围（偏好设置 → 高级筛选）')
             }
         }
 
@@ -546,11 +546,11 @@ class BossPlatform extends AbsPlatform {
             const jobContent = jobDetailExt.postDescription;
             const jobContentExclude: string[] = userStore.user.preference.jce;
             if (userStore.user.preference.jceE && Tools.fuzzyMatch(jobContentExclude, jobContent, false)) {
-                throw new NotMatchException(jobTitle, jobContent, '满足排除工作内容')
+                throw new NotMatchException(jobTitle, jobContent, '满足排除工作内容（偏好设置 → 高级筛选）')
             }
             const jobContentInclude: string[] = userStore.user.preference.jci;
             if (userStore.user.preference.jciE && !Tools.fuzzyMatch(jobContentInclude, jobContent, true)) {
-                throw new NotMatchException(jobTitle, jobContent, '不满足工作内容')
+                throw new NotMatchException(jobTitle, jobContent, '不满足工作内容（偏好设置 → 高级筛选）')
             }
         }
 

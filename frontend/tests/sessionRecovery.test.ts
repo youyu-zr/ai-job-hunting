@@ -66,10 +66,17 @@ test('unread scanner self-heals: relogin, watchdog, wake on visible', () => {
     assert.match(source, /if \(BossOption\.unreadScanStartedAt === scanStartedAt\)/);
 });
 
-test('contact sharing is an explicit, default-off switch on the preference page', () => {
+test('contact sharing stays default-off: the stop-and-ask row decides, defaulting to PAUSE', () => {
     const page = readFileSync(new URL('../src/components/ui/Preference.vue', import.meta.url), 'utf8');
     const remote = readFileSync(new URL('../src/stores/remote.ts', import.meta.url), 'utf8');
-    assert.match(page, /v-model="userStore\.user\.preference\.contactShareE"/);
-    assert.match(page, /preference\.contactShareE = preference\.contactShareE \?\? false/);
-    assert.match(remote, /preference\.contactShareE = preference\.contactShareE \?\? false/);
+    // 旧的「允许AI写出号码」复选框和「要微信/电话」三档重复且实际不起作用，已去掉；三档默认停下。
+    assert.doesNotMatch(page, /v-model="userStore\.user\.preference\.contactShareE"/);
+    // 选「让 AI 处理」= 允许发本人号码，选别的档就收回（服务端 contactNumbersAllowed 要求两者同时成立）。
+    assert.match(page, /contactShareE = value === 'ALLOW'/);
+    assert.match(page, /legacyContactNeedsConfirm/);
+    assert.match(page, /v-model="userStore\.user\.preference\.wechatId"/);
+    for (const source of [page, remote]) {
+        assert.match(source, /preference\.contactShareE = preference\.contactShareE \?\? false/);
+        assert.match(source, /preference\.stopContact = preference\.stopContact \|\| \(preference\.contactShareE \? 'ALLOW' : 'PAUSE'\)/);
+    }
 });
