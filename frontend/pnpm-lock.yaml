@@ -56,7 +56,7 @@ importers:
         version: 1.3.3(rollup@4.14.2)(vite@5.2.8(@types/node@20.12.7))
       vite-plugin-md:
         specifier: ^0.21.5
-        version: 0.21.5(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(happy-dom@8.9.0)(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7))
+        version: 0.21.5(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7))
       vite-plugin-monkey:
         specifier: ^3.5.1
         version: 3.5.2(vite@5.2.8(@types/node@20.12.7))
@@ -1444,8 +1444,8 @@ packages:
     peerDependencies:
       postcss: ^8.4.31
 
-  postcss-selector-parser@6.1.2:
-    resolution: {integrity: sha512-Q8qQfPiZ+THO/3ZrOrO0cJJKfpYCagtMUkXbnEfmgUjwXg6z/WBeOyS9APBBPCTSiDV+s4SwQGu8yFsiMRIudg==}
+  postcss-selector-parser@6.1.5:
+    resolution: {integrity: sha512-TEHFzb5KRDKaOgJ4TYE+0jyJtFbjLvkdVOu0fZ2b6MTWzoqZd4Le+61aEppWkvTlYePgOX4ATL1wsAIPMLTw6Q==}
     engines: {node: '>=4'}
 
   postcss@8.4.38:
@@ -2294,21 +2294,20 @@ snapshots:
       - '@vue/composition-api'
       - vue
 
-  '@yankeeinlondon/builder-api@1.4.1(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(happy-dom@8.9.0)(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7))':
+  '@yankeeinlondon/builder-api@1.4.1(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7))':
     dependencies:
       '@types/markdown-it': 12.2.3
       '@yankeeinlondon/happy-wrapper': 2.10.1(supports-color@7.2.0)
       fp-ts: 2.16.9
-      inferred-types: 0.37.6(happy-dom@8.9.0)(supports-color@7.2.0)
+      inferred-types: 0.37.6
       markdown-it: 13.0.2
-      vite-plugin-md: 0.22.5(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(happy-dom@8.9.0)(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7))
+      vite-plugin-md: 0.22.5(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7))
     transitivePeerDependencies:
       - '@edge-runtime/vm'
       - '@vitejs/plugin-vue'
       - '@vitest/browser'
       - '@vitest/ui'
       - encoding
-      - happy-dom
       - jsdom
       - less
       - lightningcss
@@ -2319,26 +2318,13 @@ snapshots:
       - terser
       - vite
 
-  '@yankeeinlondon/gray-matter@6.2.1(happy-dom@8.9.0)(supports-color@7.2.0)':
+  '@yankeeinlondon/gray-matter@6.2.1':
     dependencies:
-      inferred-types: 0.37.6(happy-dom@8.9.0)(supports-color@7.2.0)
+      inferred-types: 0.37.6
       js-yaml: 4.1.0
       kind-of: 6.0.3
       section-matter: 1.0.0
       strip-bom-string: 1.0.0
-    transitivePeerDependencies:
-      - '@edge-runtime/vm'
-      - '@vitest/browser'
-      - '@vitest/ui'
-      - happy-dom
-      - jsdom
-      - less
-      - lightningcss
-      - sass
-      - stylus
-      - sugarss
-      - supports-color
-      - terser
 
   '@yankeeinlondon/happy-wrapper@2.10.1(supports-color@7.2.0)':
     dependencies:
@@ -2434,7 +2420,7 @@ snapshots:
     dependencies:
       bumpp: 8.2.1
       callsites: 4.2.0
-      inferred-types: 0.37.6(happy-dom@8.9.0)(supports-color@7.2.0)
+      inferred-types: 0.37.6
       vitest: 0.25.8(happy-dom@8.9.0)(supports-color@7.2.0)
     transitivePeerDependencies:
       - '@edge-runtime/vm'
@@ -2886,22 +2872,9 @@ snapshots:
     dependencies:
       safer-buffer: 2.1.2
 
-  inferred-types@0.37.6(happy-dom@8.9.0)(supports-color@7.2.0):
+  inferred-types@0.37.6:
     dependencies:
       brilliant-errors: 0.7.3(happy-dom@8.9.0)(supports-color@7.2.0)
-    transitivePeerDependencies:
-      - '@edge-runtime/vm'
-      - '@vitest/browser'
-      - '@vitest/ui'
-      - happy-dom
-      - jsdom
-      - less
-      - lightningcss
-      - sass
-      - stylus
-      - sugarss
-      - supports-color
-      - terser
 
   inherits@2.0.4: {}
 
@@ -3132,7 +3105,7 @@ snapshots:
   native-dash@1.25.0(happy-dom@8.9.0)(supports-color@7.2.0):
     dependencies:
       brilliant-errors: 0.7.3(happy-dom@8.9.0)(supports-color@7.2.0)
-      inferred-types: 0.37.6(happy-dom@8.9.0)(supports-color@7.2.0)
+      inferred-types: 0.37.6
     transitivePeerDependencies:
       - '@edge-runtime/vm'
       - '@vitest/browser'
@@ -3231,9 +3204,9 @@ snapshots:
   postcss-discard-comments@7.0.3(postcss@8.4.38):
     dependencies:
       postcss: 8.4.38
-      postcss-selector-parser: 6.1.2
+      postcss-selector-parser: 6.1.5
 
-  postcss-selector-parser@6.1.2:
+  postcss-selector-parser@6.1.5:
     dependencies:
       cssesc: 3.0.0
       util-deprecate: 1.0.2
@@ -3512,10 +3485,10 @@ snapshots:
     transitivePeerDependencies:
       - rollup
 
-  vite-plugin-md@0.21.5(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(happy-dom@8.9.0)(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7)):
+  vite-plugin-md@0.21.5(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7)):
     dependencies:
-      '@yankeeinlondon/builder-api': 1.4.1(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(happy-dom@8.9.0)(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7))
-      '@yankeeinlondon/gray-matter': 6.2.1(happy-dom@8.9.0)(supports-color@7.2.0)
+      '@yankeeinlondon/builder-api': 1.4.1(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7))
+      '@yankeeinlondon/gray-matter': 6.2.1
       '@yankeeinlondon/happy-wrapper': 2.10.1(supports-color@7.2.0)
       markdown-it: 13.0.2
       source-map-js: 1.2.0
@@ -3526,7 +3499,6 @@ snapshots:
       - '@vitest/browser'
       - '@vitest/ui'
       - encoding
-      - happy-dom
       - jsdom
       - less
       - lightningcss
@@ -3536,11 +3508,11 @@ snapshots:
       - supports-color
       - terser
 
-  vite-plugin-md@0.22.5(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(happy-dom@8.9.0)(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7)):
+  vite-plugin-md@0.22.5(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7)):
     dependencies:
       '@vitejs/plugin-vue': 5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5))
-      '@yankeeinlondon/builder-api': 1.4.1(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(happy-dom@8.9.0)(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7))
-      '@yankeeinlondon/gray-matter': 6.2.1(happy-dom@8.9.0)(supports-color@7.2.0)
+      '@yankeeinlondon/builder-api': 1.4.1(@vitejs/plugin-vue@5.0.4(vite@5.2.8(@types/node@20.12.7))(vue@3.4.21(typescript@5.4.5)))(supports-color@7.2.0)(vite@5.2.8(@types/node@20.12.7))
+      '@yankeeinlondon/gray-matter': 6.2.1
       '@yankeeinlondon/happy-wrapper': 2.10.1(supports-color@7.2.0)
       markdown-it: 13.0.2
       source-map-js: 1.2.0
@@ -3550,7 +3522,6 @@ snapshots:
       - '@vitest/browser'
       - '@vitest/ui'
       - encoding
-      - happy-dom
       - jsdom
       - less
       - lightningcss
