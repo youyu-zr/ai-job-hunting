@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AI工作猎手-让ai帮您找工作！
 // @namespace    https://github.com/youyu-zr/ai-job-hunting
-// @version      0.0.125
+// @version      0.0.126
 // @author       maple.
 // @description  AI工作猎手：辅助岗位筛选、职位沟通与求职流程管理。
 // @downloadURL  https://aijob.zxpnb.top/ai-job-hunting.user.js
@@ -26,7 +26,7 @@
 !function(t){function e(t){t.registerRegistry=Object.create(null),t.namedRegisterAliases=Object.create(null)}var r=t.System;e(r);var i,s,n=r.constructor.prototype,l=r.constructor,a=function(){l.call(this),e(this)};a.prototype=n,r.constructor=a;var o=n.register;n.register=function(t,e,r,n){if("string"!=typeof t)return o.apply(this,arguments);var l=[e,r,n];return this.registerRegistry[t]=l,i||(i=l,s=t),Promise.resolve().then((function(){i=null,s=null})),o.apply(this,[e,r,n])};var u=n.resolve;n.resolve=function(t,e){try{return u.call(this,t,e)}catch(r){if(t in this.registerRegistry)return this.namedRegisterAliases[t]||t;throw r}};var c=n.instantiate;n.instantiate=function(t,e,r){var i=this.registerRegistry[t];return i?(this.registerRegistry[t]=null,i):c.call(this,t,e,r)};var g=n.getRegister;n.getRegister=function(t){var e=g.call(this,t);s&&t&&(this.namedRegisterAliases[s]=t);var r=i||e;return i=null,s=null,r}}("undefined"!=typeof self?self:global);
 ;(typeof System!='undefined')&&(System=new System.constructor());
 
-System.register("./__entry.js", ['./__monkey.entry-BekKbqHh.js'], (function (exports, module) {
+System.register("./__entry.js", ['./__monkey.entry-CZIgmIsZ.js'], (function (exports, module) {
 	'use strict';
 	return {
 		setters: [null],
@@ -38,7 +38,7 @@ System.register("./__entry.js", ['./__monkey.entry-BekKbqHh.js'], (function (exp
 	};
 }));
 
-System.register("./__monkey.entry-BekKbqHh.js", [], (function (exports, module) {
+System.register("./__monkey.entry-CZIgmIsZ.js", [], (function (exports, module) {
   'use strict';
   return {
     execute: (function () {
@@ -80747,11 +80747,11 @@ System.register("./__monkey.entry-BekKbqHh.js", [], (function (exports, module) 
         }
         async getRenderComponent() {
           if (this.curUrl.includes("www.zhipin.com/web/geek/chat")) {
-            let promise = __vitePreload(() => module.import('./BossMessage-BKsMGgK4-8iLSBJGZ.js'), void 0 );
+            let promise = __vitePreload(() => module.import('./BossMessage-QTf84Mgi-q28Qn2U1.js'), void 0 );
             return promise.then((item) => item.default);
           }
           if (this.curUrl.includes("www.zhipin.com/web/geek/job") || this.curUrl.includes("overseas")) {
-            let promise = __vitePreload(() => module.import('./BossJobList-B620gAEc-DVtW86UX.js'), void 0 );
+            let promise = __vitePreload(() => module.import('./BossJobList-DE0RLGVU-8ZmDOfGg.js'), void 0 );
             return promise.then((item) => item.default);
           }
         }
@@ -83858,7 +83858,7 @@ System.register("./__monkey.entry-BekKbqHh.js", [], (function (exports, module) 
   };
 }));
 
-System.register("./BossMessage-BKsMGgK4-8iLSBJGZ.js", ['./__monkey.entry-BekKbqHh.js'], (function (exports, module) {
+System.register("./BossMessage-QTf84Mgi-q28Qn2U1.js", ['./__monkey.entry-CZIgmIsZ.js'], (function (exports, module) {
   'use strict';
   var _export_sfc, defineComponent, UserStore, ref, computed, onMounted, onUnmounted, openBlock, createElementBlock, createBaseVNode, createVNode, withCtx, normalizeClass, createTextVNode, toDisplayString, createBlock, createCommentVNode, Fragment, ConversationPauseRegistry, AiPower, parseAiSeatRuntimeStatus, getAiSeatStatusRevision, rememberAiSeatStatus, ElMessage, ElTag, ElButton, pushScopeId, popScopeId, BossOption;
   return {
@@ -84035,7 +84035,7 @@ System.register("./BossMessage-BKsMGgK4-8iLSBJGZ.js", ['./__monkey.entry-BekKbqH
   };
 }));
 
-System.register("./BossJobList-B620gAEc-DVtW86UX.js", ['./__monkey.entry-BekKbqHh.js'], (function (exports, module) {
+System.register("./BossJobList-DE0RLGVU-8ZmDOfGg.js", ['./__monkey.entry-CZIgmIsZ.js'], (function (exports, module) {
   'use strict';
   var defineComponent, openBlock, createBlock, _export_sfc, shallowRef, createElementBlock, createVNode, withCtx, Fragment, renderList, unref, createTextVNode, toDisplayString, createBaseVNode, resolveDynamicComponent, ElMenuItem, ElMenu, inject, ServerStore, ref, PushStatus, LogRecorder, LoginStore, pushResultCount, UserStore, watch, onUnmounted, isProdEnv, createCommentVNode, withDirectives, vShow, CircleCloseFilled, normalizeClass, reactive, computed, Tools, onMounted, userRemoteLoad, ElNotification, ElMessage, waitForBossIdentity, INTERACTIVE_ATTEMPTS, userSessionScope, isApplicationSessionReady, axios, fetchWithGM_request, applicationResponseError, isUserConfigReady, logger$1, resumeImportErrorNotice, loginInterceptor, serializeAiSeatStatus, rememberAiSeatStatus, shouldApplyAiSeatRollback, ElText, ElBadge, ElTag, ElButton, ElIcon, ElTooltip, ElButtonGroup$1, ElInput, ElCard, ElInputNumber, ElSwitch, applyPersonalPreferenceDefaults, ElFormItem, ElCheckbox, ElSelect, ElOption, ElRadioButton, ElRadioGroup, ElCollapseItem, ElCollapse, ElUpload, ElForm, ElCol, ElTimePicker, ElRow, ElTableColumn, ElEmpty, ElTable, ElPagination, pushScopeId, popScopeId, userSnapshotStorageKey, TampermonkeyApi, createStaticVNode;
   return {
@@ -84295,7 +84295,7 @@ System.register("./BossJobList-B620gAEc-DVtW86UX.js", ['./__monkey.entry-BekKbqH
         __name: "AiJob",
         setup(__props) {
           var _a;
-          const CURRENT_SCRIPT_VERSION = "0.0.125";
+          const CURRENT_SCRIPT_VERSION = "0.0.126";
           const platform = inject("$platform");
           const axios$1 = inject("$axios");
           const serverStore = ServerStore();
